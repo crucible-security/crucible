@@ -151,6 +151,10 @@ class Finding(BaseModel):
         default_factory=list,
         description="Links to relevant documentation or standards.",
     )
+    owasp_ref: str = Field(
+        default="",
+        description="OWASP Agentic AI Top 10 reference (e.g., 'OWASP-AGENT-001: Prompt Injection').",
+    )
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="When this finding was generated.",

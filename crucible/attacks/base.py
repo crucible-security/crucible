@@ -9,6 +9,21 @@ import httpx
 
 from crucible.models import AgentTarget, AttackCategory, Finding, Severity
 
+OWASP_AGENTIC_MAP: dict[AttackCategory, str] = {
+    AttackCategory.PROMPT_INJECTION: "OWASP-AGENT-001: Prompt Injection",
+    AttackCategory.INSECURE_OUTPUT: "OWASP-AGENT-002: Insecure Output Handling",
+    AttackCategory.TRAINING_DATA_POISONING: "OWASP-AGENT-003: Training Data Poisoning",
+    AttackCategory.DENIAL_OF_SERVICE: "OWASP-AGENT-004: Model Denial of Service",
+    AttackCategory.SUPPLY_CHAIN: "OWASP-AGENT-005: Supply Chain Vulnerabilities",
+    AttackCategory.SENSITIVE_DISCLOSURE: "OWASP-AGENT-006: Sensitive Information Disclosure",
+    AttackCategory.INSECURE_PLUGIN: "OWASP-AGENT-007: Insecure Plugin Design",
+    AttackCategory.EXCESSIVE_AGENCY: "OWASP-AGENT-008: Excessive Agency",
+    AttackCategory.OVERRELIANCE: "OWASP-AGENT-009: Overreliance",
+    AttackCategory.MODEL_THEFT: "OWASP-AGENT-010: Model Theft",
+    AttackCategory.GOAL_HIJACKING: "OWASP-AGENT-001: Prompt Injection",
+    AttackCategory.JAILBREAK: "OWASP-AGENT-001: Prompt Injection",
+}
+
 class BaseAttack(ABC):
 
     name: str = ""
@@ -18,6 +33,7 @@ class BaseAttack(ABC):
     description: str = ""
     remediation: str = ""
     references: list[str] = []
+    owasp_ref: str = ""
 
     @abstractmethod
     def get_payloads(self) -> list[str]:
@@ -25,6 +41,11 @@ class BaseAttack(ABC):
 
     def get_detection_patterns(self) -> list[str]:
         return []
+
+    def _resolve_owasp_ref(self) -> str:
+        if self.owasp_ref:
+            return self.owasp_ref
+        return OWASP_AGENTIC_MAP.get(self.category, "")
 
     def evaluate_response(self, payload: str, response_text: str) -> bool:
         response_lower = response_text.lower()
@@ -120,8 +141,10 @@ class BaseAttack(ABC):
             passed=passed,
             remediation=self.remediation,
             references=self.references,
+            owasp_ref=self._resolve_owasp_ref(),
         )
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} name={self.name!r}>"
+
 

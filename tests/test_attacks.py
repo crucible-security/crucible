@@ -169,9 +169,9 @@ class TestSecurityModules:
 
     def test_get_all_modules(self) -> None:
         modules = get_all_modules()
-        assert len(modules) == 3
+        assert len(modules) == 4
         names = {m.name for m in modules}
-        assert names == {"prompt_injection", "goal_hijacking", "jailbreaks"}
+        assert names == {"prompt_injection", "goal_hijacking", "jailbreaks", "mcp_security"}
 
     @respx.mock
     @pytest.mark.asyncio()

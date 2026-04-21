@@ -9,7 +9,6 @@ from typing import Any, Literal, Optional, Union
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 class Severity(str, Enum):
-    pass
 
     CRITICAL = "critical"
     HIGH = "high"
@@ -18,7 +17,6 @@ class Severity(str, Enum):
     INFO = "info"
 
 class AttackCategory(str, Enum):
-    pass
 
     PROMPT_INJECTION = "prompt_injection"
     INSECURE_OUTPUT = "insecure_output"
@@ -34,7 +32,6 @@ class AttackCategory(str, Enum):
     JAILBREAK = "jailbreak"
 
 class Grade(str, Enum):
-    pass
 
     A = "A"
     B = "B"
@@ -43,7 +40,6 @@ class Grade(str, Enum):
     F = "F"
 
 class ScanStatus(str, Enum):
-    pass
 
     PENDING = "pending"
     RUNNING = "running"
@@ -52,7 +48,6 @@ class ScanStatus(str, Enum):
     CANCELLED = "cancelled"
 
 class AgentTarget(BaseModel):
-    pass
 
     name: str = Field(
         ...,
@@ -102,7 +97,6 @@ class AgentTarget(BaseModel):
         return self.body_template.replace("{payload}", payload)
 
 class Finding(BaseModel):
-    pass
 
     id: str = Field(
         default_factory=lambda: uuid.uuid4().hex[:12],
@@ -163,7 +157,6 @@ class Finding(BaseModel):
     )
 
 class ModuleResult(BaseModel):
-    pass
 
     module_name: str = Field(
         ...,
@@ -224,7 +217,6 @@ class ModuleResult(BaseModel):
         return (self.passed / self.total_attacks) * 100.0
 
 class ScanResult(BaseModel):
-    pass
 
     id: str = Field(
         default_factory=lambda: uuid.uuid4().hex,

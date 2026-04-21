@@ -11,17 +11,15 @@
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/crucible-security/"><img src="https://img.shields.io/pypi/v/crucible-security?style=flat-square&color=blueviolet" alt="PyPI"></a>
-  <a href="https://pypi.org/project/crucible-security/"><img src="https://img.shields.io/pypi/pyversions/crucible-security?style=flat-square" alt="Python 3.9+"></a>
+  <a href="https://pypi.org/project/crucible-security/"><img src="https://img.shields.io/badge/pypi-v0.1.0-blueviolet?style=flat-square" alt="PyPI"></a>
+  <a href="https://pypi.org/project/crucible-security/"><img src="https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square" alt="Python 3.9+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License"></a>
   <a href="https://github.com/crucible-security/crucible/stargazers"><img src="https://img.shields.io/github/stars/crucible-security/crucible?style=flat-square" alt="Stars"></a>
-  <a href="https://github.com/crucible-security/crucible/actions"><img src="https://img.shields.io/github/actions/workflow/status/crucible-security/crucible/ci.yml?style=flat-square&label=CI" alt="CI"></a>
-  <a href="https://codecov.io/gh/crucible-security/crucible"><img src="https://img.shields.io/codecov/c/github/crucible-security/crucible?style=flat-square" alt="Coverage"></a>
 </p>
 
 ---
 
-<!-- TODO: Add demo GIF recording of crucible scan with Rich terminal report -->
+
 
 ## Install
 

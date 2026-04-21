@@ -11,7 +11,6 @@ from crucible.attacks.base import BaseAttack
 from crucible.models import AgentTarget, AttackCategory, Finding, ModuleResult, Severity
 
 class BaseModule(ABC):
-    pass
 
     name: str = ""
     description: str = ""

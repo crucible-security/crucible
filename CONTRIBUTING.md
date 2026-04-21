@@ -6,7 +6,7 @@ Thank you for your interest in contributing to Crucible! This guide will help yo
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.9+
 - Git
 
 ### Installation

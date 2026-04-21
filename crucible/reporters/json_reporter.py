@@ -9,7 +9,6 @@ from crucible.models import ScanResult
 from crucible.reporters.base import BaseReporter
 
 class JSONReporter(BaseReporter):
-    pass
 
     def __init__(self, indent: int = 2) -> None:
         self.indent = indent

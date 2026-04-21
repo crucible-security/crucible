@@ -38,7 +38,6 @@ GRADE_LABELS: dict[Grade, str] = {
 }
 
 class TerminalReporter(BaseReporter):
-    pass
 
     def __init__(
         self, console: Optional[Console] = None

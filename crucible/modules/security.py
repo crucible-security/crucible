@@ -9,7 +9,6 @@ from crucible.models import AttackCategory
 from crucible.modules.base import BaseModule
 
 class PromptInjectionModule(BaseModule):
-    pass
 
     name = "prompt_injection"
     description = (
@@ -22,7 +21,6 @@ class PromptInjectionModule(BaseModule):
         return [cls() for cls in ALL_PROMPT_INJECTION_ATTACKS]
 
 class GoalHijackingModule(BaseModule):
-    pass
 
     name = "goal_hijacking"
     description = (
@@ -35,7 +33,6 @@ class GoalHijackingModule(BaseModule):
         return [cls() for cls in ALL_GOAL_HIJACKING_ATTACKS]
 
 class JailbreakModule(BaseModule):
-    pass
 
     name = "jailbreaks"
     description = (

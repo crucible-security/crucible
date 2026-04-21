@@ -10,7 +10,6 @@ import httpx
 from crucible.models import AgentTarget, AttackCategory, Finding, Severity
 
 class BaseAttack(ABC):
-    pass
 
     name: str = ""
     title: str = ""

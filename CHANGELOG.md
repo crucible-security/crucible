@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] - 2024-01-01
+## [0.1.0] - 2026-04-21
 
 ### Added
 - Core Pydantic data models: `AgentTarget`, `Finding`, `ModuleResult`, `ScanResult`

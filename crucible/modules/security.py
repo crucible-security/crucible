@@ -4,6 +4,7 @@ from __future__ import annotations
 from crucible.attacks.base import BaseAttack
 from crucible.attacks.goal_hijacking import ALL_GOAL_HIJACKING_ATTACKS
 from crucible.attacks.jailbreaks import ALL_JAILBREAK_ATTACKS
+from crucible.attacks.mcp_attacks import MCPSchemaInjectionAttack, MCPTrustBoundaryAttack
 from crucible.attacks.prompt_injection import ALL_PROMPT_INJECTION_ATTACKS
 from crucible.models import AttackCategory
 from crucible.modules.base import BaseModule
@@ -44,12 +45,25 @@ class JailbreakModule(BaseModule):
     def get_attacks(self) -> list[BaseAttack]:
         return [cls() for cls in ALL_JAILBREAK_ATTACKS]
 
+class MCPSecurityModule(BaseModule):
+
+    name = "mcp_security"
+    description = (
+        "Tests MCP (Model Context Protocol) trust boundaries including "
+        "tool_result injection, schema poisoning, cross-server data "
+        "exfiltration, and permission escalation vectors."
+    )
+    category = AttackCategory.INSECURE_PLUGIN
+
+    def get_attacks(self) -> list[BaseAttack]:
+        return [MCPTrustBoundaryAttack(), MCPSchemaInjectionAttack()]
+
 ALL_SECURITY_MODULES: list[type[BaseModule]] = [
     PromptInjectionModule,
     GoalHijackingModule,
     JailbreakModule,
+    MCPSecurityModule,
 ]
 
 def get_all_modules() -> list[BaseModule]:
     return [cls() for cls in ALL_SECURITY_MODULES]
-

@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import anyio
@@ -6,6 +5,7 @@ import anyio
 from crucible.core.runner import run_scan
 from crucible.models import AgentTarget
 from crucible.reporters.terminal import TerminalReporter
+
 
 async def main() -> None:
     target = AgentTarget(
@@ -33,15 +33,13 @@ async def main() -> None:
     console = Console()
     if result.grade.value in ("D", "F"):
         console.print(
-            f"\n[red]Grade: {result.grade.value}"
-            " -- agent needs hardening![/red]"
+            f"\n[red]Grade: {result.grade.value}" " -- agent needs hardening![/red]"
         )
     else:
         console.print(
-            f"\n[green]Grade: {result.grade.value}"
-            " -- looking good![/green]"
+            f"\n[green]Grade: {result.grade.value}" " -- looking good![/green]"
         )
+
 
 if __name__ == "__main__":
     anyio.run(main)
-

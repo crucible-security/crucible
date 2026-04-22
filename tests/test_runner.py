@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 import respx
+
 from crucible.core.runner import run_scan
 from crucible.models import AgentTarget, ScanStatus
 from crucible.modules.security import GoalHijackingModule

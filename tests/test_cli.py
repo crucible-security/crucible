@@ -93,11 +93,10 @@ class TestCLI:
         report_file.write_text(scan.model_dump_json(), encoding="utf-8")
 
         result = runner.invoke(app, ["report", str(report_file)], color=False)
-        output = strip_ansi(result.output)
         assert result.exit_code == 0
+
     @respx.mock
     def test_scan_success(self, tmp_path: Path) -> None:
-        from crucible.models import AgentTarget
 
         # Mock the agent response
         respx.post("https://agent.test/chat").mock(

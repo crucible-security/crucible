@@ -1,11 +1,7 @@
-
 from __future__ import annotations
-
-import pytest
 
 from crucible.core.scorer import (
     compute_grade,
-    compute_module_score,
     compute_score_from_findings,
     finalize_scan_result,
 )
@@ -19,6 +15,7 @@ from crucible.models import (
     ScanStatus,
     Severity,
 )
+
 
 class TestComputeGrade:
     pass
@@ -48,12 +45,11 @@ class TestComputeGrade:
         assert compute_grade(10) == Grade.F
         assert compute_grade(0) == Grade.F
 
+
 class TestComputeScore:
     pass
 
-    def _make_finding(
-        self, severity: Severity, passed: bool = False
-    ) -> Finding:
+    def _make_finding(self, severity: Severity, passed: bool = False) -> Finding:
         return Finding(
             attack_name="test",
             category=AttackCategory.PROMPT_INJECTION,
@@ -68,8 +64,7 @@ class TestComputeScore:
 
     def test_all_passed_is_100(self) -> None:
         findings = [
-            self._make_finding(Severity.CRITICAL, passed=True)
-            for _ in range(5)
+            self._make_finding(Severity.CRITICAL, passed=True) for _ in range(5)
         ]
         assert compute_score_from_findings(findings) == 100
 
@@ -102,10 +97,7 @@ class TestComputeScore:
         assert compute_score_from_findings(findings) == 65
 
     def test_score_clamped_at_zero(self) -> None:
-        findings = [
-            self._make_finding(Severity.CRITICAL)
-            for _ in range(10)
-        ]
+        findings = [self._make_finding(Severity.CRITICAL) for _ in range(10)]
         assert compute_score_from_findings(findings) == 0
 
     def test_mixed_passed_and_failed(self) -> None:
@@ -114,6 +106,7 @@ class TestComputeScore:
             self._make_finding(Severity.CRITICAL, passed=False),
         ]
         assert compute_score_from_findings(findings) == 80
+
 
 class TestFinalizeScanResult:
     def _make_target(self) -> AgentTarget:
@@ -147,10 +140,7 @@ class TestFinalizeScanResult:
         assert finalized.grade == Grade.A
 
     def test_perfect_score(self) -> None:
-        findings = [
-            self._make_finding(Severity.HIGH, passed=True)
-            for _ in range(10)
-        ]
+        findings = [self._make_finding(Severity.HIGH, passed=True) for _ in range(10)]
         module = ModuleResult(
             module_name="test",
             category=AttackCategory.PROMPT_INJECTION,
@@ -197,4 +187,3 @@ class TestFinalizeScanResult:
         assert finalized.low_count == 1
         assert finalized.overall_score == 63.0
         assert finalized.grade == Grade.C
-

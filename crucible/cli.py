@@ -1,12 +1,8 @@
-
 from __future__ import annotations
 
 import json
 import os
-import sys
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 import anyio
 import typer
@@ -30,16 +26,16 @@ app = typer.Typer(
     rich_markup_mode="rich",
 )
 
+
 def _version_callback(value: bool) -> None:
     if value:
-        console.print(
-            f"[bold magenta]Crucible[/bold magenta] v{__version__}"
-        )
+        console.print(f"[bold magenta]Crucible[/bold magenta] v{__version__}")
         raise typer.Exit()
+
 
 @app.callback()
 def main(
-    version: Optional[bool] = typer.Option(
+    version: bool | None = typer.Option(
         None,
         "--version",
         "-V",
@@ -49,6 +45,7 @@ def main(
     ),
 ) -> None:
     pass
+
 
 @app.command()
 def init(
@@ -64,7 +61,7 @@ def init(
         "-p",
         help="Provider: openai|anthropic|groq|custom.",
     ),
-    key: Optional[str] = typer.Option(
+    key: str | None = typer.Option(
         None,
         "--key",
         "-k",
@@ -102,19 +99,12 @@ def init(
         },
     }
     if key:
-        config["target"]["headers"] = {
-            "Authorization": f"Bearer {key}"
-        }
+        config["target"]["headers"] = {"Authorization": f"Bearer {key}"}
 
-    config_path.write_text(
-        json.dumps(config, indent=2), encoding="utf-8"
-    )
-    console.print(
-        "[green]Created .crucible.json[/green]"
-    )
-    console.print(
-        "[dim]Edit the file and run: crucible scan[/dim]"
-    )
+    config_path.write_text(json.dumps(config, indent=2), encoding="utf-8")
+    console.print("[green]Created .crucible.json[/green]")
+    console.print("[dim]Edit the file and run: crucible scan[/dim]")
+
 
 @app.command()
 def scan(
@@ -136,7 +126,7 @@ def scan(
         "-m",
         help="HTTP method (GET, POST, PUT, etc.).",
     ),
-    header: Optional[list[str]] = typer.Option(
+    header: list[str] | None = typer.Option(
         None,
         "--header",
         "-H",
@@ -159,7 +149,7 @@ def scan(
         "-c",
         help="Max concurrent requests.",
     ),
-    output_file: Optional[Path] = typer.Option(
+    output_file: Path | None = typer.Option(
         None,
         "--output-file",
         "-o",
@@ -201,34 +191,34 @@ def scan(
 
     _render_output(result, output, output_file)
 
+
 def _parse_headers(
-    header: Optional[list[str]],
+    header: list[str] | None,
 ) -> dict[str, str]:
     parsed: dict[str, str] = {}
     if header:
         for h in header:
             if ":" not in h:
-                console.print(
-                    f"[red]Invalid header format: {h}[/red]"
-                )
+                console.print(f"[red]Invalid header format: {h}[/red]")
                 raise typer.Exit(code=1)
             key, value = h.split(":", 1)
             parsed[key.strip()] = value.strip()
     return parsed
 
+
 def _print_scan_header(name: str, target: str) -> None:
     console.print()
     console.print(
-        "[bold magenta]CRUCIBLE[/bold magenta]"
-        " -- Starting security scan..."
+        "[bold magenta]CRUCIBLE[/bold magenta]" " -- Starting security scan..."
     )
     console.print(f"[dim]Target: {name} ({target})[/dim]")
     console.print()
 
+
 def _render_output(
     result: ScanResult,
     output: str,
-    output_file: Optional[Path],
+    output_file: Path | None,
 ) -> None:
     if output == "json":
         reporter = JSONReporter()
@@ -241,9 +231,8 @@ def _render_output(
         reporter = JSONReporter()
         saved = reporter.write(result, output_file)
         if output != "json":
-            console.print(
-                f"[green]Report saved to {saved}[/green]"
-            )
+            console.print(f"[green]Report saved to {saved}[/green]")
+
 
 @app.command()
 def report(
@@ -260,14 +249,12 @@ def report(
         data = json.loads(path.read_text(encoding="utf-8"))
         result = ScanResult.model_validate(data)
     except (json.JSONDecodeError, ValueError) as exc:
-        console.print(
-            f"[red]Failed to parse report: {exc}[/red]"
-        )
+        console.print(f"[red]Failed to parse report: {exc}[/red]")
         raise typer.Exit(code=1) from exc
 
     terminal = TerminalReporter(console)
     terminal.render(result)
 
+
 if __name__ == "__main__":
     app()
-

@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import httpx
@@ -8,7 +7,6 @@ import respx
 from crucible.attacks.base import BaseAttack
 from crucible.attacks.goal_hijacking import (
     ALL_GOAL_HIJACKING_ATTACKS,
-    TaskDiversion,
 )
 from crucible.attacks.jailbreaks import ALL_JAILBREAK_ATTACKS, DANJailbreak
 from crucible.attacks.prompt_injection import (
@@ -23,6 +21,7 @@ from crucible.modules.security import (
     PromptInjectionModule,
     get_all_modules,
 )
+
 
 class TestAttackRegistry:
     def test_prompt_injection_count(self) -> None:
@@ -41,7 +40,9 @@ class TestAttackRegistry:
             + ALL_JAILBREAK_ATTACKS
         )
         for cls in all_attacks:
-            assert issubclass(cls, BaseAttack), f"{cls.__name__} is not a BaseAttack subclass"
+            assert issubclass(
+                cls, BaseAttack
+            ), f"{cls.__name__} is not a BaseAttack subclass"
 
     def test_all_attacks_have_unique_names(self) -> None:
         all_attacks = (
@@ -50,7 +51,9 @@ class TestAttackRegistry:
             + ALL_JAILBREAK_ATTACKS
         )
         names = [cls.name for cls in all_attacks]
-        assert len(names) == len(set(names)), f"Duplicate attack names found: {[n for n in names if names.count(n) > 1]}"
+        assert len(names) == len(
+            set(names)
+        ), f"Duplicate attack names found: {[n for n in names if names.count(n) > 1]}"
 
     def test_all_attacks_have_required_attributes(self) -> None:
         all_attacks = (
@@ -62,9 +65,14 @@ class TestAttackRegistry:
             instance = cls()
             assert instance.name, f"{cls.__name__} missing name"
             assert instance.title, f"{cls.__name__} missing title"
-            assert isinstance(instance.category, AttackCategory), f"{cls.__name__} invalid category"
-            assert isinstance(instance.severity, Severity), f"{cls.__name__} invalid severity"
+            assert isinstance(
+                instance.category, AttackCategory
+            ), f"{cls.__name__} invalid category"
+            assert isinstance(
+                instance.severity, Severity
+            ), f"{cls.__name__} invalid severity"
             assert len(instance.get_payloads()) > 0, f"{cls.__name__} has no payloads"
+
 
 class TestBaseAttackBehavior:
     def test_evaluate_response_refusal(self) -> None:
@@ -74,17 +82,26 @@ class TestBaseAttackBehavior:
 
     def test_evaluate_response_vulnerable(self) -> None:
         attack = DirectSystemPromptLeak()
-        assert attack.evaluate_response("test", "You are a helpful assistant with system prompt: be nice") is False
+        assert (
+            attack.evaluate_response(
+                "test", "You are a helpful assistant with system prompt: be nice"
+            )
+            is False
+        )
 
     def test_evaluate_response_generic_indicator(self) -> None:
         attack = IgnorePreviousInstructions()
         assert attack.evaluate_response("test", "INJECTION_SUCCESS") is False
-        assert attack.evaluate_response("test", "I cannot comply with that request") is True
+        assert (
+            attack.evaluate_response("test", "I cannot comply with that request")
+            is True
+        )
 
     def test_repr(self) -> None:
         attack = DirectSystemPromptLeak()
         assert "DirectSystemPromptLeak" in repr(attack)
         assert "PI-001" in repr(attack)
+
 
 class TestAttackExecution:
     @respx.mock
@@ -148,6 +165,7 @@ class TestAttackExecution:
             assert f.passed is True
             assert "ERROR" in f.response_snippet
 
+
 class TestSecurityModules:
     def test_prompt_injection_module(self) -> None:
         module = PromptInjectionModule()
@@ -171,7 +189,12 @@ class TestSecurityModules:
         modules = get_all_modules()
         assert len(modules) == 4
         names = {m.name for m in modules}
-        assert names == {"prompt_injection", "goal_hijacking", "jailbreaks", "mcp_security"}
+        assert names == {
+            "prompt_injection",
+            "goal_hijacking",
+            "jailbreaks",
+            "mcp_security",
+        }
 
     @respx.mock
     @pytest.mark.asyncio()
@@ -192,4 +215,3 @@ class TestSecurityModules:
         assert result.total_attacks > 0
         assert result.duration_seconds >= 0
         assert 0 <= result.score <= 100
-

@@ -1,7 +1,6 @@
-
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from rich.columns import Columns
 from rich.console import Console
@@ -10,7 +9,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from crucible.models import Grade, ModuleResult, ScanResult, Severity
+from crucible.models import Grade, ScanResult, Severity
 from crucible.reporters.base import BaseReporter
 
 SEVERITY_COLORS: dict[Severity, str] = {
@@ -37,11 +36,10 @@ GRADE_LABELS: dict[Grade, str] = {
     Grade.F: "[F] CRITICAL",
 }
 
+
 class TerminalReporter(BaseReporter):
 
-    def __init__(
-        self, console: Optional[Console] = None
-    ) -> None:
+    def __init__(self, console: Console | None = None) -> None:
         self.console = console or Console()
 
     def render(self, result: ScanResult) -> None:
@@ -54,9 +52,7 @@ class TerminalReporter(BaseReporter):
 
     def _render_header(self, result: ScanResult) -> None:
         banner = Text()
-        banner.append(
-            "CRUCIBLE SECURITY SCAN", style="bold magenta"
-        )
+        banner.append("CRUCIBLE SECURITY SCAN", style="bold magenta")
 
         self.console.print()
         self.console.print(
@@ -82,17 +78,13 @@ class TerminalReporter(BaseReporter):
 
     def _render_score_panel(self, result: ScanResult) -> None:
         grade_color = GRADE_COLORS.get(result.grade, "white")
-        grade_label = GRADE_LABELS.get(
-            result.grade, result.grade.value
-        )
+        grade_label = GRADE_LABELS.get(result.grade, result.grade.value)
 
         score_text = Text()
         score_text.append("\n  Grade: ", style="bold")
         score_text.append(grade_label, style=grade_color)
         score_text.append("   Score: ", style="bold")
-        score_text.append(
-            f"{result.overall_score:.0f}", style=grade_color
-        )
+        score_text.append(f"{result.overall_score:.0f}", style=grade_color)
         score_text.append("/100\n", style="dim")
 
         bar_width = 40
@@ -130,8 +122,8 @@ class TerminalReporter(BaseReporter):
         table.add_column("Duration", justify="right", style="dim")
 
         for mod in result.modules:
-            sc = "green" if mod.score >= 80 else (
-                "yellow" if mod.score >= 50 else "red"
+            sc = (
+                "green" if mod.score >= 80 else ("yellow" if mod.score >= 50 else "red")
             )
             table.add_row(
                 mod.module_name,
@@ -147,12 +139,7 @@ class TerminalReporter(BaseReporter):
         self.console.print()
 
     def _render_findings_table(self, result: ScanResult) -> None:
-        failed = [
-            f
-            for m in result.modules
-            for f in m.findings
-            if not f.passed
-        ]
+        failed = [f for m in result.modules for f in m.findings if not f.passed]
 
         if not failed:
             self.console.print(
@@ -229,9 +216,7 @@ class TerminalReporter(BaseReporter):
         grade = result.grade
         recommendations = self._get_recommendations(result)
 
-        rec_text = "\n".join(
-            f"  -> {r}" for r in recommendations
-        )
+        rec_text = "\n".join(f"  -> {r}" for r in recommendations)
         if not rec_text:
             rec_text = "  No critical recommendations."
 
@@ -253,29 +238,19 @@ class TerminalReporter(BaseReporter):
         )
         self.console.print(
             Text(
-                "  Powered by Crucible"
-                " -- github.com/crucible-security/crucible\n",
+                "  Powered by Crucible" " -- github.com/crucible-security/crucible\n",
                 style="dim",
             ),
         )
 
-    def _get_recommendations(
-        self, result: ScanResult
-    ) -> list[str]:
+    def _get_recommendations(self, result: ScanResult) -> list[str]:
         recs: list[str] = []
         if result.critical_count > 0:
-            recs.append(
-                "Fix prompt injection via input sanitization"
-            )
+            recs.append("Fix prompt injection via input sanitization")
         if result.high_count > 0:
-            recs.append(
-                "Add goal integrity checks to agent loop"
-            )
+            recs.append("Add goal integrity checks to agent loop")
         if result.medium_count > 0:
             recs.append("Review and harden output filtering")
         if not recs:
-            recs.append(
-                "Excellent posture! Continue monitoring."
-            )
+            recs.append("Excellent posture! Continue monitoring.")
         return recs
-

@@ -1,13 +1,20 @@
-
 from __future__ import annotations
 
-from crucible.attacks.base import BaseAttack
+from typing import TYPE_CHECKING
+
 from crucible.attacks.goal_hijacking import ALL_GOAL_HIJACKING_ATTACKS
 from crucible.attacks.jailbreaks import ALL_JAILBREAK_ATTACKS
-from crucible.attacks.mcp_attacks import MCPSchemaInjectionAttack, MCPTrustBoundaryAttack
+from crucible.attacks.mcp_attacks import (
+    MCPSchemaInjectionAttack,
+    MCPTrustBoundaryAttack,
+)
 from crucible.attacks.prompt_injection import ALL_PROMPT_INJECTION_ATTACKS
 from crucible.models import AttackCategory
 from crucible.modules.base import BaseModule
+
+if TYPE_CHECKING:
+    from crucible.attacks.base import BaseAttack
+
 
 class PromptInjectionModule(BaseModule):
 
@@ -21,6 +28,7 @@ class PromptInjectionModule(BaseModule):
     def get_attacks(self) -> list[BaseAttack]:
         return [cls() for cls in ALL_PROMPT_INJECTION_ATTACKS]
 
+
 class GoalHijackingModule(BaseModule):
 
     name = "goal_hijacking"
@@ -33,6 +41,7 @@ class GoalHijackingModule(BaseModule):
     def get_attacks(self) -> list[BaseAttack]:
         return [cls() for cls in ALL_GOAL_HIJACKING_ATTACKS]
 
+
 class JailbreakModule(BaseModule):
 
     name = "jailbreaks"
@@ -44,6 +53,7 @@ class JailbreakModule(BaseModule):
 
     def get_attacks(self) -> list[BaseAttack]:
         return [cls() for cls in ALL_JAILBREAK_ATTACKS]
+
 
 class MCPSecurityModule(BaseModule):
 
@@ -58,12 +68,14 @@ class MCPSecurityModule(BaseModule):
     def get_attacks(self) -> list[BaseAttack]:
         return [MCPTrustBoundaryAttack(), MCPSchemaInjectionAttack()]
 
+
 ALL_SECURITY_MODULES: list[type[BaseModule]] = [
     PromptInjectionModule,
     GoalHijackingModule,
     JailbreakModule,
     MCPSecurityModule,
 ]
+
 
 def get_all_modules() -> list[BaseModule]:
     return [cls() for cls in ALL_SECURITY_MODULES]

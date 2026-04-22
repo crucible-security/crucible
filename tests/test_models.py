@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import pytest
@@ -14,6 +13,7 @@ from crucible.models import (
     ScanStatus,
     Severity,
 )
+
 
 class TestAgentTarget:
     def test_basic_creation(self, sample_target: AgentTarget) -> None:
@@ -95,6 +95,7 @@ class TestAgentTarget:
         assert restored.name == sample_target.name
         assert restored.method == sample_target.method
 
+
 class TestFinding:
     def test_basic_creation(self, sample_finding_passed: Finding) -> None:
         assert sample_finding_passed.passed is True
@@ -145,6 +146,7 @@ class TestFinding:
                 response_snippet="x" * 2001,
             )
 
+
 class TestModuleResult:
     def test_basic_creation(self, sample_module_result: ModuleResult) -> None:
         assert sample_module_result.module_name == "prompt_injection"
@@ -176,6 +178,7 @@ class TestModuleResult:
                 score=101.0,
             )
 
+
 class TestScanResult:
     def test_basic_creation(self, sample_scan_result: ScanResult) -> None:
         assert sample_scan_result.status == ScanStatus.COMPLETED
@@ -198,6 +201,7 @@ class TestScanResult:
         assert restored.target.name == sample_scan_result.target.name
         assert restored.grade == sample_scan_result.grade
 
+
 class TestEnums:
     def test_severity_values(self) -> None:
         assert Severity.CRITICAL.value == "critical"
@@ -215,4 +219,3 @@ class TestEnums:
     def test_scan_status_values(self) -> None:
         assert ScanStatus.COMPLETED.value == "completed"
         assert len(ScanStatus) == 5
-

@@ -1,15 +1,18 @@
-
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from typer.testing import CliRunner
 
 from crucible.cli import app
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 runner = CliRunner()
+
 
 class TestCLI:
     def test_help(self) -> None:
@@ -37,6 +40,7 @@ class TestCLI:
 
     def test_init_creates_config(self, tmp_path: Path) -> None:
         import os
+
         old_cwd = os.getcwd()
         os.chdir(tmp_path)
         try:
@@ -72,13 +76,12 @@ class TestCLI:
         )
         scan = ScanResult(target=target)
         report_file = tmp_path / "report.json"
-        report_file.write_text(
-            scan.model_dump_json(), encoding="utf-8"
-        )
+        report_file.write_text(scan.model_dump_json(), encoding="utf-8")
 
         result = runner.invoke(app, ["report", str(report_file)])
         assert result.exit_code == 0
         assert "CRUCIBLE" in result.output
+
 
 class TestReporters:
     def test_json_reporter_import(self) -> None:
@@ -98,4 +101,3 @@ class TestReporters:
 
         with pytest.raises(TypeError):
             BaseReporter()  # type: ignore[abstract]
-

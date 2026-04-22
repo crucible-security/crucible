@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import pytest
@@ -14,6 +13,7 @@ from crucible.models import (
     Severity,
 )
 
+
 @pytest.fixture()
 def sample_target() -> AgentTarget:
     return AgentTarget(
@@ -26,6 +26,7 @@ def sample_target() -> AgentTarget:
         timeout=10.0,
         description="A test agent target.",
     )
+
 
 @pytest.fixture()
 def sample_finding_passed() -> Finding:
@@ -40,6 +41,7 @@ def sample_finding_passed() -> Finding:
         passed=True,
     )
 
+
 @pytest.fixture()
 def sample_finding_failed() -> Finding:
     return Finding(
@@ -52,6 +54,7 @@ def sample_finding_failed() -> Finding:
         response_snippet="INJECTION_SUCCESS",
         passed=False,
     )
+
 
 @pytest.fixture()
 def sample_module_result(
@@ -69,6 +72,7 @@ def sample_module_result(
         score=80.0,
         duration_seconds=1.5,
     )
+
 
 @pytest.fixture()
 def sample_scan_result(
@@ -89,4 +93,3 @@ def sample_scan_result(
         grade=Grade.B,
         duration_seconds=1.5,
     )
-

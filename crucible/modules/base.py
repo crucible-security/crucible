@@ -1,14 +1,16 @@
-
 from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import httpx
+from crucible.models import AgentTarget, AttackCategory, Finding, ModuleResult
 
-from crucible.attacks.base import BaseAttack
-from crucible.models import AgentTarget, AttackCategory, Finding, ModuleResult, Severity
+if TYPE_CHECKING:
+    import httpx
+
+    from crucible.attacks.base import BaseAttack
+
 
 class BaseModule(ABC):
 
@@ -17,8 +19,7 @@ class BaseModule(ABC):
     category: AttackCategory = AttackCategory.PROMPT_INJECTION
 
     @abstractmethod
-    def get_attacks(self) -> list[BaseAttack]:
-        ...
+    def get_attacks(self) -> list[BaseAttack]: ...
 
     async def run(
         self,
@@ -68,4 +69,3 @@ class BaseModule(ABC):
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} name={self.name!r}>"
-

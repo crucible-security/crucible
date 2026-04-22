@@ -1,12 +1,12 @@
-
 from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Literal, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator
+
 
 class Severity(str, Enum):
 
@@ -15,6 +15,7 @@ class Severity(str, Enum):
     MEDIUM = "medium"
     LOW = "low"
     INFO = "info"
+
 
 class AttackCategory(str, Enum):
 
@@ -31,6 +32,7 @@ class AttackCategory(str, Enum):
     GOAL_HIJACKING = "goal_hijacking"
     JAILBREAK = "jailbreak"
 
+
 class Grade(str, Enum):
 
     A = "A"
@@ -39,6 +41,7 @@ class Grade(str, Enum):
     D = "D"
     F = "F"
 
+
 class ScanStatus(str, Enum):
 
     PENDING = "pending"
@@ -46,6 +49,7 @@ class ScanStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+
 
 class AgentTarget(BaseModel):
 
@@ -95,6 +99,7 @@ class AgentTarget(BaseModel):
 
     def build_payload_body(self, payload: str) -> str:
         return self.body_template.replace("{payload}", payload)
+
 
 class Finding(BaseModel):
 
@@ -160,6 +165,7 @@ class Finding(BaseModel):
         description="When this finding was generated.",
     )
 
+
 class ModuleResult(BaseModel):
 
     module_name: str = Field(
@@ -220,6 +226,7 @@ class ModuleResult(BaseModel):
             return 0.0
         return (self.passed / self.total_attacks) * 100.0
 
+
 class ScanResult(BaseModel):
 
     id: str = Field(
@@ -238,7 +245,7 @@ class ScanResult(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc),
         description="When the scan started.",
     )
-    completed_at: Optional[datetime] = Field(
+    completed_at: datetime | None = Field(
         default=None,
         description="When the scan completed.",
     )
@@ -315,4 +322,3 @@ class ScanResult(BaseModel):
             "info": self.info_count,
             "duration": f"{self.duration_seconds:.1f}s",
         }
-

@@ -98,7 +98,7 @@ select = [
     "TCH", # flake8-type-checking
     "RUF", # ruff-specific
 ]
-ignore = ["E501"]  # line length handled by black
+ignore = ["E501", "RUF001", "B008", "RUF012", "SIM110"]  # line length handled by black, RUF001 intentional for bypass tests, B008 common in typer
 
 [tool.ruff.lint.isort]
 known-first-party = ["crucible"]

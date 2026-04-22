@@ -1,9 +1,6 @@
-
 from __future__ import annotations
 
-import time
 from abc import ABC, abstractmethod
-from typing import Any
 
 import httpx
 
@@ -24,6 +21,7 @@ OWASP_AGENTIC_MAP: dict[AttackCategory, str] = {
     AttackCategory.JAILBREAK: "OWASP-AGENT-001: Prompt Injection",
 }
 
+
 class BaseAttack(ABC):
 
     name: str = ""
@@ -36,8 +34,7 @@ class BaseAttack(ABC):
     owasp_ref: str = ""
 
     @abstractmethod
-    def get_payloads(self) -> list[str]:
-        ...
+    def get_payloads(self) -> list[str]: ...
 
     def get_detection_patterns(self) -> list[str]:
         return []
@@ -76,11 +73,7 @@ class BaseAttack(ABC):
             "harmful request",
             "inappropriate request",
         ]
-        for indicator in refusal_indicators:
-            if indicator in response_lower:
-                return True
-
-        return False
+        return any(indicator in response_lower for indicator in refusal_indicators)
 
     async def execute(
         self,
@@ -146,5 +139,3 @@ class BaseAttack(ABC):
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} name={self.name!r}>"
-
-

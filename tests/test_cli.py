@@ -11,28 +11,39 @@ from crucible.cli import app
 if TYPE_CHECKING:
     from pathlib import Path
 
+import re
+
 runner = CliRunner()
+
+
+def strip_ansi(text: str) -> str:
+    """Strip ANSI escape codes from string."""
+    ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+    return ansi_escape.sub("", text)
 
 
 class TestCLI:
     def test_help(self) -> None:
         result = runner.invoke(app, ["--help"], color=False)
+        output = strip_ansi(result.output)
         assert result.exit_code == 0
-        assert "init" in result.output
-        assert "scan" in result.output
-        assert "report" in result.output
+        assert "init" in output
+        assert "scan" in output
+        assert "report" in output
 
     def test_version(self) -> None:
         result = runner.invoke(app, ["--version"], color=False)
+        output = strip_ansi(result.output)
         assert result.exit_code == 0
-        assert "Crucible" in result.output
+        assert "Crucible" in output
 
     def test_scan_help(self) -> None:
         result = runner.invoke(app, ["scan", "--help"], color=False)
+        output = strip_ansi(result.output)
         assert result.exit_code == 0
-        assert "--target" in result.output
-        assert "--name" in result.output
-        assert "--header" in result.output
+        assert "--target" in output
+        assert "--name" in output
+        assert "--header" in output
 
     def test_scan_missing_target(self) -> None:
         result = runner.invoke(app, ["scan"], color=False)
@@ -80,8 +91,9 @@ class TestCLI:
         report_file.write_text(scan.model_dump_json(), encoding="utf-8")
 
         result = runner.invoke(app, ["report", str(report_file)], color=False)
+        output = strip_ansi(result.output)
         assert result.exit_code == 0
-        assert "CRUCIBLE" in result.output
+        assert "CRUCIBLE" in output
 
 
 class TestReporters:

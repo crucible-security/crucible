@@ -16,7 +16,7 @@ from crucible.reporters.terminal import TerminalReporter
 
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
-console = Console(force_terminal=True)
+console = Console()
 
 app = typer.Typer(
     name="crucible",

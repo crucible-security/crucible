@@ -16,26 +16,26 @@ runner = CliRunner()
 
 class TestCLI:
     def test_help(self) -> None:
-        result = runner.invoke(app, ["--help"])
+        result = runner.invoke(app, ["--help"], color=False)
         assert result.exit_code == 0
         assert "init" in result.output
         assert "scan" in result.output
         assert "report" in result.output
 
     def test_version(self) -> None:
-        result = runner.invoke(app, ["--version"])
+        result = runner.invoke(app, ["--version"], color=False)
         assert result.exit_code == 0
         assert "Crucible" in result.output
 
     def test_scan_help(self) -> None:
-        result = runner.invoke(app, ["scan", "--help"])
+        result = runner.invoke(app, ["scan", "--help"], color=False)
         assert result.exit_code == 0
         assert "--target" in result.output
         assert "--name" in result.output
         assert "--header" in result.output
 
     def test_scan_missing_target(self) -> None:
-        result = runner.invoke(app, ["scan"])
+        result = runner.invoke(app, ["scan"], color=False)
         assert result.exit_code != 0
 
     def test_init_creates_config(self, tmp_path: Path) -> None:
@@ -47,6 +47,7 @@ class TestCLI:
             result = runner.invoke(
                 app,
                 ["init", "--target", "https://example.com/api"],
+                color=False,
             )
             assert result.exit_code == 0
             config_file = tmp_path / ".crucible.json"
@@ -58,13 +59,13 @@ class TestCLI:
             os.chdir(old_cwd)
 
     def test_report_file_not_found(self) -> None:
-        result = runner.invoke(app, ["report", "nonexistent.json"])
+        result = runner.invoke(app, ["report", "nonexistent.json"], color=False)
         assert result.exit_code == 1
 
     def test_report_invalid_json(self, tmp_path: Path) -> None:
         bad_file = tmp_path / "bad.json"
         bad_file.write_text("not json")
-        result = runner.invoke(app, ["report", str(bad_file)])
+        result = runner.invoke(app, ["report", str(bad_file)], color=False)
         assert result.exit_code == 1
 
     def test_report_valid_json(self, tmp_path: Path) -> None:
@@ -78,7 +79,7 @@ class TestCLI:
         report_file = tmp_path / "report.json"
         report_file.write_text(scan.model_dump_json(), encoding="utf-8")
 
-        result = runner.invoke(app, ["report", str(report_file)])
+        result = runner.invoke(app, ["report", str(report_file)], color=False)
         assert result.exit_code == 0
         assert "CRUCIBLE" in result.output
 

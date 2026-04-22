@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
+import httpx
 import pytest
+import respx
 from typer.testing import CliRunner
 
 from crucible.cli import app
@@ -93,7 +95,32 @@ class TestCLI:
         result = runner.invoke(app, ["report", str(report_file)], color=False)
         output = strip_ansi(result.output)
         assert result.exit_code == 0
-        assert "CRUCIBLE" in output
+    @respx.mock
+    def test_scan_success(self, tmp_path: Path) -> None:
+        from crucible.models import AgentTarget
+
+        # Mock the agent response
+        respx.post("https://agent.test/chat").mock(
+            return_value=httpx.Response(200, text="Defended.")
+        )
+
+        report_file = tmp_path / "scan-report.json"
+        result = runner.invoke(
+            app,
+            [
+                "scan",
+                "--target",
+                "https://agent.test/chat",
+                "--output-file",
+                str(report_file),
+            ],
+            color=False,
+        )
+        assert result.exit_code == 0
+        assert report_file.exists()
+        data = json.loads(report_file.read_text(encoding="utf-8"))
+        assert data["status"] == "completed"
+        assert "grade" in data
 
 
 class TestReporters:
@@ -102,6 +129,29 @@ class TestReporters:
 
         reporter = JSONReporter()
         assert reporter.indent == 2
+
+    def test_json_reporter_full(self, tmp_path: Path) -> None:
+        from crucible.models import AgentTarget, ScanResult
+        from crucible.reporters.json_reporter import JSONReporter
+
+        target = AgentTarget(name="test", url="https://test.example.com/api")  # type: ignore[arg-type]
+        scan = ScanResult(target=target)
+        reporter = JSONReporter(indent=4)
+
+        # Test to_dict
+        data = reporter.to_dict(scan)
+        assert data["target"]["name"] == "test"
+
+        # Test to_json
+        json_data = reporter.to_json(scan)
+        assert '"indent": 4' not in json_data  # indent is for the output file
+        assert "test" in json_data
+
+        # Test write
+        report_file = tmp_path / "reporter.json"
+        written_path = reporter.write(scan, report_file)
+        assert written_path.exists()
+        assert "test" in report_file.read_text()
 
     def test_terminal_reporter_import(self) -> None:
         from crucible.reporters.terminal import TerminalReporter

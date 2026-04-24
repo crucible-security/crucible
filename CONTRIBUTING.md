@@ -48,7 +48,7 @@ pytest tests/ -v  # all 78 should pass
 ## Questions?
 
 - Discord: discord.gg/m7wAxEv3
-- Email: Crucible.sec@gmail.com
+- Email: crucible.sec@gmail.com
 - GitHub Issues: for bugs and features
 
 ## Development Workflow

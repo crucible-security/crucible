@@ -39,4 +39,4 @@
 
 Want to help build any of these? 
 Check our [open issues](https://github.com/crucible-security/crucible/issues) 
-or email Crucible.sec@gmail.com
+or email crucible.sec@gmail.com

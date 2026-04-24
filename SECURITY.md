@@ -11,7 +11,7 @@
 Please do NOT report security vulnerabilities through 
 public GitHub issues. This protects users while we fix it.
 
-**Email: Crucible.sec@gmail.com**
+**Email: crucible.sec@gmail.com**
 
 **Subject line:** [SECURITY] Brief description
 

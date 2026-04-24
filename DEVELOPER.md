@@ -97,4 +97,4 @@ test_runner.py
 
 ## Questions?
 
-Open a GitHub issue or email Crucible.sec@gmail.com
+Open a GitHub issue or email crucible.sec@gmail.com

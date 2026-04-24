@@ -207,7 +207,7 @@ Review Critical findings first.
 
 **Questions not answered here?**  
 Join our [Discord](https://discord.gg/m7wAxEv3) or email 
-Crucible.sec@gmail.com
+crucible.sec@gmail.com
 
 ## Contributing
 

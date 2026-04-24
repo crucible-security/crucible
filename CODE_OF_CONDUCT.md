@@ -26,7 +26,7 @@ Unacceptable behavior includes:
 
 ## Enforcement
 
-Violations may be reported to **Crucible.sec@gmail.com**
+Violations may be reported to **crucible.sec@gmail.com**
 
 All complaints will be reviewed and investigated promptly.
 Maintainers are obligated to maintain confidentiality.

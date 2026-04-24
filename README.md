@@ -174,7 +174,7 @@ crucible/
 | Platform | Link | Purpose |
 |---|---|---|
 | 💬 Discord | [discord.gg/m7wAxEv3](https://discord.gg/m7wAxEv3) | Support, contributors, chat |
-| 🐦 Twitter/X | [@Alexander_0189](https://x.com/Alexander_0189) | Updates and releases |
+| 🐦 Twitter/X | [@CrucibleSec](https://x.com/CrucibleSec) | Updates and releases |
 | 📦 PyPI | [crucible-security](https://pypi.org/project/crucible-security/) | Install |
 | 🌐 Website | [crucible-security.github.io/crucible-website/](https://crucible-security.github.io/crucible-website/) | Docs and info |
 

@@ -10,12 +10,17 @@
   <em>pytest for AI agents -- test, score, and harden before production</em>
 </p>
 
-<p align="center">
-  <a href="https://pypi.org/project/crucible-security/"><img src="https://img.shields.io/badge/pypi-v0.1.0-blueviolet?style=flat-square" alt="PyPI"></a>
-  <a href="https://pypi.org/project/crucible-security/"><img src="https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square" alt="Python 3.10+"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/crucible-security/crucible/stargazers"><img src="https://img.shields.io/github/stars/crucible-security/crucible?style=flat-square" alt="Stars"></a>
-</p>
+<div align="center">
+
+[![CI](https://github.com/crucible-security/crucible/actions/workflows/ci.yml/badge.svg)](https://github.com/crucible-security/crucible/actions)
+[![PyPI](https://img.shields.io/pypi/v/crucible-security)](https://pypi.org/project/crucible-security/)
+[![Python](https://img.shields.io/pypi/pyversions/crucible-security)](https://pypi.org/project/crucible-security/)
+[![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen)](https://github.com/crucible-security/crucible)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord)](https://discord.gg/m7wAxEv3)
+[![OWASP](https://img.shields.io/badge/OWASP-Agentic%20AI%20Top%2010-orange)](https://owasp.org)
+
+</div>
 
 ---
 
@@ -163,6 +168,46 @@ crucible/
     terminal.py         # Rich terminal renderer
     json_reporter.py    # JSON file exporter
 ```
+
+## Community
+
+| Platform | Link | Purpose |
+|---|---|---|
+| 💬 Discord | [discord.gg/m7wAxEv3](https://discord.gg/m7wAxEv3) | Support, contributors, chat |
+| 🐦 Twitter/X | [@Alexander_0189](https://x.com/Alexander_0189) | Updates and releases |
+| 📦 PyPI | [crucible-security](https://pypi.org/project/crucible-security/) | Install |
+| 🌐 Website | [crucible-security.github.io/crucible-website/](https://crucible-security.github.io/crucible-website/) | Docs and info |
+
+## FAQ
+
+**Does Crucible send my agent data to your servers?**  
+No. Crucible is a local CLI. Payloads go directly from your 
+machine to your agent. Nothing passes through Crucible 
+infrastructure. Zero data retention. Fully air-gappable.
+
+**Which agent frameworks does Crucible support?**  
+Any agent that accepts HTTP requests — LangChain, AutoGen, 
+CrewAI, OpenAI Assistants, Bedrock, custom FastAPI agents.
+
+**How long does a full scan take?**  
+Under 60 seconds for 90 attacks using async parallel execution.
+
+**Can I add custom attack vectors?**  
+Yes. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to 
+submit new attack modules via PR.
+
+**Is this safe to run against production?**  
+Run against staging environments, not production. Crucible 
+sends adversarial payloads that may cause unexpected behavior.
+
+**What does Grade F mean?**  
+Your agent complied with most attacks. It is vulnerable to 
+prompt injection, jailbreaks, or goal hijacking. 
+Review Critical findings first.
+
+**Questions not answered here?**  
+Join our [Discord](https://discord.gg/m7wAxEv3) or email 
+saif25.sayyed@gmail.com
 
 ## Contributing
 

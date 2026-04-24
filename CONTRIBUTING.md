@@ -1,36 +1,55 @@
 # Contributing to Crucible
 
-Thank you for your interest in contributing to Crucible! This guide will help you get started.
+Thank you for helping make AI agents safer. 🔒
 
-## Development Setup
+## Before You Start
 
-### Prerequisites
+**Please comment on the issue you want to work on 
+and wait for a maintainer to assign it to you.**
 
-- Python 3.9+
-- Git
+This prevents two people building the same thing simultaneously.
+Once assigned, you own that issue.
 
-### Installation
+## Quick Setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/crucible-security/crucible.git
+git clone https://github.com/crucible-security/crucible
 cd crucible
-
-# Create a virtual environment
 python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate   # Windows
-
-# Install in development mode
+source .venv/bin/activate
 pip install -e ".[dev]"
+pytest tests/ -v  # all 78 should pass
 ```
 
-### Verify Installation
+## How to Contribute
 
+1. Find an issue labeled `good first issue`
+2. Comment: "I'd like to work on this"
+3. Wait for assignment
+4. Fork the repo
+5. Create branch: `git checkout -b feat/your-feature`
+6. Write code + tests
+7. Run quality checks:
 ```bash
-crucible --help
-crucible --version
+   pytest tests/ -v
+   mypy crucible/ --strict
+   ruff check crucible/ tests/
+   black crucible/ tests/
 ```
+8. Submit PR — reference the issue number
+
+## What We Need Most
+
+- New attack vectors (see `crucible/attacks/`)
+- Framework integration examples (LangChain, AutoGen, CrewAI)
+- Documentation improvements
+- Bug fixes
+
+## Questions?
+
+- Discord: discord.gg/m7wAxEv3
+- Email: saif25.sayyed@gmail.com
+- GitHub Issues: for bugs and features
 
 ## Development Workflow
 

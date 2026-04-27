@@ -13,6 +13,7 @@ from crucible.core.cache import ScanCache
 from crucible.core.runner import run_scan
 from crucible.models import AgentTarget, ScanResult
 from crucible.modules.security import get_all_modules
+from crucible.reporters.html_reporter import HTMLReporter
 from crucible.reporters.json_reporter import JSONReporter
 from crucible.reporters.terminal import TerminalReporter
 
@@ -151,16 +152,17 @@ def scan(
         "-c",
         help="Max concurrent requests.",
     ),
-    output_file: Path | None = typer.Option(
+    output: Path | None = typer.Option(
         None,
+        "--output",
         "--output-file",
         "-o",
-        help="Save JSON report to file.",
+        help="Save report to file.",
     ),
-    output: str = typer.Option(
+    format: str = typer.Option(
         "terminal",
-        "--output",
-        help="Output format: terminal | json.",
+        "--format",
+        help="Output format: terminal | json | html.",
     ),
     verbose: bool = typer.Option(
         False,
@@ -201,7 +203,7 @@ def scan(
         timeout=timeout,
     )
 
-    if output != "json" and not quiet:
+    if format != "json" and not quiet:
         _print_scan_header(name, target)
 
     modules = get_all_modules()
@@ -212,7 +214,7 @@ def scan(
     if cache and not no_cache:
         cached_result = scan_cache.get(cache_key)
         if cached_result:
-            if output != "json" and not quiet:
+            if format != "json" and not quiet:
                 console.print(
                     f"[bold cyan]Cache hit for target (expires in {cache_ttl}h). Use --no-cache to force rescan.[/bold cyan]"
                 )
@@ -226,12 +228,12 @@ def scan(
             concurrency,
             timeout,
             quiet,
-            output,
+            format,
         )
         if cache:
             scan_cache.set(cache_key, result, ttl_hours=cache_ttl)
 
-    _render_output(result, output, output_file)
+    _render_output(result, format, output)
 
 
 def _parse_headers(
@@ -259,20 +261,31 @@ def _print_scan_header(name: str, target: str) -> None:
 
 def _render_output(
     result: ScanResult,
-    output: str,
-    output_file: Path | None,
+    format: str,
+    output: Path | None,
 ) -> None:
-    if output == "json":
-        reporter = JSONReporter()
-        console.print(reporter.to_json(result))
+    if format == "json":
+        json_reporter = JSONReporter()
+        console.print(json_reporter.to_json(result))
+    elif format == "html":
+        # If html is requested but no output file, we print to stdout
+        # but typically people want a file for HTML.
+        html_reporter = HTMLReporter()
+        if not output:
+            console.print(html_reporter.to_html(result))
     else:
         terminal = TerminalReporter(console)
         terminal.render(result)
 
-    if output_file:
-        reporter = JSONReporter()
-        saved = reporter.write(result, output_file)
-        if output != "json":
+    if output:
+        if format == "html" or output.suffix == ".html":
+            h_reporter = HTMLReporter()
+            saved = h_reporter.write(result, output)
+        else:
+            j_reporter = JSONReporter()
+            saved = j_reporter.write(result, output)
+
+        if format != "json":
             console.print(f"[green]Report saved to {saved}[/green]")
 
 
@@ -281,6 +294,18 @@ def report(
     path: Path = typer.Argument(
         ...,
         help="Path to a Crucible JSON report file.",
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "--output-file",
+        "-o",
+        help="Save report to file.",
+    ),
+    format: str = typer.Option(
+        "terminal",
+        "--format",
+        help="Output format: terminal | json | html.",
     ),
 ) -> None:
     if not path.exists():
@@ -294,8 +319,7 @@ def report(
         console.print(f"[red]Failed to parse report: {exc}[/red]")
         raise typer.Exit(code=1) from exc
 
-    terminal = TerminalReporter(console)
-    terminal.render(result)
+    _render_output(result, format, output)
 
 
 if __name__ == "__main__":

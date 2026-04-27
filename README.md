@@ -84,14 +84,24 @@ crucible report crucible-report.json
 | Anthropic (Claude) | Yes |
 | Groq (Llama, Mixtral) | Yes |
 | Custom HTTP endpoint | Yes |
+| **LangChain (LangServe / FastAPI wrapper)** | **Yes** |
 
 ## Examples
 
 We provide several example scripts in the `examples/` directory to help you get started:
 
-- `test_openai_agent.py`: Scanning a raw OpenAI Chat Completions endpoint.
-- `test_langchain_agent.py`: Scanning a local LangChain ReAct agent wrapper.
-- `test_openai_assistant.py`: Scanning an OpenAI Assistants API agent (via a local wrapper).
+| Script | Framework | Description |
+|--------|-----------|-------------|
+| `test_openai_agent.py` | OpenAI Chat Completions | Scan a raw OpenAI `/chat/completions` endpoint |
+| `test_langchain_agent.py` | LangChain (LangServe) | Scan a LangChain ReAct agent with OWASP LLM Top 10 mapping |
+| `test_openai_assistant.py` | OpenAI Assistants API | Scan an Assistants API wrapper endpoint |
+
+All examples use `respx` to mock HTTP calls so they pass CI without a live server.
+
+**Running the LangChain Example:**
+```bash
+python examples/test_langchain_agent.py
+```
 
 **Running the OpenAI Assistant Example:**
 ```bash

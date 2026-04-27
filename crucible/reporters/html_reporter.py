@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from crucible.reporters.base import BaseReporter
 
 if TYPE_CHECKING:
-    from crucible.models import ScanResult
+    from crucible.models import Finding, ScanResult
 
 # Severity colour palette (inline CSS — no external dependencies)
 _SEVERITY_STYLES: dict[str, tuple[str, str]] = {
@@ -111,9 +111,7 @@ def _score_bar_colour(score: float) -> str:
 def _severity_badge(severity: str) -> str:
     bg, fg = _SEVERITY_STYLES.get(severity.lower(), ("#374151", "#d1d5db"))
     label = severity.upper()
-    return (
-        f'<span class="badge" style="background:{bg};color:{fg};">{label}</span>'
-    )
+    return f'<span class="badge" style="background:{bg};color:{fg};">{label}</span>'
 
 
 def _esc(value: str) -> str:
@@ -234,7 +232,8 @@ class HTMLReporter(BaseReporter):
             bar_colour = _score_bar_colour(score)
             status_class = "pass" if mod.failed == 0 else "fail"
             status_label = "PASS" if mod.failed == 0 else "FAIL"
-            rows.append(f"""
+            rows.append(
+                f"""
       <tr>
         <td><strong>{_esc(mod.module_name)}</strong></td>
         <td><span style="color:#94a3b8;font-size:0.8rem;">{_esc(mod.category.value)}</span></td>
@@ -253,10 +252,11 @@ class HTMLReporter(BaseReporter):
             <span class="badge {status_class}">{status_label}</span>
           </div>
         </td>
-      </tr>""")
+      </tr>"""
+            )
         return "".join(rows)
 
-    def _render_findings(self, findings: list) -> str:
+    def _render_findings(self, findings: list[Finding]) -> str:
         if not findings:
             return (
                 '<div class="no-findings">'
@@ -269,7 +269,8 @@ class HTMLReporter(BaseReporter):
             sev_badge = _severity_badge(f.severity.value)
             owasp = f.owasp_ref or "—"
             payload_display = f.payload[:80] + "…" if len(f.payload) > 80 else f.payload
-            rows.append(f"""
+            rows.append(
+                f"""
       <tr>
         <td>{sev_badge}</td>
         <td><strong>{_esc(f.title)}</strong>
@@ -282,7 +283,8 @@ class HTMLReporter(BaseReporter):
         <td style="max-width:220px;font-size:0.8rem;color:#94a3b8;">
           {_esc(f.remediation[:150]) if f.remediation else "—"}
         </td>
-      </tr>""")
+      </tr>"""
+            )
 
         return f"""
   <table class="findings-table">

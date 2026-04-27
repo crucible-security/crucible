@@ -265,25 +265,25 @@ def _render_output(
     output: Path | None,
 ) -> None:
     if format == "json":
-        reporter = JSONReporter()
-        console.print(reporter.to_json(result))
+        json_reporter = JSONReporter()
+        console.print(json_reporter.to_json(result))
     elif format == "html":
         # If html is requested but no output file, we print to stdout
         # but typically people want a file for HTML.
-        reporter = HTMLReporter()
+        html_reporter = HTMLReporter()
         if not output:
-            console.print(reporter.to_html(result))
+            console.print(html_reporter.to_html(result))
     else:
         terminal = TerminalReporter(console)
         terminal.render(result)
 
     if output:
         if format == "html" or output.suffix == ".html":
-            reporter = HTMLReporter()
-            saved = reporter.write(result, output)
+            h_reporter = HTMLReporter()
+            saved = h_reporter.write(result, output)
         else:
-            reporter = JSONReporter()
-            saved = reporter.write(result, output)
+            j_reporter = JSONReporter()
+            saved = j_reporter.write(result, output)
 
         if format != "json":
             console.print(f"[green]Report saved to {saved}[/green]")

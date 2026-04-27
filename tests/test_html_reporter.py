@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 import pytest
 
@@ -164,9 +167,7 @@ class TestHTMLReporter:
         # Must be self-contained — no <link rel="stylesheet"> allowed
         assert '<link rel="stylesheet"' not in output
 
-    def test_write_creates_file(
-        self, clean_result: ScanResult, tmp_path: Path
-    ) -> None:
+    def test_write_creates_file(self, clean_result: ScanResult, tmp_path: Path) -> None:
         reporter = HTMLReporter()
         output_path = tmp_path / "report.html"
         returned = reporter.write(clean_result, output_path)

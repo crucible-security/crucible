@@ -1,10 +1,10 @@
 """
 Example: Scanning an OpenAI Assistants API Agent
 
-The OpenAI Assistants API is stateful and requires multiple asynchronous steps 
+The OpenAI Assistants API is stateful and requires multiple asynchronous steps
 (create thread, add message, create run, poll for completion, fetch messages).
 Crucible scans single HTTP endpoints synchronously. Therefore, to scan an Assistant,
-you typically point Crucible at your application's API endpoint that wraps the 
+you typically point Crucible at your application's API endpoint that wraps the
 Assistant logic.
 
 In this example, we:
@@ -12,11 +12,12 @@ In this example, we:
 2. Use `respx` to mock this endpoint so the example passes CI without needing a real API key.
 3. Run the scan and interpret the results.
 """
+
 from __future__ import annotations
 
 import anyio
-import respx
 import httpx
+import respx
 from rich.console import Console
 
 from crucible.core.runner import run_scan
@@ -32,7 +33,9 @@ async def main() -> None:
     # Mocking the wrapper endpoint that normally communicates with the OpenAI Assistants API.
     # In a real scenario, this would be your application's API endpoint, and you wouldn't use respx.
     respx.post("http://localhost:8000/api/assistant/chat").mock(
-        return_value=httpx.Response(200, text="I am a helpful assistant, I cannot help with that.")
+        return_value=httpx.Response(
+            200, text="I am a helpful assistant, I cannot help with that."
+        )
     )
 
     # 1. Setting up the target

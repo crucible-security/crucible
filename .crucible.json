@@ -1,0 +1,19 @@
+{
+  "target": {
+    "name": "my-agent",
+    "url": "https://my-agent.com/api/chat",
+    "provider": "custom",
+    "method": "POST",
+    "headers": {},
+    "body_template": "{\"message\": \"{payload}\"}",
+    "timeout": 30
+  },
+  "scan": {
+    "modules": [
+      "prompt_injection",
+      "goal_hijacking",
+      "jailbreaks"
+    ],
+    "timeout": 30
+  }
+}

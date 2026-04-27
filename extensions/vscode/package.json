@@ -1,0 +1,48 @@
+{
+  "name": "crucible-vscode",
+  "displayName": "Crucible Security Scanner",
+  "description": "Run Crucible security scans directly from VS Code",
+  "version": "0.1.0",
+  "publisher": "crucible-security",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/crucible-security/crucible.git"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other",
+    "Testing"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "crucible.scan",
+        "title": "Crucible: Scan Agent"
+      }
+    ],
+    "configuration": {
+      "title": "Crucible Security",
+      "properties": {
+        "crucible.defaultTargetUrl": {
+          "type": "string",
+          "default": "",
+          "description": "The default target URL for Crucible agent scans. If left empty, you will be prompted each time."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.0.0"
+  }
+}

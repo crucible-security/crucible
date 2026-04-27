@@ -69,7 +69,9 @@ class TestRunner:
 
     @respx.mock
     @pytest.mark.asyncio()
-    async def test_quiet_mode_produces_no_output(self, capsys: pytest.CaptureFixture[str]) -> None:
+    async def test_quiet_mode_produces_no_output(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         target = AgentTarget(
             name="quiet-agent",
             url="https://quiet.test/chat",  # type: ignore[arg-type]
@@ -88,7 +90,9 @@ class TestRunner:
 
     @respx.mock
     @pytest.mark.asyncio()
-    async def test_json_output_routes_progress_to_stderr(self, capsys: pytest.CaptureFixture[str]) -> None:
+    async def test_json_output_routes_progress_to_stderr(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         target = AgentTarget(
             name="json-agent",
             url="https://json.test/chat",  # type: ignore[arg-type]

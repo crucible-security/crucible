@@ -70,7 +70,7 @@ def test_get_cache_key_deterministic(
 ) -> None:
     modules1 = [DummyModule("b"), DummyModule("a")]
     modules2 = [DummyModule("a"), DummyModule("b")]
-    
+
     key1 = tmp_cache.get_cache_key(dummy_target, modules1)  # type: ignore[arg-type]
     key2 = tmp_cache.get_cache_key(dummy_target, modules2)  # type: ignore[arg-type]
 

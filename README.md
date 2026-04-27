@@ -47,6 +47,9 @@ crucible report crucible-report.json
 - **Automated red-teaming** -- 90 real attack payloads run in under 60 seconds, not weeks of manual testing
 - **OWASP-aligned** -- maps every attack to the OWASP Top 10 for LLM Applications and OWASP Agentic Top 10
 - **CI/CD native** -- `crucible scan --output json` pipes into any pipeline; fail builds on low grades
+- **MCP security** -- the only tool with a native Model Context Protocol security module
+
+> **How does Crucible compare to Garak and PyRIT?** → See [docs/comparison.md](docs/comparison.md) for a detailed, objective feature matrix.
 
 ## Modules
 

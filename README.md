@@ -51,6 +51,8 @@ crucible report crucible-report.json
 
 > **How does Crucible compare to Garak and PyRIT?** → See [docs/comparison.md](docs/comparison.md) for a detailed, objective feature matrix.
 
+> **What does Crucible test for?** → See [docs/owasp_mapping.md](docs/owasp_mapping.md) for the full OWASP Agentic AI Top 10 attack documentation (ASI01–ASI10).
+
 ## Modules
 
 | Module | Attacks | Status | OWASP Coverage |

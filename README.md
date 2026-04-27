@@ -85,6 +85,19 @@ crucible report crucible-report.json
 | Groq (Llama, Mixtral) | Yes |
 | Custom HTTP endpoint | Yes |
 
+## Examples
+
+We provide several example scripts in the `examples/` directory to help you get started:
+
+- `test_openai_agent.py`: Scanning a raw OpenAI Chat Completions endpoint.
+- `test_langchain_agent.py`: Scanning a local LangChain ReAct agent wrapper.
+- `test_openai_assistant.py`: Scanning an OpenAI Assistants API agent (via a local wrapper).
+
+**Running the OpenAI Assistant Example:**
+```bash
+python examples/test_openai_assistant.py
+```
+
 ## Scoring System
 
 Score starts at **100** and deducts per vulnerability found:

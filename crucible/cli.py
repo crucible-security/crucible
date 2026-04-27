@@ -166,6 +166,12 @@ def scan(
         "-v",
         help="Show each attack result live.",
     ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="Suppress progress bar output.",
+    ),
 ) -> None:
     parsed_headers = _parse_headers(header)
 
@@ -178,7 +184,7 @@ def scan(
         timeout=timeout,
     )
 
-    if output != "json":
+    if output != "json" and not quiet:
         _print_scan_header(name, target)
 
     result = anyio.run(
@@ -187,6 +193,8 @@ def scan(
         None,
         concurrency,
         timeout,
+        quiet,
+        output,
     )
 
     _render_output(result, output, output_file)

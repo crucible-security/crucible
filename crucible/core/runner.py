@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from threading import Lock
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import anyio
 import httpx
@@ -25,6 +25,8 @@ from crucible.models import AgentTarget, ModuleResult, ScanResult, ScanStatus
 from crucible.modules.security import get_all_modules
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from crucible.modules.base import BaseModule
 
 # Thread-safe append for concurrent module results
@@ -34,18 +36,19 @@ _results_lock = Lock()
 @dataclass
 class _NoopProgress:
     """Duck-typed stub so call sites don't need to branch on quiet mode."""
-    def add_task(self, *_: typing.Any, **__: typing.Any) -> TaskID:
+
+    def add_task(self, *_: Any, **__: Any) -> TaskID:
         return TaskID(0)
-    def update(self, *_: typing.Any, **__: typing.Any) -> None:
-        pass
-    def advance(self, *_: typing.Any, **__: typing.Any) -> None:
+
+    def update(self, *_: Any, **__: Any) -> None:
         pass
 
+    def advance(self, *_: Any, **__: Any) -> None:
+        pass
 
-import typing
 
 @contextmanager
-def _noop_progress() -> typing.Iterator[_NoopProgress]:
+def _noop_progress() -> Iterator[_NoopProgress]:
     yield _NoopProgress()
 
 

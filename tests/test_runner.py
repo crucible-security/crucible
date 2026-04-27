@@ -69,7 +69,7 @@ class TestRunner:
 
     @respx.mock
     @pytest.mark.asyncio()
-    async def test_quiet_mode_produces_no_output(self, capsys) -> None:
+    async def test_quiet_mode_produces_no_output(self, capsys: pytest.CaptureFixture[str]) -> None:
         target = AgentTarget(
             name="quiet-agent",
             url="https://quiet.test/chat",  # type: ignore[arg-type]
@@ -88,7 +88,7 @@ class TestRunner:
 
     @respx.mock
     @pytest.mark.asyncio()
-    async def test_json_output_routes_progress_to_stderr(self, capsys) -> None:
+    async def test_json_output_routes_progress_to_stderr(self, capsys: pytest.CaptureFixture[str]) -> None:
         target = AgentTarget(
             name="json-agent",
             url="https://json.test/chat",  # type: ignore[arg-type]
@@ -101,8 +101,8 @@ class TestRunner:
         result = await run_scan(target, modules=[module], output_format="json")
 
         captured = capsys.readouterr()
-        assert captured.out == ""          # stdout clean for JSON piping
-        assert len(captured.err) > 0      # Rich progress rendered to stderr
+        assert captured.out == ""  # stdout clean for JSON piping
+        assert len(captured.err) > 0  # Rich progress rendered to stderr
         assert result.status == ScanStatus.COMPLETED
 
     @respx.mock
@@ -111,8 +111,6 @@ class TestRunner:
         from crucible.core.runner import _module_payload_count
 
         module = GoalHijackingModule()
-        expected = sum(
-            len(attack.get_payloads()) for attack in module.get_attacks()
-        )
+        expected = sum(len(attack.get_payloads()) for attack in module.get_attacks())
 
         assert _module_payload_count(module) == expected

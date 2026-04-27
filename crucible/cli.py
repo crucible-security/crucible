@@ -9,8 +9,10 @@ import typer
 from rich.console import Console
 
 from crucible import __version__
+from crucible.core.cache import ScanCache
 from crucible.core.runner import run_scan
 from crucible.models import AgentTarget, ScanResult
+from crucible.modules.security import get_all_modules
 from crucible.reporters.json_reporter import JSONReporter
 from crucible.reporters.terminal import TerminalReporter
 
@@ -172,6 +174,21 @@ def scan(
         "-q",
         help="Suppress progress bar output.",
     ),
+    cache: bool = typer.Option(
+        False,
+        "--cache",
+        help="Cache the scan results to avoid duplicate runs.",
+    ),
+    cache_ttl: int = typer.Option(
+        24,
+        "--cache-ttl",
+        help="Cache time-to-live in hours.",
+    ),
+    no_cache: bool = typer.Option(
+        False,
+        "--no-cache",
+        help="Force rescan, ignoring existing cache.",
+    ),
 ) -> None:
     parsed_headers = _parse_headers(header)
 
@@ -187,15 +204,32 @@ def scan(
     if output != "json" and not quiet:
         _print_scan_header(name, target)
 
-    result = anyio.run(
-        run_scan,
-        agent_target,
-        None,
-        concurrency,
-        timeout,
-        quiet,
-        output,
-    )
+    modules = get_all_modules()
+    scan_cache = ScanCache()
+    cache_key = scan_cache.get_cache_key(agent_target, modules)
+
+    result = None
+    if cache and not no_cache:
+        cached_result = scan_cache.get(cache_key)
+        if cached_result:
+            if output != "json" and not quiet:
+                console.print(
+                    f"[bold cyan]Cache hit for target (expires in {cache_ttl}h). Use --no-cache to force rescan.[/bold cyan]"
+                )
+            result = cached_result
+
+    if result is None:
+        result = anyio.run(
+            run_scan,
+            agent_target,
+            modules,
+            concurrency,
+            timeout,
+            quiet,
+            output,
+        )
+        if cache:
+            scan_cache.set(cache_key, result, ttl_hours=cache_ttl)
 
     _render_output(result, output, output_file)
 

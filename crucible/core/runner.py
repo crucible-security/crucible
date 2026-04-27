@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -9,8 +10,6 @@ from typing import TYPE_CHECKING
 
 import anyio
 import httpx
-import sys
-
 from rich.console import Console
 from rich.progress import (
     BarColumn,
@@ -35,16 +34,18 @@ _results_lock = Lock()
 @dataclass
 class _NoopProgress:
     """Duck-typed stub so call sites don't need to branch on quiet mode."""
-    def add_task(self, *_, **__) -> None:
-        return None
-    def update(self, *_, **__) -> None:
+    def add_task(self, *_: typing.Any, **__: typing.Any) -> TaskID:
+        return TaskID(0)
+    def update(self, *_: typing.Any, **__: typing.Any) -> None:
         pass
-    def advance(self, *_, **__) -> None:
+    def advance(self, *_: typing.Any, **__: typing.Any) -> None:
         pass
 
+
+import typing
 
 @contextmanager
-def _noop_progress():
+def _noop_progress() -> typing.Iterator[_NoopProgress]:
     yield _NoopProgress()
 
 
@@ -65,10 +66,12 @@ async def run_module_with_progress(
     target: AgentTarget,
     client: httpx.AsyncClient,
     module_results: list[ModuleResult],
-    progress: Progress,
+    progress: Progress | _NoopProgress,
     task_id: TaskID,
 ) -> None:
-    progress.update(task_id, description=f"Running [bold cyan]{module.name}[/bold cyan]")
+    progress.update(
+        task_id, description=f"Running [bold cyan]{module.name}[/bold cyan]"
+    )
     try:
         result = await run_module(module, target, client)
     finally:

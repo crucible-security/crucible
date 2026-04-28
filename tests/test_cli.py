@@ -154,7 +154,14 @@ class TestCLI:
         )
         result = runner.invoke(
             app,
-            ["scan", "--target", "https://agent.test/chat", "--format", "json", "--quiet"],
+            [
+                "scan",
+                "--target",
+                "https://agent.test/chat",
+                "--format",
+                "json",
+                "--quiet",
+            ],
             color=False,
         )
         assert result.exit_code == 0
@@ -171,7 +178,14 @@ class TestCLI:
         )
         result = runner.invoke(
             app,
-            ["scan", "--target", "https://agent.test/chat", "--format", "html", "--quiet"],
+            [
+                "scan",
+                "--target",
+                "https://agent.test/chat",
+                "--format",
+                "html",
+                "--quiet",
+            ],
             color=False,
         )
         assert result.exit_code == 0

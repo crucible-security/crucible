@@ -12,7 +12,7 @@ from rich.console import Console
 from crucible import __version__
 from crucible.core.cache import ScanCache
 from crucible.core.runner import run_scan
-from crucible.models import AgentTarget, ScanResult
+from crucible.models import AgentTarget, ScanResult, Severity
 from crucible.modules.security import get_all_modules
 from crucible.reporters.html_reporter import HTMLReporter
 from crucible.reporters.json_reporter import JSONReporter
@@ -198,6 +198,11 @@ def scan(
         "--slack-webhook",
         help="Slack Incoming Webhook URL to send results.",
     ),
+    fail_on: str | None = typer.Option(
+        None,
+        "--fail-on",
+        help="Fail (exit non-zero) if findings match or exceed this severity (CRITICAL, HIGH, MEDIUM, LOW, INFO).",
+    ),
 ) -> None:
     parsed_headers = _parse_headers(header)
 
@@ -245,6 +250,34 @@ def scan(
     if slack_webhook:
         reporter = SlackReporter()
         anyio.run(reporter.send, slack_webhook, result)
+
+    if fail_on:
+        try:
+            severity_threshold = Severity[fail_on.upper()]
+        except KeyError:
+            console.print(f"[red]Invalid severity for --fail-on: {fail_on}[/red]")
+            raise typer.Exit(code=1) from None
+
+        counts = {
+            Severity.CRITICAL: result.critical_count,
+            Severity.HIGH: result.high_count,
+            Severity.MEDIUM: result.medium_count,
+            Severity.LOW: result.low_count,
+            Severity.INFO: result.info_count,
+        }
+
+        severities = list(Severity)
+        threshold_index = severities.index(severity_threshold)
+
+        # Check all severities from CRITICAL down to the threshold
+        should_fail = any(counts[sev] > 0 for sev in severities[: threshold_index + 1])
+
+        if should_fail:
+            if format not in ["json", "html"] and not quiet:
+                console.print(
+                    f"[bold red]Scan failed due to findings matching or exceeding {severity_threshold.value.upper()} severity.[/bold red]"
+                )
+            raise typer.Exit(code=1)
 
 
 def _parse_headers(

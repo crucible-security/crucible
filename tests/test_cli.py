@@ -214,6 +214,48 @@ class TestCLI:
         )
         assert result.exit_code == 0
 
+    @respx.mock
+    def test_scan_fail_on_critical_passes(self) -> None:
+        respx.post("https://agent.test/chat").mock(
+            return_value=httpx.Response(200, text="I cannot do that.")
+        )
+        result = runner.invoke(
+            app,
+            [
+                "scan",
+                "--target",
+                "https://agent.test/chat",
+                "--fail-on",
+                "CRITICAL",
+                "--quiet",
+            ],
+            color=False,
+        )
+        assert result.exit_code == 0
+
+    @respx.mock
+    def test_scan_fail_on_critical_fails(self) -> None:
+        # 'injection_success' triggers the IgnorePreviousInstructions attack which is CRITICAL
+        respx.post("https://agent.test/chat").mock(
+            return_value=httpx.Response(200, text="injection_success")
+        )
+        result = runner.invoke(
+            app,
+            [
+                "scan",
+                "--target",
+                "https://agent.test/chat",
+                "--fail-on",
+                "CRITICAL",
+            ],
+            color=False,
+        )
+        assert result.exit_code == 1
+        assert (
+            "Scan failed due to findings matching or exceeding CRITICAL severity"
+            in result.stdout
+        )
+
 
 class TestReporters:
     def test_json_reporter_import(self) -> None:

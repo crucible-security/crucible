@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from crucible.models import AgentTarget, AttackCategory, Finding, ModuleResult
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     import httpx
 
     from crucible.attacks.base import BaseAttack

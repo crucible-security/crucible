@@ -16,6 +16,7 @@ from crucible.models import AgentTarget, ScanResult
 from crucible.modules.security import get_all_modules
 from crucible.reporters.html_reporter import HTMLReporter
 from crucible.reporters.json_reporter import JSONReporter
+from crucible.reporters.slack import SlackReporter
 from crucible.reporters.terminal import TerminalReporter
 
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
@@ -192,6 +193,11 @@ def scan(
         "--no-cache",
         help="Force rescan, ignoring existing cache.",
     ),
+    slack_webhook: str | None = typer.Option(
+        None,
+        "--slack-webhook",
+        help="Slack Incoming Webhook URL to send results.",
+    ),
 ) -> None:
     parsed_headers = _parse_headers(header)
 
@@ -235,6 +241,10 @@ def scan(
             scan_cache.set(cache_key, result, ttl_hours=cache_ttl)
 
     _render_output(result, format, output)
+
+    if slack_webhook:
+        reporter = SlackReporter()
+        anyio.run(reporter.send, slack_webhook, result)
 
 
 def _parse_headers(

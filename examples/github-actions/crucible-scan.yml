@@ -1,0 +1,23 @@
+name: Crucible Security Scan
+
+on: [push, pull_request]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Crucible
+        run: pip install crucible-security
+
+      - name: Run Crucible Scan
+        # Replace the target URL with your agent's test endpoint
+        # The --fail-on CRITICAL flag ensures the pipeline fails if any critical vulnerabilities are found.
+        run: crucible scan --target ${{ secrets.AGENT_ENDPOINT }} --fail-on CRITICAL

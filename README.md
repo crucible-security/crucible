@@ -155,23 +155,13 @@ crucible report report.json
 
 ## CI/CD Integration
 
+Add to your CI/CD in 3 lines:
+
 ```yaml
 # .github/workflows/security.yml
-- name: Security Scan
-  run: |
-    pip install crucible-security
-    crucible scan \
-      --target ${{ secrets.AGENT_URL }} \
-      --header "Authorization: Bearer ${{ secrets.AGENT_KEY }}" \
-      --output json > crucible-report.json
-
-- name: Check Grade
-  run: |
-    grade=$(python -c "import json; print(json.load(open('crucible-report.json'))['grade'])")
-    if [ "$grade" = "F" ] || [ "$grade" = "D" ]; then
-      echo "Security grade $grade -- failing pipeline"
-      exit 1
-    fi
+- uses: actions/checkout@v4
+- run: pip install crucible-security
+- run: crucible scan --target ${{ secrets.AGENT_URL }} --fail-on CRITICAL
 ```
 
 ## Architecture

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 
 import anyio
-import sys
 import typer
 from rich.console import Console
 

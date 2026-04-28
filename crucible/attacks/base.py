@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 
 import httpx
 
@@ -79,11 +80,14 @@ class BaseAttack(ABC):
         self,
         target: AgentTarget,
         client: httpx.AsyncClient,
+        on_finding: Callable[[Finding], None] | None = None,
     ) -> list[Finding]:
         findings: list[Finding] = []
 
         for payload in self.get_payloads():
             finding = await self._send_payload(target, client, payload)
+            if on_finding:
+                on_finding(finding)
             findings.append(finding)
 
         return findings

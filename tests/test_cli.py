@@ -256,6 +256,28 @@ class TestCLI:
             in result.stdout
         )
 
+    @respx.mock
+    def test_scan_verbose_output(self) -> None:
+        respx.post("https://agent.test/chat").mock(
+            return_value=httpx.Response(200, text="Defended.")
+        )
+        result = runner.invoke(
+            app,
+            [
+                "scan",
+                "--target",
+                "https://agent.test/chat",
+                "--verbose",
+                "--quiet",  # Suppress progress bar to cleanly check stderr
+            ],
+            color=False,
+        )
+        assert result.exit_code == 0
+        assert "[ATTACK]" in result.output
+        assert "Payload:" in result.output
+        assert "Response:" in result.output
+        assert "Result:" in result.output
+
 
 class TestReporters:
     def test_json_reporter_import(self) -> None:

@@ -21,7 +21,7 @@ from rich.progress import (
 )
 
 from crucible.core.scorer import finalize_scan_result
-from crucible.models import AgentTarget, ModuleResult, ScanResult, ScanStatus
+from crucible.models import AgentTarget, Finding, ModuleResult, ScanResult, ScanStatus
 from crucible.modules.security import get_all_modules
 
 if TYPE_CHECKING:
@@ -56,14 +56,6 @@ def _module_payload_count(module: BaseModule) -> int:
     return sum(len(attack.get_payloads()) for attack in module.get_attacks())
 
 
-async def run_module(
-    module: BaseModule,
-    target: AgentTarget,
-    client: httpx.AsyncClient,
-) -> ModuleResult:
-    return await module.run(target, client)
-
-
 async def run_module_with_progress(
     module: BaseModule,
     target: AgentTarget,
@@ -71,12 +63,33 @@ async def run_module_with_progress(
     module_results: list[ModuleResult],
     progress: Progress | _NoopProgress,
     task_id: TaskID,
+    verbose: bool,
+    verbose_console: Console,
 ) -> None:
     progress.update(
         task_id, description=f"Running [bold cyan]{module.name}[/bold cyan]"
     )
+
+    def on_finding(finding: Finding) -> None:
+        if not verbose:
+            return
+
+        result_str = "PASS (refused)" if finding.passed else "FAIL (bypassed)"
+        color = "green" if finding.passed else "red"
+
+        msg = (
+            f"[bold yellow][ATTACK][/bold yellow] {finding.attack_name} {module.name}\n"
+            f'Payload: "{finding.payload}"\n'
+            f'Response: "{finding.response_snippet}"\n'
+            f"Result: [{color}]{result_str}[/{color}]\n"
+        )
+        if hasattr(progress, "console"):
+            progress.console.print(msg)
+        else:
+            verbose_console.print(msg)
+
     try:
-        result = await run_module(module, target, client)
+        result = await module.run(target, client, on_finding=on_finding)
     finally:
         with _results_lock:
             module_results.append(result)
@@ -89,7 +102,8 @@ async def run_scan(
     concurrency: int = 5,
     timeout: float = 30.0,
     quiet: bool = False,
-    output_format: str = "text",
+    format: str = "table",
+    verbose: bool = False,
 ) -> ScanResult:
     if modules is None:
         modules = get_all_modules()
@@ -104,7 +118,9 @@ async def run_scan(
     start = time.monotonic()
 
     total_attacks = sum(_module_payload_count(m) for m in modules)
-    progress_target = sys.stderr if output_format in ["json", "html"] else sys.stdout
+    progress_target = sys.stderr if format in ["json", "html"] else sys.stdout
+    progress_console = Console(file=progress_target)
+    verbose_console = Console(file=sys.stderr)
 
     progress_columns = [
         TextColumn("[progress.description]{task.description}"),
@@ -116,7 +132,7 @@ async def run_scan(
 
     # nullcontext-style: skip Rich entirely in quiet mode
     progress_cm = (
-        Progress(*progress_columns, console=Console(file=progress_target))
+        Progress(*progress_columns, console=progress_console)
         if not quiet
         else _noop_progress()
     )
@@ -146,6 +162,8 @@ async def run_scan(
                         module_results,
                         progress,
                         task_id,
+                        verbose,
+                        verbose_console,
                     )
 
             progress.update(task_id, description="[green]Scan complete[/green]")

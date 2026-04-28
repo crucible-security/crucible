@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 import anyio
+import sys
 import typer
 from rich.console import Console
 
@@ -160,9 +161,9 @@ def scan(
         help="Save report to file.",
     ),
     format: str = typer.Option(
-        "terminal",
+        "table",
         "--format",
-        help="Output format: terminal | json | html.",
+        help="Output format: table | json | html.",
     ),
     verbose: bool = typer.Option(
         False,
@@ -203,7 +204,7 @@ def scan(
         timeout=timeout,
     )
 
-    if format != "json" and not quiet:
+    if format not in ["json", "html"] and not quiet:
         _print_scan_header(name, target)
 
     modules = get_all_modules()
@@ -214,7 +215,7 @@ def scan(
     if cache and not no_cache:
         cached_result = scan_cache.get(cache_key)
         if cached_result:
-            if format != "json" and not quiet:
+            if format not in ["json", "html"] and not quiet:
                 console.print(
                     f"[bold cyan]Cache hit for target (expires in {cache_ttl}h). Use --no-cache to force rescan.[/bold cyan]"
                 )
@@ -266,13 +267,11 @@ def _render_output(
 ) -> None:
     if format == "json":
         json_reporter = JSONReporter()
-        console.print(json_reporter.to_json(result))
+        sys.stdout.write(json_reporter.to_json(result) + "\n")
     elif format == "html":
-        # If html is requested but no output file, we print to stdout
-        # but typically people want a file for HTML.
         html_reporter = HTMLReporter()
         if not output:
-            console.print(html_reporter.to_html(result))
+            sys.stdout.write(html_reporter.to_html(result) + "\n")
     else:
         terminal = TerminalReporter(console)
         terminal.render(result)
@@ -285,7 +284,7 @@ def _render_output(
             j_reporter = JSONReporter()
             saved = j_reporter.write(result, output)
 
-        if format != "json":
+        if format not in ["json", "html"]:
             console.print(f"[green]Report saved to {saved}[/green]")
 
 
@@ -303,9 +302,9 @@ def report(
         help="Save report to file.",
     ),
     format: str = typer.Option(
-        "terminal",
+        "table",
         "--format",
-        help="Output format: terminal | json | html.",
+        help="Output format: table | json | html.",
     ),
 ) -> None:
     if not path.exists():

@@ -121,6 +121,63 @@ class TestCLI:
         assert data["status"] == "completed"
         assert "grade" in data
 
+    @respx.mock
+    def test_scan_format_table(self) -> None:
+        respx.post("https://agent.test/chat").mock(
+            return_value=httpx.Response(200, text="Defended.")
+        )
+        result = runner.invoke(
+            app,
+            ["scan", "--target", "https://agent.test/chat", "--format", "table"],
+            color=False,
+        )
+        assert result.exit_code == 0
+        assert "CRUCIBLE SECURITY SCAN" in result.output
+
+    @respx.mock
+    def test_scan_format_terminal(self) -> None:
+        respx.post("https://agent.test/chat").mock(
+            return_value=httpx.Response(200, text="Defended.")
+        )
+        result = runner.invoke(
+            app,
+            ["scan", "--target", "https://agent.test/chat", "--format", "terminal"],
+            color=False,
+        )
+        assert result.exit_code == 0
+        assert "CRUCIBLE SECURITY SCAN" in result.output
+
+    @respx.mock
+    def test_scan_format_json(self) -> None:
+        respx.post("https://agent.test/chat").mock(
+            return_value=httpx.Response(200, text="Defended.")
+        )
+        result = runner.invoke(
+            app,
+            ["scan", "--target", "https://agent.test/chat", "--format", "json", "--quiet"],
+            color=False,
+        )
+        assert result.exit_code == 0
+        # Output should be valid JSON
+        data = json.loads(result.stdout)
+        assert data["status"] == "completed"
+        # Should NOT contain the terminal header
+        assert "CRUCIBLE" not in result.output
+
+    @respx.mock
+    def test_scan_format_html(self) -> None:
+        respx.post("https://agent.test/chat").mock(
+            return_value=httpx.Response(200, text="Defended.")
+        )
+        result = runner.invoke(
+            app,
+            ["scan", "--target", "https://agent.test/chat", "--format", "html", "--quiet"],
+            color=False,
+        )
+        assert result.exit_code == 0
+        assert "<!DOCTYPE html>" in result.stdout
+        assert "CRUCIBLE" not in result.stdout
+
 
 class TestReporters:
     def test_json_reporter_import(self) -> None:

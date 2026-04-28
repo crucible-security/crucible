@@ -34,6 +34,9 @@ pip install crucible-security
 
 ## Quick Start
 
+> 🆕 **New to AI security?** Read our [Beginner's Getting Started Guide](docs/getting_started.md).
+
+
 ```bash
 crucible init --target https://my-agent.com/api/chat
 crucible scan --target https://my-agent.com/api/chat

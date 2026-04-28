@@ -104,7 +104,7 @@ async def run_scan(
     start = time.monotonic()
 
     total_attacks = sum(_module_payload_count(m) for m in modules)
-    progress_target = sys.stderr if output_format == "json" else sys.stdout
+    progress_target = sys.stderr if output_format in ["json", "html"] else sys.stdout
 
     progress_columns = [
         TextColumn("[progress.description]{task.description}"),

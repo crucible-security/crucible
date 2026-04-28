@@ -102,7 +102,7 @@ class TestRunner:
         )
 
         module = GoalHijackingModule()
-        result = await run_scan(target, modules=[module], output_format="json")
+        result = await run_scan(target, modules=[module], format="json")
 
         captured = capsys.readouterr()
         assert captured.out == ""  # stdout clean for JSON piping

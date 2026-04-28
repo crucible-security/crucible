@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 from crucible.models import AgentTarget, AttackCategory, Finding, ModuleResult
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     import httpx
 
     from crucible.attacks.base import BaseAttack
@@ -25,13 +27,14 @@ class BaseModule(ABC):
         self,
         target: AgentTarget,
         client: httpx.AsyncClient,
+        on_finding: Callable[[Finding], None] | None = None,
     ) -> ModuleResult:
         attacks = self.get_attacks()
         all_findings: list[Finding] = []
         start = time.monotonic()
 
         for attack in attacks:
-            findings = await attack.execute(target, client)
+            findings = await attack.execute(target, client, on_finding=on_finding)
             all_findings.extend(findings)
 
         duration = time.monotonic() - start

@@ -241,6 +241,7 @@ def scan(
             timeout,
             quiet,
             format,
+            verbose,
         )
         if cache:
             scan_cache.set(cache_key, result, ttl_hours=cache_ttl)

@@ -192,6 +192,28 @@ class TestCLI:
         assert "<!DOCTYPE html>" in result.stdout
         assert "CRUCIBLE" not in result.stdout
 
+    @respx.mock
+    def test_scan_slack_webhook(self) -> None:
+        respx.post("https://agent.test/chat").mock(
+            return_value=httpx.Response(200, text="Defended.")
+        )
+        respx.post("https://hooks.slack.com/services/T/B/X").mock(
+            return_value=httpx.Response(200, text="ok")
+        )
+        result = runner.invoke(
+            app,
+            [
+                "scan",
+                "--target",
+                "https://agent.test/chat",
+                "--slack-webhook",
+                "https://hooks.slack.com/services/T/B/X",
+                "--quiet",
+            ],
+            color=False,
+        )
+        assert result.exit_code == 0
+
 
 class TestReporters:
     def test_json_reporter_import(self) -> None:

@@ -9,6 +9,36 @@ Module Layer    crucible/modules/        — Attack orchestration
 Reporter Layer  crucible/reporters/      — Output formatting
 Core Layer      crucible/core/           — Runner and scorer
 
+### Attack Vectors vs Impacts — Important Distinction
+
+Crucible's module naming follows a deliberate convention that is important to understand when
+reading findings, writing new attacks, or mapping to OWASP:
+
+> **Modules are named by the IMPACT they surface, not the attack vector used to produce it.**
+
+| Concept | Definition | Examples in Crucible |
+|---------|-----------|----------------------|
+| **Attack Vector** | The *method of delivery* — how malicious input enters the system | Prompt injection (direct/indirect), MCP trust boundary violation |
+| **Impact** | The *security consequence* of a successful attack | Goal hijacking, data exfiltration, safety bypass, privilege escalation |
+
+**Key examples:**
+- `prompt_injection` module → **attack vector:** direct/indirect prompt injection → **impact tested:** goal hijacking + data exfiltration
+- `goal_hijacking` module → **attack vector:** prompt injection (objective-redirect variant) → **impact tested:** goal hijacking (OWASP-AGENT-003)
+- `jailbreaks` module → **attack vector:** prompt injection (safety-constraint bypass variant) → **impact tested:** safety bypass (OWASP-AGENT-006)
+- `mcp_security` module → **attack vector:** MCP trust boundary violation → **impact tested:** privilege escalation (OWASP-AGENT-004, 007)
+
+This naming convention was reviewed by [OWASP AI Exchange](https://owaspai.org/) contributors
+and is documented with full technical rationale in
+[docs/owasp_mapping.md](docs/owasp_mapping.md).
+
+When adding a new attack, consider:
+1. What is the **attack vector** (how does the payload reach the agent)?
+2. What is the **impact** being tested (what does a successful attack achieve)?
+3. Which OWASP Agentic AI risk category maps to that impact?
+
+See [docs/owasp_mapping.md](docs/owasp_mapping.md) for the authoritative attack vector → impact
+mapping table.
+
 ## Setting Up Your Development Environment
 
 ```bash

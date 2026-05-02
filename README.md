@@ -226,6 +226,13 @@ Your agent complied with most attacks. It is vulnerable to
 prompt injection, jailbreaks, or goal hijacking. 
 Review Critical findings first.
 
+**Why is the module called `goal_hijacking` if goal hijacking is an impact, not an attack?**  
+Crucible modules are named by the **security impact** they surface, not the attack vector.
+The underlying attack vector for most modules is prompt injection delivered in specialised forms.
+This naming convention helps security engineers quickly identify which risks each module addresses
+(e.g., searching for "goal hijacking" finds the right module immediately).
+See [docs/owasp_mapping.md](docs/owasp_mapping.md) for the full attack vector → impact mapping.
+
 **Questions not answered here?**  
 Join our [Discord](https://discord.gg/m7wAxEv3) or email 
 crucible.sec@gmail.com

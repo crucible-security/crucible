@@ -158,7 +158,13 @@ class Finding(BaseModel):
     )
     owasp_ref: str = Field(
         default="",
-        description="OWASP Agentic AI Top 10 reference (e.g., 'OWASP-AGENT-001: Prompt Injection').",
+        description=(
+            "Maps to OWASP Agentic AI Top 10 risk category. "
+            "Note: this references the IMPACT category "
+            "(e.g., OWASP-AGENT-003: Goal Hijacking), not the attack vector "
+            "(which is typically prompt injection). "
+            "See docs/owasp_mapping.md for full mapping."
+        ),
     )
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

@@ -56,6 +56,11 @@ crucible report crucible-report.json
 
 > **What does Crucible test for?** → See [docs/owasp_mapping.md](docs/owasp_mapping.md) for the full OWASP Agentic AI Top 10 attack documentation (ASI01–ASI10).
 
+## ☁️ Crucible Cloud (Waitlist)
+
+Need persistent dashboards, compliance reports, and team collaboration?  
+Join the waitlist for our upcoming cloud platform: [crucible-cloud.vercel.app](https://crucible-cloud.vercel.app)
+
 ## Modules
 
 | Module | Attacks | Status | OWASP Coverage |

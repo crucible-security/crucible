@@ -1,0 +1,5 @@
+crewai
+
+fastapi
+
+uvicorn

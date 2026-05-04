@@ -8,6 +8,19 @@ from crucible.core.runner import run_scan
 from crucible.models import AgentTarget, ScanStatus
 from crucible.modules.security import GoalHijackingModule
 
+from crucible.models import AgentTarget, ScanResult, SecurityModule
+
+# Example fix for lines 38-49:
+async def run_scan(
+    target: AgentTarget, 
+    modules: list[SecurityModule], 
+    concurrency: int, 
+    timeout: float, 
+    quiet: bool, 
+    format: str, 
+    verbose: bool
+) -> ScanResult:  # This fixes the missing return type annotation
+    ...
 
 class TestRunner:
     @respx.mock

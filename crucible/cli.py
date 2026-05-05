@@ -318,7 +318,7 @@ def scan(
                 console.print(
                     "\n[bold magenta]Running MULTI-TURN Strategies[/bold magenta]"
                 )
-            
+
             async def run_multi_turn() -> ScanResult:
                 engine = MultiTurnEngine(agent_target, httpx.AsyncClient())
                 res1 = await engine.run_strategy(CrescendoStrategy())
@@ -517,12 +517,12 @@ def behavioral_audit(
     agent_target = AgentTarget(
         name=name, url=target, method=method, headers=parsed_headers, body_template=body_template  # type: ignore[arg-type]
     )
-    
-    console.print(f"\n[bold magenta]Crucible Behavioral Audit[/bold magenta]")
+
+    console.print("\n[bold magenta]Crucible Behavioral Audit[/bold magenta]")
     console.print(f"Target: {name} ({target})\n")
-    
-    
+
     from crucible.models import ModuleResult
+
     async def _audit() -> ModuleResult:
         async with httpx.AsyncClient(timeout=30.0) as client:
             engine = BehavioralEngine(agent_target, client)
@@ -554,11 +554,11 @@ def profile(
     agent_target = AgentTarget(
         name=name, url=target, method=method, headers=parsed_headers, body_template=body_template  # type: ignore[arg-type]
     )
-    
-    console.print(f"\n[bold magenta]Crucible Agent Profiler[/bold magenta]")
-    
-    
+
+    console.print("\n[bold magenta]Crucible Agent Profiler[/bold magenta]")
+
     from crucible.models import AgentProfile
+
     async def _profile() -> AgentProfile:
         async with httpx.AsyncClient(timeout=30.0) as client:
             engine = AgentProfiler(agent_target, client)

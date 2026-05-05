@@ -3,8 +3,6 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-import httpx
-
 from crucible.core.response_extractor import extract_response
 from crucible.models import (
     AgentTarget,
@@ -16,6 +14,8 @@ from crucible.models import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    import httpx
 
     from crucible.attacks.base import BaseAttack
 
@@ -72,6 +72,7 @@ class MultiTurnEngine:
             if i < len(payloads) - 1:
                 # Give a small delay between turns
                 import anyio
+
                 await anyio.sleep(self.target.delay_ms / 1000.0)
 
         # Evaluate only the final turn for success

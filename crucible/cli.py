@@ -12,7 +12,7 @@ from rich.console import Console
 from crucible import __version__
 from crucible.core.cache import ScanCache
 from crucible.core.runner import run_scan
-from crucible.models import AgentTarget, ScanResult, Severity
+from crucible.models import BODY_FORMAT_PRESETS, AgentTarget, ScanResult, Severity
 from crucible.modules.security import get_all_modules
 from crucible.reporters.html_reporter import HTMLReporter
 from crucible.reporters.json_reporter import JSONReporter
@@ -30,6 +30,8 @@ app = typer.Typer(
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
+
+_DEFAULT_BODY_TEMPLATE = '{"message": "{payload}"}'
 
 
 def _version_callback(value: bool) -> None:
@@ -138,15 +140,40 @@ def scan(
         help="Headers as 'Key: Value' (repeatable).",
     ),
     body_template: str = typer.Option(
-        '{"message": "{payload}"}',
+        _DEFAULT_BODY_TEMPLATE,
         "--body",
         "-b",
         help="JSON body template with {payload} placeholder.",
+    ),
+    format_preset: str = typer.Option(
+        "",
+        "--format-preset",
+        help="Body format preset: openai | langchain | glean | raw | generic.",
+    ),
+    response_path: str = typer.Option(
+        "",
+        "--response-path",
+        help="JMESPath to extract response (e.g. 'choices[0].message.content').",
     ),
     timeout: float = typer.Option(
         30.0,
         "--timeout",
         help="Request timeout in seconds.",
+    ),
+    retry: int = typer.Option(
+        2,
+        "--retry",
+        help="Number of retries on failure (default: 2).",
+    ),
+    delay: int = typer.Option(
+        500,
+        "--delay",
+        help="Delay between requests in ms (default: 500).",
+    ),
+    proxy: str = typer.Option(
+        "",
+        "--proxy",
+        help="HTTP proxy URL (e.g. http://localhost:8080 for Burp Suite).",
     ),
     concurrency: int = typer.Option(
         5,
@@ -160,6 +187,16 @@ def scan(
         "--output-file",
         "-o",
         help="Save report to file.",
+    ),
+    mutate: bool = typer.Option(
+        False,
+        "--mutate",
+        help="Apply payload obfuscation mutations to bypass WAFs/guardrails.",
+    ),
+    generate_report: bool = typer.Option(
+        False,
+        "--generate-report",
+        help="Auto-generate a Bugcrowd/HackerOne Markdown PoC report on findings.",
     ),
     format: str = typer.Option(
         "table",
@@ -206,13 +243,30 @@ def scan(
 ) -> None:
     parsed_headers = _parse_headers(header)
 
+    # Resolve body template: explicit --body wins, then --format-preset, then default
+    resolved_body = body_template
+    if format_preset:
+        if format_preset not in BODY_FORMAT_PRESETS:
+            console.print(
+                f"[red]Unknown format preset: {format_preset}. "
+                f"Available: {', '.join(BODY_FORMAT_PRESETS.keys())}[/red]"
+            )
+            raise typer.Exit(code=1)
+        # Only apply preset if user didn't explicitly set --body
+        if body_template == _DEFAULT_BODY_TEMPLATE:
+            resolved_body = BODY_FORMAT_PRESETS[format_preset]
+
     agent_target = AgentTarget(
         name=name,
         url=target,  # type: ignore[arg-type]
         method=method,
         headers=parsed_headers,
-        body_template=body_template,
+        body_template=resolved_body,
         timeout=timeout,
+        response_path=response_path,
+        retry_count=retry,
+        delay_ms=delay,
+        proxy=proxy,
     )
 
     if format not in ["json", "html"] and not quiet:
@@ -242,11 +296,26 @@ def scan(
             quiet,
             format,
             verbose,
+            mutate,
         )
         if cache:
             scan_cache.set(cache_key, result, ttl_hours=cache_ttl)
 
     _render_output(result, format, output)
+
+    if generate_report:
+        from crucible.core.reporter import BugBountyReportGenerator
+
+        generator = BugBountyReportGenerator(output_dir=".")
+        report_path = generator.generate(result)
+        if report_path:
+            console.print(
+                f"\n[bold green]✓ Bug bounty report written to: {report_path}[/bold green]"
+            )
+        else:
+            console.print(
+                "\n[bold yellow]ℹ No vulnerable findings — report not generated.[/bold yellow]"
+            )
 
     if slack_webhook:
         reporter = SlackReporter()

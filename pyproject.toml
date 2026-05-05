@@ -49,6 +49,7 @@ dependencies = [
     "rich>=13.0.0",
     "httpx>=0.24.0",
     "anyio>=4.0.0",
+    "jmespath>=1.0.0",
 ]
 
 [project.optional-dependencies]

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Automated `MutationEngine` for payload obfuscation (Base64, URL encoding, Hex, Unicode, Whitespace, Polyglot) to bypass WAFs and guardrails.
+- Autonomous `BugBountyReportGenerator` to produce Markdown reports for successful critical/high vulnerabilities.
+- `--mutate` flag added to the CLI scan command to enable payload mutation.
+- `--generate-report` flag added to the CLI scan command to automatically generate a bug bounty report upon scan completion.
+
+
 ## [0.1.0] - 2026-04-21
 
 ### Added

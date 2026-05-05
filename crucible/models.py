@@ -51,6 +51,33 @@ class ScanStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+# Body format presets for common agent frameworks
+BODY_FORMAT_PRESETS: dict[str, str] = {
+    "openai": '{"messages":[{"role":"user","content":"{payload}"}]}',
+    "langchain": '{"input":"{payload}"}',
+    "glean": '{"query":"{payload}","peopleSearch":false}',
+    "raw": "{payload}",
+    "generic": '{"message":"{payload}"}',
+}
+
+# Common response paths for auto-detection (tried in order)
+DEFAULT_RESPONSE_PATHS: list[str] = [
+    "choices[0].message.content",
+    "result",
+    "response",
+    "answer",
+    "output",
+    "text",
+    "content",
+    "data.response",
+    "data.text",
+    "data.content",
+    "results[0].answer",
+    "response.text",
+    "message",
+]
+
+
 class AgentTarget(BaseModel):
 
     name: str = Field(
@@ -85,6 +112,26 @@ class AgentTarget(BaseModel):
         gt=0,
         le=300,
         description="Request timeout in seconds.",
+    )
+    response_path: str = Field(
+        default="",
+        description="JMESPath expression to extract agent response from JSON.",
+    )
+    retry_count: int = Field(
+        default=2,
+        ge=0,
+        le=10,
+        description="Number of retries on failure.",
+    )
+    delay_ms: int = Field(
+        default=500,
+        ge=0,
+        le=60000,
+        description="Delay between requests in milliseconds.",
+    )
+    proxy: str = Field(
+        default="",
+        description="HTTP proxy URL for traffic inspection (e.g. Burp Suite).",
     )
     description: str = Field(
         default="",

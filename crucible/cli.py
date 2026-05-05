@@ -310,11 +310,11 @@ def scan(
         report_path = generator.generate(result)
         if report_path:
             console.print(
-                f"\n[bold green]✓ Bug bounty report written to: {report_path}[/bold green]"
+                f"\n[bold green]* Bug bounty report written to: {report_path}[/bold green]"
             )
         else:
             console.print(
-                "\n[bold yellow]ℹ No vulnerable findings — report not generated.[/bold yellow]"
+                "\n[bold yellow]i No vulnerable findings - report not generated.[/bold yellow]"
             )
 
     if slack_webhook:

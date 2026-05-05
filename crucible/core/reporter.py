@@ -49,8 +49,8 @@ class BugBountyReportGenerator:
 
             for finding in vulnerabilities:
                 f.write(f"## Vulnerability: {finding.attack_name}\\n\\n")
-                f.write(f"**Category:** {finding.category}\\n")
-                f.write(f"**Severity:** {finding.severity}\\n\\n")
+                f.write(f"**Category:** {finding.category.value.upper()}\\n")
+                f.write(f"**Severity:** {finding.severity.value.upper()}\\n\\n")
 
                 f.write("### Description\\n")
                 # Fallback description if not provided in the finding

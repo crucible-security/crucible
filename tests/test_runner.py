@@ -65,7 +65,7 @@ class TestRunner:
         result = await run_scan(target, concurrency=10, timeout=1.0)
 
         assert result.status == ScanStatus.COMPLETED
-        assert len(result.modules) == 4
+        assert len(result.modules) == 8
 
     @respx.mock
     @pytest.mark.asyncio()

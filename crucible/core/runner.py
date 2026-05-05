@@ -65,6 +65,7 @@ async def run_module_with_progress(
     task_id: TaskID,
     verbose: bool,
     verbose_console: Console,
+    mutate: bool = False,
 ) -> None:
     progress.update(
         task_id, description=f"Running [bold cyan]{module.name}[/bold cyan]"
@@ -78,10 +79,10 @@ async def run_module_with_progress(
         color = "green" if finding.passed else "red"
 
         msg = (
-            f"[bold yellow][ATTACK][/bold yellow] {finding.attack_name} {module.name}\n"
-            f'Payload: "{finding.payload}"\n'
-            f'Response: "{finding.response_snippet}"\n'
-            f"Result: [{color}]{result_str}[/{color}]\n"
+            f"[bold yellow][ATTACK][/bold yellow] {finding.attack_name} {module.name}\\n"
+            f'Payload: "{finding.payload}"\\n'
+            f'Response: "{finding.response_snippet}"\\n'
+            f"Result: [{color}]{result_str}[/{color}]\\n"
         )
         if hasattr(progress, "console"):
             progress.console.print(msg)
@@ -89,7 +90,9 @@ async def run_module_with_progress(
             verbose_console.print(msg)
 
     try:
-        result = await module.run(target, client, on_finding=on_finding)
+        result = await module.run(
+            target, client, on_finding=on_finding, mutate_enabled=mutate
+        )
     finally:
         with _results_lock:
             module_results.append(result)
@@ -104,6 +107,7 @@ async def run_scan(
     quiet: bool = False,
     format: str = "table",
     verbose: bool = False,
+    mutate: bool = False,
 ) -> ScanResult:
     if modules is None:
         modules = get_all_modules()
@@ -150,6 +154,7 @@ async def run_scan(
                     limits=limits,
                     timeout=timeout,
                     follow_redirects=True,
+                    proxy=target.proxy or None,
                 ) as client,
                 anyio.create_task_group() as tg,
             ):
@@ -164,6 +169,7 @@ async def run_scan(
                         task_id,
                         verbose,
                         verbose_console,
+                        mutate,
                     )
 
             progress.update(task_id, description="[green]Scan complete[/green]")

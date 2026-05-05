@@ -51,6 +51,33 @@ class ScanStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+# Body format presets for common agent frameworks
+BODY_FORMAT_PRESETS: dict[str, str] = {
+    "openai": '{"messages":[{"role":"user","content":"{payload}"}]}',
+    "langchain": '{"input":"{payload}"}',
+    "glean": '{"query":"{payload}","peopleSearch":false}',
+    "raw": "{payload}",
+    "generic": '{"message":"{payload}"}',
+}
+
+# Common response paths for auto-detection (tried in order)
+DEFAULT_RESPONSE_PATHS: list[str] = [
+    "choices[0].message.content",
+    "result",
+    "response",
+    "answer",
+    "output",
+    "text",
+    "content",
+    "data.response",
+    "data.text",
+    "data.content",
+    "results[0].answer",
+    "response.text",
+    "message",
+]
+
+
 class AgentTarget(BaseModel):
 
     name: str = Field(
@@ -85,6 +112,26 @@ class AgentTarget(BaseModel):
         gt=0,
         le=300,
         description="Request timeout in seconds.",
+    )
+    response_path: str = Field(
+        default="",
+        description="JMESPath expression to extract agent response from JSON.",
+    )
+    retry_count: int = Field(
+        default=2,
+        ge=0,
+        le=10,
+        description="Number of retries on failure.",
+    )
+    delay_ms: int = Field(
+        default=500,
+        ge=0,
+        le=60000,
+        description="Delay between requests in milliseconds.",
+    )
+    proxy: str = Field(
+        default="",
+        description="HTTP proxy URL for traffic inspection (e.g. Burp Suite).",
     )
     description: str = Field(
         default="",
@@ -328,3 +375,103 @@ class ScanResult(BaseModel):
             "info": self.info_count,
             "duration": f"{self.duration_seconds:.1f}s",
         }
+
+
+# --- Multi-turn & Behavioral Models ---
+
+
+class ConversationTurn(BaseModel):
+
+    role: str
+    content: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ConversationHistory(BaseModel):
+
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
+    turns: list[ConversationTurn] = Field(default_factory=list)
+
+
+class DriftScore(BaseModel):
+
+    turn_index: int
+    semantic_drift: float = Field(ge=0.0, le=1.0)
+    formality_score: float = Field(ge=0.0, le=1.0)
+    topic_adherence: float = Field(ge=0.0, le=1.0)
+    refusal_signal: float = Field(ge=0.0, le=1.0)
+    composite_drift: float = Field(ge=0.0, le=1.0)
+
+
+class BehavioralProfile(BaseModel):
+
+    target_name: str
+    baseline_length_avg: float = 0.0
+    baseline_formality_avg: float = 0.0
+    baseline_refusal_avg: float = 0.0
+    drift_history: list[DriftScore] = Field(default_factory=list)
+    trust_degraded: bool = False
+    integrity_score: Grade = Grade.A
+
+
+# --- Profiler Models ---
+
+
+class AgentCapability(str, Enum):
+
+    SEARCH = "search"
+    CODE_EXECUTION = "code_execution"
+    DATABASE_ACCESS = "database_access"
+    EMAIL = "email"
+    EXTERNAL_API = "external_api"
+    FILE_SYSTEM = "file_system"
+    UNKNOWN = "unknown"
+
+
+class AgentProfile(BaseModel):
+
+    target_name: str
+    agent_type: str = "generic"
+    inferred_capabilities: list[AgentCapability] = Field(default_factory=list)
+    data_sources: list[str] = Field(default_factory=list)
+    system_prompt_hints: str = ""
+    recommended_modules: list[str] = Field(default_factory=list)
+
+
+# --- Compliance Models ---
+
+
+class RiskClassification(str, Enum):
+
+    UNACCEPTABLE = "unacceptable"
+    HIGH = "high"
+    LIMITED = "limited"
+    MINIMAL = "minimal"
+
+
+class ComplianceStatus(str, Enum):
+
+    COMPLIANT = "compliant"
+    NON_COMPLIANT = "non_compliant"
+    UNCLEAR = "unclear"
+
+
+class ComplianceRequirement(BaseModel):
+
+    article: str
+    description: str
+    risk_classification: RiskClassification
+    status: ComplianceStatus
+    related_findings: list[str] = Field(default_factory=list)
+    remediation: str = ""
+
+
+class ComplianceReport(BaseModel):
+
+    scan_id: str
+    target_name: str
+    standard: str = "EU AI Act 2024"
+    requirements: list[ComplianceRequirement] = Field(default_factory=list)
+    overall_status: ComplianceStatus = ComplianceStatus.UNCLEAR
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

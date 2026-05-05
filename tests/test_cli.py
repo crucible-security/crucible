@@ -47,9 +47,38 @@ class TestCLI:
         assert "--name" in output
         assert "--header" in output
 
+    def test_scan_help_shows_new_flags(self) -> None:
+        """Verify Phase 1 enterprise connectivity flags are visible."""
+        result = runner.invoke(app, ["scan", "--help"], color=False)
+        output = strip_ansi(result.output)
+        assert result.exit_code == 0
+        assert "--format-preset" in output
+        assert "--response-path" in output
+        assert "--retry" in output
+        assert "--delay" in output
+        assert "--proxy" in output
+
     def test_scan_missing_target(self) -> None:
         result = runner.invoke(app, ["scan"], color=False)
         assert result.exit_code != 0
+
+    @respx.mock
+    def test_scan_invalid_format_preset(self) -> None:
+        """Unknown format preset should fail with exit code 1."""
+        result = runner.invoke(
+            app,
+            [
+                "scan",
+                "--target",
+                "https://agent.test/chat",
+                "--format-preset",
+                "invalid_preset",
+                "--quiet",
+            ],
+            color=False,
+        )
+        assert result.exit_code == 1
+        assert "Unknown format preset" in strip_ansi(result.output)
 
     def test_init_creates_config(self, tmp_path: Path) -> None:
         import os

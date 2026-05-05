@@ -245,8 +245,8 @@ class TerminalReporter(BaseReporter):
         self.console.print(
             Panel(
                 Text.from_markup(
-                    "  [bold]📊 Need persistent dashboards & compliance reports?[/bold]\n"
-                    "  [dim cyan]→ https://crucible-cloud.vercel.app[/dim cyan]"
+                    "  [bold]* Need persistent dashboards & compliance reports?[/bold]\n"
+                    "  [dim cyan]-> https://crucible-cloud.vercel.app[/dim cyan]"
                 ),
                 border_style="dim",
                 padding=(0, 1),

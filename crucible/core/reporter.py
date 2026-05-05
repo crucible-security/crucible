@@ -39,43 +39,67 @@ class BugBountyReportGenerator:
         report_path = self.output_dir / f"crucible_bounty_report_{timestamp}.md"
 
         with open(report_path, "w", encoding="utf-8") as f:
-            f.write("# Crucible Security Vulnerability Report\\n\\n")
-            f.write(f"**Target:** `{result.target.url}`\\n")
+            f.write("# Crucible Security Vulnerability Report\n\n")
+            f.write("## Submission Summary\n")
+            f.write(f"- **Target URL:** `{result.target.url}`\n")
             f.write(
-                f"**Date Generated:** {datetime.datetime.now(datetime.timezone.utc).isoformat()}\\n"
+                f"- **Date:** {datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
             )
-            f.write(f"**Total Vulnerabilities Found:** {len(vulnerabilities)}\\n\\n")
-            f.write("---\\n\\n")
+            f.write(f"- **Total Findings:** {len(vulnerabilities)}\n")
 
-            for finding in vulnerabilities:
-                f.write(f"## Vulnerability: {finding.attack_name}\\n\\n")
-                f.write(f"**Category:** {finding.category.value.upper()}\\n")
-                f.write(f"**Severity:** {finding.severity.value.upper()}\\n\\n")
+            # Helper to calculate highest severity
+            sev_order = ["low", "medium", "high", "critical"]
+            highest_sev = "LOW"
+            if vulnerabilities:
+                highest_sev = max(
+                    (v.severity.value for v in vulnerabilities),
+                    key=lambda x: sev_order.index(x.lower()),
+                ).upper()
 
-                f.write("### Description\\n")
-                # Fallback description if not provided in the finding
+            f.write(f"- **Highest Severity:** {highest_sev}\n\n")
+            f.write("## Executive Summary\n")
+            f.write(
+                "A comprehensive security audit using the Crucible Agentic AI Security Framework has identified multiple high-impact vulnerabilities in the target system. These findings range from bypassable safety guardrails (Jailbreaks) to unauthorized goal manipulation (Goal Hijacking).\n\n"
+            )
+            f.write("---\n\n")
+
+            for i, finding in enumerate(vulnerabilities, 1):
                 f.write(
-                    f"{finding.description or 'A security boundary violation was detected.'}\\n\\n"
+                    f"## [{i}] {finding.title or finding.attack_name} ({finding.attack_name})\n\n"
                 )
+                f.write(f"**Severity:** {finding.severity.value.upper()}\n")
+                f.write(f"**Category:** {finding.category.value.upper()}\n")
+                f.write(f"**OWASP Ref:** {finding.owasp_ref or 'N/A'}\n\n")
 
-                f.write("### Proof of Concept (PoC)\\n")
-                f.write("The following payload was sent to the target:\\n\\n")
-                f.write("```text\\n")
-                f.write(f"{finding.payload}\\n")
-                f.write("```\\n\\n")
+                f.write("### Impact\n")
+                impact = (
+                    finding.description
+                    or "Exploitation allows for unauthorized state manipulation or data exfiltration from the AI agent context."
+                )
+                f.write(f"{impact}\n\n")
 
-                f.write("### Target Response\\n")
+                f.write("### Proof of Concept (PoC)\n")
                 f.write(
-                    "The target responded with the following, indicating successful exploitation:\\n\\n"
+                    "Using the Crucible CLI, the following adversarial payload was delivered:\n\n"
                 )
-                f.write("```text\\n")
-                f.write(f"{finding.response_snippet}\\n")
-                f.write("```\\n\\n")
+                f.write("```text\n")
+                f.write(f"{finding.payload}\n")
+                f.write("```\n\n")
 
-                f.write("### Remediation\\n")
+                f.write("### Observed Response\n")
                 f.write(
-                    f"{finding.remediation or 'Please review the input validation and output encoding mechanisms.'}\\n\\n"
+                    "The agent processed the payload and returned the following (indicating a successful bypass/hijack):\n\n"
                 )
-                f.write("---\\n\\n")
+                f.write("```text\n")
+                f.write(f"{finding.response_snippet}\n")
+                f.write("```\n\n")
+
+                f.write("### Remediation Recommendation\n")
+                remediation = (
+                    finding.remediation
+                    or "Implement strict input validation and output sanitization. Enforce a robust instruction hierarchy to prevent goal hijacking."
+                )
+                f.write(f"{remediation}\n\n")
+                f.write("---\n\n")
 
         return str(report_path)

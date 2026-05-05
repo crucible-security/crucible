@@ -161,6 +161,12 @@ def scan(
         "-b",
         help="JSON body template with {payload} placeholder.",
     ),
+    body_file: Path | None = typer.Option(
+        None,
+        "--body-file",
+        "-B",
+        help="Path to a file containing the JSON body template.",
+    ),
     strategy: str = typer.Option(
         "single-shot",
         "--strategy",
@@ -266,12 +272,22 @@ def scan(
         "--fail-on",
         help="Fail (exit non-zero) if findings match or exceed this severity (CRITICAL, HIGH, MEDIUM, LOW, INFO).",
     ),
+    module: list[str] | None = typer.Option(
+        None,
+        "--module",
+        help="Specific security modules to run (e.g. jailbreaks, prompt_injection). Repeat for multiple.",
+    ),
 ) -> None:
     parsed_headers = _parse_headers(header)
 
-    # Resolve body template: explicit --body wins, then --format-preset, then default
+    # Resolve body template: explicit --body wins, then --body-file, then --format-preset, then default
     resolved_body = body_template
-    if format_preset:
+    if body_file:
+        if not body_file.exists():
+            console.print(f"[red]Body file not found: {body_file}[/red]")
+            raise typer.Exit(code=1)
+        resolved_body = body_file.read_text(encoding="utf-8")
+    elif format_preset:
         if format_preset not in BODY_FORMAT_PRESETS:
             console.print(
                 f"[red]Unknown format preset: {format_preset}. "
@@ -299,6 +315,18 @@ def scan(
         _print_scan_header(name, target)
 
     modules = get_all_modules()
+    if module:
+        modules = [
+            m
+            for m in modules
+            if m.name.lower().replace(" ", "_") in [mod.lower() for mod in module]
+        ]
+        if not modules:
+            available = ", ".join(m.name for m in get_all_modules())
+            console.print(f"[red]No valid modules found in {module}.[/red]")
+            console.print(f"[dim]Available: {available}[/dim]")
+            raise typer.Exit(code=1)
+
     scan_cache = ScanCache()
     cache_key = scan_cache.get_cache_key(agent_target, modules)
 
@@ -320,12 +348,19 @@ def scan(
                 )
 
             async def run_multi_turn() -> ScanResult:
+                from crucible.attacks.multi_turn_strategies import (
+                    CrescendoStrategy,
+                    ContextConfusionStrategy,
+                    TokenTheftCrescendoStrategy,
+                )
+
                 engine = MultiTurnEngine(agent_target, httpx.AsyncClient())
                 res1 = await engine.run_strategy(CrescendoStrategy())
                 res2 = await engine.run_strategy(ContextConfusionStrategy())
+                res3 = await engine.run_strategy(TokenTheftCrescendoStrategy())
                 return ScanResult(
                     target=agent_target,
-                    modules=[res1, res2],
+                    modules=[res1, res2, res3],
                     status=ScanStatus.COMPLETED,
                 )
 
@@ -600,4 +635,7 @@ def compliance_report(
     console.print(
         f"[green]Compliance report ({standard}) generated at {output}[/green]"
     )
+
+
+if __name__ == "__main__":
     app()

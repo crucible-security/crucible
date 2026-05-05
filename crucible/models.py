@@ -145,7 +145,52 @@ class AgentTarget(BaseModel):
         return v.upper()
 
     def build_payload_body(self, payload: str) -> str:
-        return self.body_template.replace("{payload}", payload)
+        import json
+        import ast
+
+        template = self.body_template
+        data = None
+
+        try:
+            # 1. Try standard JSON first
+            data = json.loads(template)
+        except json.JSONDecodeError:
+            try:
+                # 2. Try loose parsing (handles missing quotes from shell stripping)
+                # We need to handle the {payload} placeholder by temporarily replacing it
+                # with a safe string that literal_eval won't choke on.
+                placeholder = "___CRUCIBLE_PAYLOAD_PLACEHOLDER___"
+                loose_template = template.replace("{payload}", placeholder)
+                data = ast.literal_eval(loose_template)
+
+                # If literal_eval succeeded, we have a dict.
+                # Now we need a recursive replacement to put the placeholder back.
+                def restore_placeholder(obj: Any) -> Any:
+                    if isinstance(obj, str):
+                        return obj.replace(placeholder, "{payload}")
+                    if isinstance(obj, list):
+                        return [restore_placeholder(item) for item in obj]
+                    if isinstance(obj, dict):
+                        return {k: restore_placeholder(v) for k, v in obj.items()}
+                    return obj
+
+                data = restore_placeholder(data)
+            except (ValueError, SyntaxError):
+                # 3. Final fallback to raw string replacement
+                return self.body_template.replace("{payload}", payload)
+
+        # Recursive function to find and replace {payload} in the JSON structure
+        def inject(obj: Any) -> Any:
+            if isinstance(obj, str):
+                return obj.replace("{payload}", payload)
+            if isinstance(obj, list):
+                return [inject(item) for item in obj]
+            if isinstance(obj, dict):
+                return {k: inject(v) for k, v in obj.items()}
+            return obj
+
+        injected_data = inject(data)
+        return json.dumps(injected_data)
 
 
 class Finding(BaseModel):

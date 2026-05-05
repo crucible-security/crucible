@@ -27,17 +27,25 @@ class MultiTurnEngine:
         self.history = ConversationHistory()
 
     async def _send_message(self, message: str) -> str:
-        # In a real engine, we'd need to construct the full context.
-        # Since we're dealing with generic API endpoints, we assume the API
-        # might be stateful (e.g. cookie based) or we append history to the prompt.
-        # For simplicity, we just send the message.
-
         self.history.turns.append(ConversationTurn(role="user", content=message))
 
-        # Append history to prompt if we want to simulate state for stateless APIs
-        # context = "\n".join(f"{t.role}: {t.content}" for t in self.history.turns)
+        # Check if this is a Google Gemini target
+        is_gemini = "generativelanguage.googleapis.com" in str(self.target.url)
 
-        body = self.target.build_payload_body(message)
+        if is_gemini:
+            # Gemini History Format: {"contents": [{"role": "user", "parts": [{"text": "..."}]}, ...]}
+            contents = []
+            for turn in self.history.turns:
+                # Gemini roles are "user" and "model"
+                role = "user" if turn.role == "user" else "model"
+                contents.append({"role": role, "parts": [{"text": turn.content}]})
+            import json
+
+            body = json.dumps({"contents": contents})
+        else:
+            # Default fallback: stateless or custom template
+            body = self.target.build_payload_body(message)
+
         headers = {"Content-Type": "application/json", **self.target.headers}
 
         try:

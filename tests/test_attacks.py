@@ -187,7 +187,7 @@ class TestSecurityModules:
 
     def test_get_all_modules(self) -> None:
         modules = get_all_modules()
-        assert len(modules) == 8
+        assert len(modules) == 10
         names = {m.name for m in modules}
         assert names == {
             "prompt_injection",
@@ -198,6 +198,8 @@ class TestSecurityModules:
             "memory_poisoning",
             "advanced_orchestration",
             "infrastructure_escalation",
+            "agentic_hijacking",
+            "browser_agent",
         }
 
     @respx.mock

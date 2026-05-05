@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import jmespath
+import jmespath  # type: ignore[import-untyped]
 
 from crucible.models import DEFAULT_RESPONSE_PATHS
 

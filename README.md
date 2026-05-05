@@ -47,9 +47,11 @@ crucible report crucible-report.json
 
 ## Why Crucible?
 
-- **Automated red-teaming** -- 90 real attack payloads run in under 60 seconds, not weeks of manual testing
+- **Behavioral integrity testing** -- the only tool that tests agent behavior *across conversations*, not just single-shot attacks
+- **Automated red-teaming** -- 90+ real attack payloads run in under 60 seconds, not weeks of manual testing
 - **OWASP-aligned** -- maps every attack to the OWASP Top 10 for LLM Applications and OWASP Agentic Top 10
 - **CI/CD native** -- `crucible scan --output json` pipes into any pipeline; fail builds on low grades
+- **Regulatory compliance** -- auto-generate EU AI Act 2024 compliance reports from scan results
 - **MCP security** -- the only tool with a native Model Context Protocol security module
 
 > **How does Crucible compare to Garak and PyRIT?** → See [docs/comparison.md](docs/comparison.md) for a detailed, objective feature matrix.
@@ -65,14 +67,16 @@ Join the waitlist for our upcoming cloud platform: [crucible-cloud.vercel.app](h
 
 | Module | Attacks | Status | OWASP Coverage |
 |--------|---------|--------|----------------|
-| Prompt Injection | 50 | Live | LLM01, LLM07 |
-| Goal Hijacking | 20 | Live | Agentic #1 |
-| Jailbreaks | 20 | Live | LLM01, LLM06 |
-| Tool Misuse | -- | Coming | Agentic #3 |
-| Identity Abuse | -- | Coming | Agentic #4 |
-| Memory Poisoning | -- | Coming | Agentic #5 |
-| Data Exfiltration | -- | Coming | LLM06 |
-| Hallucination | -- | Coming | LLM09 |
+| Prompt Injection | 50 | ✅ Live | LLM01, LLM07 |
+| Goal Hijacking | 20 | ✅ Live | Agentic #1 |
+| Jailbreaks | 20 | ✅ Live | LLM01, LLM06 |
+| Enterprise Graph | 10 | ✅ Live | Agentic #2, #4 |
+| Memory Poisoning | 8 | ✅ Live | Agentic #5 |
+| Infrastructure Escalation | 5 | ✅ Live | LLM06, SSRF |
+| Advanced Orchestration | 4 | ✅ Live | Agentic #3 |
+| MCP Security | 5 | ✅ Live | Agentic #3 |
+| Behavioral Drift | multi-turn | ✅ Live (v0.3) | Agentic #1, #2 |
+| Multi-turn Attacks | strategies | ✅ Live (v0.3) | LLM01, Agentic #1 |
 
 ## OWASP Agentic Top 10 Coverage
 
@@ -146,13 +150,33 @@ Score starts at **100** and deducts per vulnerability found:
 # Generate config
 crucible init --target URL --provider openai --key sk-xxx
 
-# Run a full scan
+# Run a standard scan
 crucible scan \
   --target https://my-agent.com/api/chat \
   --name "My ChatBot" \
   --header "Authorization: Bearer sk-xxx" \
   --timeout 30 \
   --concurrency 5
+
+# Run with payload mutation (bypass WAFs/guardrails)
+crucible scan --target URL --mutate
+
+# Multi-turn attack strategy
+crucible scan --target URL --strategy multi-turn
+
+# Use agent profile to target attacks
+crucible profile --target URL --output agent_profile.json
+crucible scan --target URL --profile agent_profile.json
+
+# Behavioral integrity audit (multi-turn drift detection)
+crucible behavioral-audit \
+  --target https://my-agent.com/api/chat \
+  --baseline-turns 5 \
+  --probe-turns 15
+
+# Generate EU AI Act compliance report from scan results
+crucible scan --target URL --output json > results.json
+crucible compliance-report --results results.json --output compliance.md
 
 # JSON output for CI/CD
 crucible scan --target URL --output json > report.json
@@ -176,23 +200,38 @@ Add to your CI/CD in 3 lines:
 
 ```
 crucible/
-  models.py             # Pydantic data models
-  cli.py                # Typer CLI (init, scan, report)
+  models.py                    # Pydantic data models
+  cli.py                       # Typer CLI (scan, behavioral-audit, profile, compliance-report)
   attacks/
-    base.py             # BaseAttack ABC
-    prompt_injection.py # 50 attack vectors
-    goal_hijacking.py   # 20 attack vectors
-    jailbreaks.py       # 20 attack vectors
+    base.py                    # BaseAttack ABC
+    prompt_injection.py        # 50 attack vectors
+    goal_hijacking.py          # 20 attack vectors
+    jailbreaks.py              # 20 attack vectors
+    enterprise_graph.py        # Cross-agent trust attacks
+    memory_poisoning.py        # Persistent state attacks
+    behavioral_escalation.py   # Multi-turn escalation sequences (v0.3)
+    multi_turn_strategies.py   # Crescendo & Context Confusion (v0.3)
+    profile_templates/         # Agent type detection templates (v0.3)
   modules/
-    base.py             # BaseModule ABC
-    security.py         # Module registry
+    base.py                    # BaseModule ABC
+    security.py                # Module registry
   core/
-    runner.py           # Async parallel scan engine (anyio)
-    scorer.py           # Deduction-based scoring + grading
+    runner.py                  # Async parallel scan engine (anyio)
+    scorer.py                  # Deduction-based scoring + grading
+    mutation_engine.py         # Payload obfuscation (6 strategies)
+    behavioral_engine.py       # Multi-turn behavioral drift engine (v0.3)
+    multi_turn_engine.py       # Multi-turn attack runner (v0.3)
+    profiler.py                # Agent capability profiler (v0.3)
+    compliance_engine.py       # EU AI Act mapping engine (v0.3)
+    reporter.py                # Bug bounty report generator
+    cache.py                   # TTL-based scan result cache
   reporters/
-    base.py             # BaseReporter ABC
-    terminal.py         # Rich terminal renderer
-    json_reporter.py    # JSON file exporter
+    base.py                    # BaseReporter ABC
+    terminal.py                # Rich terminal renderer
+    json_reporter.py           # JSON file exporter
+    html_reporter.py           # Interactive HTML report
+    slack.py                   # Slack webhook reporter
+    compliance_reporter.py     # Compliance Markdown/JSON reporter (v0.3)
 ```
 
 ## Community

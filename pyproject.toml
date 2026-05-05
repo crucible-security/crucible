@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "crucible-security"
-version = "0.1.0"
+version = "0.3.0"
 description = "pytest for AI agents -- test, score, and harden AI agents before production"
 readme = "README.md"
 license = {text = "Apache-2.0"}

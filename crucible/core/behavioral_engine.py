@@ -5,7 +5,6 @@ import math
 import time
 from typing import TYPE_CHECKING
 
-import httpx
 from rich.console import Console
 
 from crucible.core.response_extractor import extract_response
@@ -22,6 +21,8 @@ from crucible.models import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    import httpx
 
 
 def compute_tf(text: str) -> dict[str, float]:
@@ -68,6 +69,7 @@ class BehavioralEngine:
                 if attempt == self.target.retry_count:
                     return f"[ERROR] {e}"
                 import anyio
+
                 await anyio.sleep(0.5)
         return ""
 

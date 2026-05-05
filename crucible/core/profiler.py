@@ -86,7 +86,12 @@ class AgentProfiler:
         )
 
     def load_template(self, agent_type: str) -> dict[str, Any]:
-        template_path = Path(__file__).parent.parent / "attacks" / "profile_templates" / f"{agent_type}.json"
+        template_path = (
+            Path(__file__).parent.parent
+            / "attacks"
+            / "profile_templates"
+            / f"{agent_type}.json"
+        )
         if template_path.exists():
             data = json.loads(template_path.read_text())
             if isinstance(data, dict):

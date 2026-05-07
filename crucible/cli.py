@@ -21,6 +21,7 @@ from crucible.core.compliance_engine import ComplianceEngine
 from crucible.core.multi_turn_engine import MultiTurnEngine
 from crucible.core.profiler import AgentProfiler
 from crucible.core.runner import run_scan
+from crucible.models import Severity as _Severity
 from crucible.models import (
     BODY_FORMAT_PRESETS,
     AgentTarget,
@@ -225,6 +226,11 @@ def scan(
         "--mutate",
         help="Apply payload obfuscation mutations to bypass WAFs/guardrails.",
     ),
+    min_severity: str | None = typer.Option(
+        None,
+        "--min-severity",
+        help="Only run attacks at or above this severity level: CRITICAL, HIGH, MEDIUM, LOW, INFO.",
+    ),
     generate_report: bool = typer.Option(
         False,
         "--generate-report",
@@ -388,6 +394,14 @@ def scan(
                 except Exception as e:
                     console.print(f"[yellow]Failed to load profile: {e}[/yellow]")
 
+            # Resolve --min-severity string → Severity enum
+            _min_sev = None
+            if min_severity:
+                try:
+                    _min_sev = _Severity(min_severity.lower())
+                except ValueError:
+                    console.print(f"[red]Invalid --min-severity value: {min_severity}. Use: CRITICAL, HIGH, MEDIUM, LOW, INFO[/red]")
+                    raise typer.Exit(code=1)
             result = anyio.run(
                 run_scan,
                 agent_target,
@@ -398,6 +412,7 @@ def scan(
                 format,
                 verbose,
                 mutate,
+                _min_sev,
             )
 
         if cache:

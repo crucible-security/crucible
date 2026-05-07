@@ -21,7 +21,7 @@ from rich.progress import (
 )
 
 from crucible.core.scorer import finalize_scan_result
-from crucible.models import AgentTarget, Finding, ModuleResult, ScanResult, ScanStatus
+from crucible.models import AgentTarget, Finding, ModuleResult, ScanResult, ScanStatus, Severity
 from crucible.modules.security import get_all_modules
 
 if TYPE_CHECKING:
@@ -108,9 +108,39 @@ async def run_scan(
     format: str = "table",
     verbose: bool = False,
     mutate: bool = False,
+    min_severity: Severity | None = None,
 ) -> ScanResult:
     if modules is None:
         modules = get_all_modules()
+
+    # Filter attacks by --min-severity if specified
+    if min_severity is not None:
+        _SEVERITY_ORDER = {
+            Severity.CRITICAL: 4,
+            Severity.HIGH: 3,
+            Severity.MEDIUM: 2,
+            Severity.LOW: 1,
+            Severity.INFO: 0,
+        }
+        floor_level = _SEVERITY_ORDER.get(min_severity, 0)
+        skipped = 0
+        filtered_modules = []
+        for mod in modules:
+            kept_attacks = [
+                a for a in mod.get_attacks()
+                if _SEVERITY_ORDER.get(a.severity, 0) >= floor_level
+            ]
+            skipped += len(mod.get_attacks()) - len(kept_attacks)
+            if kept_attacks:
+                filtered_modules.append(mod)
+        modules = filtered_modules
+        if skipped > 0:
+            import sys as _sys
+            print(
+                f"[min-severity={min_severity.value.upper()}] Skipped {skipped} low-impact attack(s). "
+                f"Running {sum(len(m.get_attacks()) for m in modules)} attacks.",
+                file=_sys.stderr,
+            )
 
     scan = ScanResult(
         target=target,

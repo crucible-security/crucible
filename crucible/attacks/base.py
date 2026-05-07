@@ -35,6 +35,10 @@ class BaseAttack(ABC):
     title: str = ""
     category: AttackCategory = AttackCategory.PROMPT_INJECTION
     severity: Severity = Severity.HIGH
+    severity_floor: Severity = Severity.LOW
+    """Minimum severity threshold for this attack to run.
+    When --min-severity HIGH is passed, only attacks with
+    severity_floor >= HIGH will execute."""
     description: str = ""
     remediation: str = ""
     references: list[str] = []

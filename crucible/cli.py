@@ -90,8 +90,7 @@ def init(
     config_path = Path(".crucible.json")
     if config_path.exists():
         console.print(
-            "[yellow]Warning: .crucible.json already exists."
-            " Overwrite? [y/N][/yellow]"
+            "[yellow]Warning: .crucible.json already exists. Overwrite? [y/N][/yellow]"
         )
         confirm = input().strip().lower()
         if confirm != "y":
@@ -268,11 +267,6 @@ def scan(
         "--fail-on",
         help="Fail (exit non-zero) if findings match or exceed this severity (CRITICAL, HIGH, MEDIUM, LOW, INFO).",
     ),
-    module: list[str] | None = typer.Option(
-        None,
-        "--module",
-        help="Specific security modules to run (e.g. jailbreaks, prompt_injection). Repeat for multiple.",
-    ),
 ) -> None:
     parsed_headers = _parse_headers(header)
 
@@ -311,21 +305,8 @@ def scan(
         _print_scan_header(name, target)
 
     modules = get_all_modules()
-    if module:
-        modules = [
-            m
-            for m in modules
-            if m.name.lower().replace(" ", "_") in [mod.lower() for mod in module]
-        ]
-        if not modules:
-            available = ", ".join(m.name for m in get_all_modules())
-            console.print(f"[red]No valid modules found in {module}.[/red]")
-            console.print(f"[dim]Available: {available}[/dim]")
-            raise typer.Exit(code=1)
-
     scan_cache = ScanCache()
     cache_key = scan_cache.get_cache_key(agent_target, modules)
-
     result = None
     if cache and not no_cache:
         cached_result = scan_cache.get(cache_key)
@@ -464,9 +445,7 @@ def _parse_headers(
 
 def _print_scan_header(name: str, target: str) -> None:
     console.print()
-    console.print(
-        "[bold magenta]CRUCIBLE[/bold magenta]" " -- Starting security scan..."
-    )
+    console.print("[bold magenta]CRUCIBLE[/bold magenta] -- Starting security scan...")
     console.print(f"[dim]Target: {name} ({target})[/dim]")
     console.print()
 

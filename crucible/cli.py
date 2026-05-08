@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import profile
 import sys
 from pathlib import Path
 
@@ -76,8 +77,7 @@ def init(
     config_path = Path(".crucible.json")
     if config_path.exists():
         console.print(
-            "[yellow]Warning: .crucible.json already exists."
-            " Overwrite? [y/N][/yellow]"
+            "[yellow]Warning: .crucible.json already exists. Overwrite? [y/N][/yellow]"
         )
         confirm = input().strip().lower()
         if confirm != "y":
@@ -201,9 +201,20 @@ def scan(
     fail_on: str | None = typer.Option(
         None,
         "--fail-on",
-        help="Fail (exit non-zero) if findings match or exceed this severity (CRITICAL, HIGH, MEDIUM, LOW, INFO).",
+        help="Fail (exit non-zero) if findings match or exceed this severity...",
     ),
-) -> None:
+    profile: Path | None = typer.Option(  # noqa: F811
+        None,
+        "--profile",
+        "-p",
+        help="Path to agent_profile.json to filter relevant attack modules.",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+    ), 
+ ) -> None:
+
     parsed_headers = _parse_headers(header)
 
     agent_target = AgentTarget(
@@ -219,9 +230,15 @@ def scan(
         _print_scan_header(name, target)
 
     modules = get_all_modules()
+
+    if profile:
+        profile_data = json.loads(profile.read_text())
+        agent_type = profile_data.get("agent_type")
+        if not quiet:
+            console.print(f"[cyan]Target profile loaded: {agent_type}[/cyan]")
+
     scan_cache = ScanCache()
     cache_key = scan_cache.get_cache_key(agent_target, modules)
-
     result = None
     if cache and not no_cache:
         cached_result = scan_cache.get(cache_key)
@@ -297,9 +314,7 @@ def _parse_headers(
 
 def _print_scan_header(name: str, target: str) -> None:
     console.print()
-    console.print(
-        "[bold magenta]CRUCIBLE[/bold magenta]" " -- Starting security scan..."
-    )
+    console.print("[bold magenta]CRUCIBLE[/bold magenta] -- Starting security scan...")
     console.print(f"[dim]Target: {name} ({target})[/dim]")
     console.print()
 

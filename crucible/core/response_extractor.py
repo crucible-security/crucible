@@ -37,7 +37,7 @@ def extract_response(raw_text: str, response_path: str = "") -> str:
         return data
 
     # If data is not a dict/list, JMESPath won't help
-    if not isinstance(data, dict | list):
+    if not isinstance(data, (dict, list)):  # noqa: UP038
         return raw_text
 
     # If explicit path provided, use it

@@ -145,8 +145,8 @@ class AgentTarget(BaseModel):
         return v.upper()
 
     def build_payload_body(self, payload: str) -> str:
-        import json
         import ast
+        import json
 
         template = self.body_template
         data = None

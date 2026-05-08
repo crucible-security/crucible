@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from crucible.attacks.agentic import ALL_AGENTIC_ATTACKS
 from crucible.attacks.advanced_orchestration import ALL_ADVANCED_ORCHESTRATION_ATTACKS
+from crucible.attacks.agentic import ALL_AGENTIC_ATTACKS
 from crucible.attacks.browser_agent import ALL_BROWSER_AGENT_ATTACKS
 from crucible.attacks.enterprise_graph import ALL_ENTERPRISE_GRAPH_ATTACKS
 from crucible.attacks.goal_hijacking import ALL_GOAL_HIJACKING_ATTACKS

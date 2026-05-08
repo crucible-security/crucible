@@ -11,10 +11,6 @@ import typer
 from rich.console import Console
 
 from crucible import __version__
-from crucible.attacks.multi_turn_strategies import (
-    ContextConfusionStrategy,
-    CrescendoStrategy,
-)
 from crucible.core.behavioral_engine import BehavioralEngine
 from crucible.core.cache import ScanCache
 from crucible.core.compliance_engine import ComplianceEngine
@@ -349,8 +345,8 @@ def scan(
 
             async def run_multi_turn() -> ScanResult:
                 from crucible.attacks.multi_turn_strategies import (
-                    CrescendoStrategy,
                     ContextConfusionStrategy,
+                    CrescendoStrategy,
                     TokenTheftCrescendoStrategy,
                 )
 

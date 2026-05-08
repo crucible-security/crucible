@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from crucible.attacks.base import BaseAttack
 from crucible.models import AttackCategory, Severity
 

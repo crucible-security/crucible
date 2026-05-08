@@ -242,6 +242,16 @@ class TerminalReporter(BaseReporter):
                 style="dim",
             ),
         )
+        self.console.print(
+            Panel(
+                Text.from_markup(
+                    "  [bold]* Need persistent dashboards & compliance reports?[/bold]\n"
+                    "  [dim cyan]-> https://crucible-cloud.vercel.app[/dim cyan]"
+                ),
+                border_style="dim",
+                padding=(0, 1),
+            )
+        )
 
     def _get_recommendations(self, result: ScanResult) -> list[str]:
         recs: list[str] = []

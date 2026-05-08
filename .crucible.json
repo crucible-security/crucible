@@ -1,0 +1,23 @@
+{
+  "target": {
+    "name": "OpenAI-Suite",
+    "url": "https://api.openai.com/v1/chat/completions",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body_template": "{\"model\": \"gpt-4o-mini\", \"messages\": [{\"role\": \"user\", \"content\": \"{payload}\"}]}",
+    "timeout": 60,
+    "delay_ms": 1000
+  },
+  "scan": {
+    "modules": [
+      "jailbreaks",
+      "prompt_injection",
+      "goal_hijacking"
+    ],
+    "mutate": true,
+    "generate_report": true,
+    "verbose": true
+  }
+}

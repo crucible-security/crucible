@@ -1,0 +1,8 @@
+{
+  "agent_type": "generic",
+  "recommended_modules": [
+    "prompt_injection",
+    "goal_hijacking",
+    "jailbreaks"
+  ]
+}

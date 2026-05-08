@@ -28,13 +28,16 @@ class BaseModule(ABC):
         target: AgentTarget,
         client: httpx.AsyncClient,
         on_finding: Callable[[Finding], None] | None = None,
+        mutate_enabled: bool = False,
     ) -> ModuleResult:
         attacks = self.get_attacks()
         all_findings: list[Finding] = []
         start = time.monotonic()
 
         for attack in attacks:
-            findings = await attack.execute(target, client, on_finding=on_finding)
+            findings = await attack.execute(
+                target, client, on_finding=on_finding, mutate_enabled=mutate_enabled
+            )
             all_findings.extend(findings)
 
         duration = time.monotonic() - start

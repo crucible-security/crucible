@@ -73,12 +73,12 @@ class TestRunner:
             return_value=httpx.Response(200, text="Refused.")
         )
 
-        # This will run all 4 default modules
+        # This will run all default modules (10 modules)
         # We use a very small timeout and concurrency to keep it fast
         result = await run_scan(target, concurrency=10, timeout=1.0)
 
         assert result.status == ScanStatus.COMPLETED
-        assert len(result.modules) == 4
+        assert len(result.modules) == 10
 
     @respx.mock
     @pytest.mark.asyncio()

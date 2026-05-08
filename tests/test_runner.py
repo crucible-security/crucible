@@ -5,7 +5,7 @@ import pytest
 import respx
 
 from crucible.core.runner import run_scan
-from crucible.models import AgentTarget, ScanStatus, ScanResult, ModuleResult
+from crucible.models import AgentTarget, ScanStatus
 from crucible.modules.security import GoalHijackingModule
 
 

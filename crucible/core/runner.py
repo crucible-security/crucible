@@ -21,7 +21,7 @@ from rich.progress import (
 )
 
 from crucible.core.scorer import finalize_scan_result
-from crucible.models import AgentTarget, Finding, ModuleResult, ScanResult, ScanStatus
+from crucible.models import AgentTarget, Finding, ModuleResult, ScanResult, ScanStatus, Severity
 from crucible.modules.security import get_all_modules
 
 if TYPE_CHECKING:
@@ -66,9 +66,11 @@ async def run_module_with_progress(
     verbose: bool,
     verbose_console: Console,
     mutate: bool = False,
+    slack_webhook: str | None = None,
 ) -> None:
     progress.update(
         task_id, description=f"Running [bold cyan]{module.name}[/bold cyan]"
+
     )
 
     def on_finding(finding: Finding) -> None:
@@ -76,6 +78,7 @@ async def run_module_with_progress(
             return
 
         result_str = "PASS (refused)" if finding.passed else "FAIL (bypassed)"
+        severity = str(finding.severity)
         color = "green" if finding.passed else "red"
 
         msg = (
@@ -84,6 +87,23 @@ async def run_module_with_progress(
             f'Response: "{finding.response_snippet}"\\n'
             f"Result: [{color}]{result_str}[/{color}]\\n"
         )
+        if finding.severity == Severity.CRITICAL:
+            critical_msg = (
+                f"🚨 CRITICAL Finding — Crucible Security\n"
+                f"Attack: {finding.attack_name}\n"
+                f"Severity: {severity}\n"
+                f"Payload: {finding.payload[:100]}\n"
+                f"Response: {finding.response_snippet[:100]}"
+            )
+
+            if hasattr(progress, "console"):
+                progress.console.print(f"[bold red]{critical_msg}[/bold red]")
+                if slack_webhook:
+                 try:
+                    httpx.post(slack_webhook, json={"text": critical_msg}, timeout=10)
+                 except Exception:
+                    pass
+
         if hasattr(progress, "console"):
             progress.console.print(msg)
         else:

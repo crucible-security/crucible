@@ -139,6 +139,11 @@ class BaseAttack(ABC):
 
         for attempt in range(max_attempts):
             try:
+                if target.dry_run:
+                    response_text = "[DRY RUN] Request skipped"
+                    passed = True
+                    break
+
                 # Apply delay between requests (and before retries)
                 if target.delay_ms > 0 and attempt > 0:
                     await anyio.sleep(target.delay_ms / 1000.0)

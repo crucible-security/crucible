@@ -267,6 +267,11 @@ def scan(
         "--fail-on",
         help="Fail (exit non-zero) if findings match or exceed this severity (CRITICAL, HIGH, MEDIUM, LOW, INFO).",
     ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview attacks without sending requests (Dry Run).",
+    ),
 ) -> None:
     parsed_headers = _parse_headers(header)
 
@@ -299,6 +304,7 @@ def scan(
         retry_count=retry,
         delay_ms=delay,
         proxy=proxy,
+        dry_run=dry_run,
     )
 
     if format not in ["json", "html"] and not quiet:
@@ -375,6 +381,7 @@ def scan(
                 format,
                 verbose,
                 mutate,
+                dry_run,
             )
 
         if cache:

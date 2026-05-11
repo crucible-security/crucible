@@ -138,6 +138,10 @@ class AgentTarget(BaseModel):
         max_length=500,
         description="Optional description of the target agent.",
     )
+    dry_run: bool = Field(
+        default=False,
+        description="If True, preview attacks without sending requests.",
+    )
 
     @field_validator("method", mode="before")
     @classmethod
@@ -404,6 +408,10 @@ class ScanResult(BaseModel):
         default_factory=dict,
         description="Additional scan-level metadata.",
     )
+
+    @property
+    def is_dry_run(self) -> bool:
+        return self.target.dry_run or self.metadata.get("dry_run", False)
 
     def summary(self) -> dict[str, Any]:
         return {

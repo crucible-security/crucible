@@ -65,6 +65,17 @@ class TerminalReporter(BaseReporter):
         )
         self.console.print()
 
+        if result.is_dry_run:
+            self.console.print(
+                Panel(
+                    "[bold yellow][!] DRY RUN MODE ENABLED[/bold yellow]\n"
+                    "[dim]No actual requests were sent to the target agent.[/dim]",
+                    border_style="yellow",
+                    padding=(1, 2),
+                )
+            )
+            self.console.print()
+
         info = Table(show_header=False, box=None, padding=(0, 2))
         info.add_column("Key", style="dim")
         info.add_column("Value", style="bold")

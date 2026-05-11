@@ -66,6 +66,7 @@ async def run_module_with_progress(
     verbose: bool,
     verbose_console: Console,
     mutate: bool = False,
+    dry_run: bool = False,
 ) -> None:
     progress.update(
         task_id, description=f"Running [bold cyan]{module.name}[/bold cyan]"
@@ -79,11 +80,13 @@ async def run_module_with_progress(
         color = "green" if finding.passed else "red"
 
         msg = (
-            f"[bold yellow][ATTACK][/bold yellow] {finding.attack_name} {module.name}\\n"
-            f'Payload: "{finding.payload}"\\n'
-            f'Response: "{finding.response_snippet}"\\n'
-            f"Result: [{color}]{result_str}[/{color}]\\n"
+            f"[bold yellow][ATTACK][/bold yellow] {finding.attack_name} {module.name}\n"
+            f'Payload: "{finding.payload}"\n'
+            f'Response: "{finding.response_snippet}"\n'
+            f"Result: [{color}]{result_str}[/{color}]\n"
         )
+        if dry_run:
+            msg = f"[bold cyan][DRY RUN][/bold cyan] Would send: {finding.attack_name} -> {finding.payload}\n"
         if hasattr(progress, "console"):
             progress.console.print(msg)
         else:
@@ -108,6 +111,7 @@ async def run_scan(
     format: str = "table",
     verbose: bool = False,
     mutate: bool = False,
+    dry_run: bool = False,
 ) -> ScanResult:
     if modules is None:
         modules = get_all_modules()
@@ -170,6 +174,7 @@ async def run_scan(
                         verbose,
                         verbose_console,
                         mutate,
+                        dry_run,
                     )
 
             progress.update(task_id, description="[green]Scan complete[/green]")
@@ -182,6 +187,8 @@ async def run_scan(
     scan.modules = module_results
     scan.completed_at = datetime.now(timezone.utc)
     scan.duration_seconds = round(time.monotonic() - start, 3)
+    if dry_run:
+        scan.metadata["dry_run"] = True
 
     finalize_scan_result(scan)
 

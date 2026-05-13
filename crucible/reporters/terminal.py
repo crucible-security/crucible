@@ -93,16 +93,28 @@ class TerminalReporter(BaseReporter):
 
     def _render_dry_run_summary(self, result: ScanResult) -> None:
         module_count = result.metadata.get("module_count", len(result.modules))
+        module_names = result.metadata.get(
+            "module_names", [module.module_name for module in result.modules]
+        )
         payload_count = result.metadata.get(
             "payload_count", sum(module.total_attacks for module in result.modules)
         )
+        request_rate = result.metadata.get("request_rate_per_second")
+        duration = result.metadata.get("estimated_duration_seconds", 0.0)
+        duration_label = f"{float(duration):.1f}s"
+        if request_rate:
+            duration_label = f"{duration_label} at {float(request_rate):g} req/sec"
 
         summary = Table(show_header=False, box=None, padding=(0, 2))
         summary.add_column("Key", style="dim")
         summary.add_column("Value", style="bold")
         summary.add_row("Target URL", str(result.target.url))
-        summary.add_row("Modules", str(module_count))
-        summary.add_row("Payloads", str(payload_count))
+        summary.add_row("Modules", f"{module_count} ({', '.join(module_names)})")
+        summary.add_row("Total attacks", str(payload_count))
+        summary.add_row("Estimated duration", duration_label)
+        summary.add_row(
+            "Rate limit cost", f"{result.metadata.get('rate_limit_cost', payload_count)} requests"
+        )
         summary.add_row("Network", "No requests sent")
 
         self.console.print(

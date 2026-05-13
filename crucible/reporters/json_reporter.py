@@ -27,7 +27,7 @@ class JSONReporter(BaseReporter):
 
     def to_json(self, result: ScanResult) -> str:
         data = self.to_dict(result)
-        return json.dumps(data, indent=self.indent, ensure_ascii=False)
+        return json.dumps(data, indent=self.indent, ensure_ascii=True)
 
     def write(self, result: ScanResult, path: str | Path) -> Path:
         output = Path(path).resolve()

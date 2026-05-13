@@ -26,6 +26,12 @@ from crucible.models import (
 )
 from crucible.modules.security import get_all_modules
 from crucible.reporters.compliance_reporter import ComplianceReporter
+from crucible.core.comparator import (
+    ComparisonResult,
+    compare_scans,
+    load_scan_result,
+)
+from crucible.reporters.diff_reporter import DiffReporter
 from crucible.reporters.html_reporter import HTMLReporter
 from crucible.reporters.json_reporter import JSONReporter
 from crucible.reporters.slack import SlackReporter
@@ -610,6 +616,84 @@ def compliance_report(
     console.print(
         f"[green]Compliance report ({standard}) generated at {output}[/green]"
     )
+
+
+@app.command()
+def compare(
+    before: Path = typer.Option(
+        ...,
+        "--before",
+        "-b",
+        help="Path to the earlier scan results JSON file.",
+    ),
+    after: Path = typer.Option(
+        ...,
+        "--after",
+        "-a",
+        help="Path to the later scan results JSON file.",
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Save HTML diff report to file.",
+    ),
+) -> None:
+    """Diff two scan results to show fixed, remaining, and regression findings."""
+    if not before.exists():
+        console.print(f"[red]File not found: {before}[/red]")
+        raise typer.Exit(code=1)
+
+    if not after.exists():
+        console.print(f"[red]File not found: {after}[/red]")
+        raise typer.Exit(code=1)
+
+    scan_before = load_scan_result(before)
+    scan_after = load_scan_result(after)
+
+    comparison = compare_scans(scan_before, scan_after)
+    summary = comparison.summary
+
+    console.print()
+    console.print("[bold magenta]Crucible Scan Comparison[/bold magenta]")
+    console.print(f"[dim]Before: {before.name} | After: {after.name}[/dim]")
+    console.print()
+
+    fixed = summary["fixed"]
+    remaining = summary["remaining"]
+    regressions = summary["regressions"]
+
+    console.print(
+        f"Summary: "
+        f"[green]{fixed} fixed[/green], "
+        f"[yellow]{remaining} remaining[/yellow], "
+        f"[magenta]{regressions} regression[/magenta]"
+    )
+
+    if comparison.fixed:
+        console.print("\n[dim]--- Fixed ---[/dim]")
+        for f in comparison.fixed:
+            console.print(f"  [green]✓[/green] {_esc_cli(f.get('title', '—'))}")
+
+    if comparison.remaining:
+        console.print("\n[dim]--- Remaining ---[/dim]")
+        for f in comparison.remaining:
+            entry = f.get("after", f.get("before", {}))
+            console.print(f"  [yellow]●[/yellow] {_esc_cli(entry.get('title', '—'))}")
+
+    if comparison.regressions:
+        console.print("\n[dim]--- Regressions ---[/dim]")
+        for f in comparison.regressions:
+            console.print(f"  [magenta]▲[/magenta] {_esc_cli(f.get('title', '—'))}")
+
+    if output:
+        reporter = DiffReporter()
+        saved = reporter.write(comparison, output)
+        console.print(f"\n[green]Diff report saved to {saved}[/green]")
+
+
+def _esc_cli(text: str) -> str:
+    return text.replace("[", "\\[").replace("]", "\\]")
 
 
 if __name__ == "__main__":

@@ -56,6 +56,38 @@ def _module_payload_count(module: BaseModule) -> int:
     return sum(len(attack.get_payloads()) for attack in module.get_attacks())
 
 
+def _build_dry_run_preview(
+    target: AgentTarget,
+    modules: list[BaseModule],
+    preview_limit: int = 3,
+) -> dict[str, Any]:
+    preview_payloads: list[dict[str, str]] = []
+    payload_count = 0
+
+    for module in modules:
+        for attack in module.get_attacks():
+            payloads = attack.get_payloads()
+            payload_count += len(payloads)
+            for payload in payloads:
+                if len(preview_payloads) >= preview_limit:
+                    continue
+                preview_payloads.append(
+                    {
+                        "module": module.name,
+                        "attack": attack.name,
+                        "payload": payload,
+                    }
+                )
+
+    return {
+        "dry_run": True,
+        "target_url": str(target.url),
+        "module_count": len(modules),
+        "payload_count": payload_count,
+        "preview_payloads": preview_payloads,
+    }
+
+
 async def run_module_with_progress(
     module: BaseModule,
     target: AgentTarget,
@@ -116,6 +148,10 @@ async def run_scan(
     if modules is None:
         modules = get_all_modules()
 
+    dry_run = dry_run or target.dry_run
+    if dry_run and not target.dry_run:
+        target = target.model_copy(update={"dry_run": True})
+
     scan = ScanResult(
         target=target,
         status=ScanStatus.RUNNING,
@@ -137,6 +173,7 @@ async def run_scan(
         TextColumn("{task.percentage:>3.0f}%"),
         TimeRemainingColumn(),
     ]
+    dry_run_preview = _build_dry_run_preview(target, modules) if dry_run else None
 
     # nullcontext-style: skip Rich entirely in quiet mode
     progress_cm = (
@@ -187,8 +224,8 @@ async def run_scan(
     scan.modules = module_results
     scan.completed_at = datetime.now(timezone.utc)
     scan.duration_seconds = round(time.monotonic() - start, 3)
-    if dry_run:
-        scan.metadata["dry_run"] = True
+    if dry_run_preview:
+        scan.metadata.update(dry_run_preview)
 
     finalize_scan_result(scan)
 

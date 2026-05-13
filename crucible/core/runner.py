@@ -59,6 +59,7 @@ def _module_payload_count(module: BaseModule) -> int:
 def _build_dry_run_preview(
     target: AgentTarget,
     modules: list[BaseModule],
+    concurrency: int,
     preview_limit: int = 3,
 ) -> dict[str, Any]:
     preview_payloads: list[dict[str, str]] = []
@@ -79,11 +80,21 @@ def _build_dry_run_preview(
                     }
                 )
 
+    delay_seconds = target.delay_ms / 1000
+    request_rate = round(concurrency / delay_seconds, 2) if delay_seconds > 0 else None
+    estimated_duration = (
+        round(payload_count / request_rate, 2) if request_rate and payload_count else 0.0
+    )
+
     return {
         "dry_run": True,
         "target_url": str(target.url),
         "module_count": len(modules),
+        "module_names": [module.name for module in modules],
         "payload_count": payload_count,
+        "estimated_duration_seconds": estimated_duration,
+        "request_rate_per_second": request_rate,
+        "rate_limit_cost": payload_count,
         "preview_payloads": preview_payloads,
     }
 
@@ -173,7 +184,9 @@ async def run_scan(
         TextColumn("{task.percentage:>3.0f}%"),
         TimeRemainingColumn(),
     ]
-    dry_run_preview = _build_dry_run_preview(target, modules) if dry_run else None
+    dry_run_preview = (
+        _build_dry_run_preview(target, modules, concurrency) if dry_run else None
+    )
 
     # nullcontext-style: skip Rich entirely in quiet mode
     progress_cm = (

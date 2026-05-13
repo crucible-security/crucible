@@ -44,6 +44,10 @@ class TerminalReporter(BaseReporter):
 
     def render(self, result: ScanResult) -> None:
         self._render_header(result)
+        if result.is_dry_run:
+            self._render_dry_run_summary(result)
+            return
+
         self._render_score_panel(result)
         self._render_module_results(result)
         self._render_findings_table(result)
@@ -85,6 +89,61 @@ class TerminalReporter(BaseReporter):
         info.add_row("Duration", f"{result.duration_seconds:.1f}s")
         info.add_row("Status", result.status.value.upper())
         self.console.print(info)
+        self.console.print()
+
+    def _render_dry_run_summary(self, result: ScanResult) -> None:
+        module_count = result.metadata.get("module_count", len(result.modules))
+        payload_count = result.metadata.get(
+            "payload_count", sum(module.total_attacks for module in result.modules)
+        )
+
+        summary = Table(show_header=False, box=None, padding=(0, 2))
+        summary.add_column("Key", style="dim")
+        summary.add_column("Value", style="bold")
+        summary.add_row("Target URL", str(result.target.url))
+        summary.add_row("Modules", str(module_count))
+        summary.add_row("Payloads", str(payload_count))
+        summary.add_row("Network", "No requests sent")
+
+        self.console.print(
+            Panel(
+                summary,
+                title="[bold yellow]Dry Run Preview[/bold yellow]",
+                border_style="yellow",
+                padding=(1, 2),
+            )
+        )
+        self.console.print()
+
+        preview_payloads = result.metadata.get("preview_payloads", [])
+        if preview_payloads:
+            table = Table(
+                title="First 3 Payloads",
+                title_style="bold",
+                border_style="cyan",
+                show_lines=True,
+            )
+            table.add_column("Module", style="cyan", no_wrap=True)
+            table.add_column("Attack", style="dim")
+            table.add_column("Payload", overflow="fold")
+
+            for item in preview_payloads[:3]:
+                if isinstance(item, dict):
+                    table.add_row(
+                        escape(str(item.get("module", ""))),
+                        escape(str(item.get("attack", ""))),
+                        escape(str(item.get("payload", ""))),
+                    )
+
+            self.console.print(table)
+            self.console.print()
+
+        self.console.print(
+            Panel(
+                "[green]Dry run complete. No network requests were sent.[/green]",
+                border_style="green",
+            )
+        )
         self.console.print()
 
     def _render_score_panel(self, result: ScanResult) -> None:

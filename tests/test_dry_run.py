@@ -55,5 +55,9 @@ async def test_dry_run_flag_normalizes_target_and_records_preview(
     assert result.metadata["dry_run"] is True
     assert result.metadata["target_url"] == "http://localhost:8080/chat"
     assert result.metadata["module_count"] == 1
+    assert result.metadata["module_names"] == [modules[0].name]
     assert result.metadata["payload_count"] == result.modules[0].total_attacks
+    assert result.metadata["estimated_duration_seconds"] > 0
+    assert result.metadata["request_rate_per_second"] == 10.0
+    assert result.metadata["rate_limit_cost"] == result.modules[0].total_attacks
     assert len(result.metadata["preview_payloads"]) == 3

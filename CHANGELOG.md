@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Scan Comparison Engine** (`crucible compare`) — differential analysis between two scan results
+  to verify vulnerability fixes and identify regressions.
+- **Diff Reporter** — generates a standalone HTML dashboard showing Fixed, Remaining, New, and
+  Regression findings with visual status badges.
+- `FindingDiff` and `ScanDiff` models for structured comparison data.
+
 ## [0.3.0] - 2026-05-05
 
 ### Added

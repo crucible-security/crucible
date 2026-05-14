@@ -13,6 +13,7 @@ from rich.console import Console
 from crucible import __version__
 from crucible.core.behavioral_engine import BehavioralEngine
 from crucible.core.cache import ScanCache
+from crucible.core.comparator import Comparator
 from crucible.core.compliance_engine import ComplianceEngine
 from crucible.core.multi_turn_engine import MultiTurnEngine
 from crucible.core.profiler import AgentProfiler
@@ -26,6 +27,7 @@ from crucible.models import (
 )
 from crucible.modules.security import get_all_modules
 from crucible.reporters.compliance_reporter import ComplianceReporter
+from crucible.reporters.diff_reporter import DiffReporter
 from crucible.reporters.html_reporter import HTMLReporter
 from crucible.reporters.json_reporter import JSONReporter
 from crucible.reporters.slack import SlackReporter
@@ -610,6 +612,46 @@ def compliance_report(
     console.print(
         f"[green]Compliance report ({standard}) generated at {output}[/green]"
     )
+
+
+@app.command()
+def compare(
+    before: Path = typer.Option(
+        ..., "--before", help="Path to the earlier scan result JSON."
+    ),
+    after: Path = typer.Option(
+        ..., "--after", help="Path to the later scan result JSON."
+    ),
+    output: Path = typer.Option(
+        Path("diff-report.html"),
+        "--output",
+        "-o",
+        help="Path to save the HTML diff report.",
+    ),
+) -> None:
+    """Compare two scan results to verify fixes and identify regressions."""
+    try:
+        before_data = json.loads(before.read_text(encoding="utf-8"))
+        after_data = json.loads(after.read_text(encoding="utf-8"))
+
+        before_result = ScanResult.model_validate(before_data)
+        after_result = ScanResult.model_validate(after_data)
+    except Exception as e:
+        console.print(f"[red]Error loading scan results: {e}[/red]")
+        raise typer.Exit(code=1) from e
+
+    comparator = Comparator()
+    diff = comparator.compare(before_result, after_result)
+
+    reporter = DiffReporter()
+    report_path = reporter.write(diff, output)
+
+    console.print("\n[bold green]Comparison Complete![/bold green]")
+    console.print(f"Fixed: [green]{diff.fixed_count}[/green]")
+    console.print(f"Remaining: [red]{diff.remaining_count}[/red]")
+    console.print(f"New Findings: [yellow]{diff.new_count}[/yellow]")
+    console.print(f"Regressions: [bold red]{diff.regression_count}[/bold red]")
+    console.print(f"\nReport generated: [cyan]{report_path}[/cyan]")
 
 
 if __name__ == "__main__":

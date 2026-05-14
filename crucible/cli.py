@@ -13,6 +13,11 @@ from rich.console import Console
 from crucible import __version__
 from crucible.core.behavioral_engine import BehavioralEngine
 from crucible.core.cache import ScanCache
+from crucible.core.comparator import (
+    compare_scan_results,
+    format_terminal_summary,
+    load_scan_result,
+)
 from crucible.core.compliance_engine import ComplianceEngine
 from crucible.core.multi_turn_engine import MultiTurnEngine
 from crucible.core.profiler import AgentProfiler
@@ -509,6 +514,51 @@ def report(
         raise typer.Exit(code=1) from exc
 
     _render_output(result, format, output)
+
+
+@app.command()
+def compare(
+    before: Path = typer.Option(
+        ...,
+        "--before",
+        help="Path to the baseline Crucible JSON scan report.",
+    ),
+    after: Path = typer.Option(
+        ...,
+        "--after",
+        help="Path to the follow-up Crucible JSON scan report.",
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "--output-file",
+        "-o",
+        help="Optional path for an HTML diff report.",
+    ),
+) -> None:
+    """Diff two Crucible JSON scan reports."""
+    if not before.exists():
+        console.print(f"[red]Before report not found: {before}[/red]")
+        raise typer.Exit(code=1)
+    if not after.exists():
+        console.print(f"[red]After report not found: {after}[/red]")
+        raise typer.Exit(code=1)
+
+    try:
+        scan_diff = compare_scan_results(
+            load_scan_result(before), load_scan_result(after)
+        )
+    except (json.JSONDecodeError, ValueError) as exc:
+        console.print(f"[red]Failed to parse scan report: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    console.print(format_terminal_summary(scan_diff), highlight=False)
+
+    if output:
+        from crucible.reporters.diff_reporter import DiffReporter
+
+        saved = DiffReporter().write(scan_diff, output)
+        console.print(f"[green]Diff report saved to {saved}[/green]")
 
 
 @app.command()

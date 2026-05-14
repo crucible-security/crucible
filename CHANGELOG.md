@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `crucible compare` command to diff two JSON scan reports and render fixed,
+  still-failing, new, and severity-changed findings, with optional HTML output.
+
 ## [0.3.0] - 2026-05-05
 
 ### Added

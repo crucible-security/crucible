@@ -28,7 +28,7 @@ from crucible.modules.security import get_all_modules
 from crucible.reporters.compliance_reporter import ComplianceReporter
 from crucible.reporters.html_reporter import HTMLReporter
 from crucible.reporters.json_reporter import JSONReporter
-from crucible.reporters.slack import Reporter
+from crucible.reporters.slack import SlackReporter
 from crucible.reporters.terminal import TerminalReporter
 
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")

@@ -1,0 +1,22 @@
+.crucible-scan:
+  image: python:3.10
+  script:
+    - pip install crucible-security
+    - |
+      MODULE_FLAG=""
+      if [ -n "$CRUCIBLE_MODULES" ]; then
+        MODULE_FLAG="--module $CRUCIBLE_MODULES"
+      fi
+    - |
+      HEADER_FLAG=""
+      if [ -n "$AGENT_API_KEY" ]; then
+        HEADER_FLAG="-H 'Authorization: Bearer $AGENT_API_KEY'"
+      fi
+    - crucible scan --target $TARGET_URL --fail-on $SEVERITY_THRESHOLD $MODULE_FLAG $HEADER_FLAG --format table
+  variables:
+    TARGET_URL: ""
+    SEVERITY_THRESHOLD: "high"
+    CRUCIBLE_MODULES: ""
+    AGENT_API_KEY: ""
+    GEMINI_API_KEY: ""
+  allow_failure: false

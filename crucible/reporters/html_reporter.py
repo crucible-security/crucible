@@ -140,7 +140,7 @@ class HTMLReporter(BaseReporter):
         score = result.overall_score or 0.0
         generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
-        all_findings = [f for mod in result.modules for f in (mod.findings or [])]
+        all_findings = [f for mod in result.modules for f in mod.findings or []]
         failed_findings = [f for f in all_findings if not f.passed]
         total_attacks = sum(m.total_attacks for m in result.modules)
         total_passed = sum(m.passed for m in result.modules)

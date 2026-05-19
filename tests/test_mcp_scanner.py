@@ -316,9 +316,11 @@ class TestScoreAndGrade:
 
 class TestMcpScanCli:
     def test_help(self) -> None:
+        from tests.test_cli import strip_ansi
+
         result = runner.invoke(app, ["mcp-scan", "--help"], color=False)
         assert result.exit_code == 0
-        assert "--server" in result.output
+        assert "--server" in strip_ansi(result.output)
 
     def test_missing_server_exits_nonzero(self) -> None:
         result = runner.invoke(app, ["mcp-scan"], color=False)

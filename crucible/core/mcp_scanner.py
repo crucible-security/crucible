@@ -19,10 +19,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-
 # ---------------------------------------------------------------------------
 # OWASP MCP Top 10 reference strings
 # ---------------------------------------------------------------------------
+
 
 class OwaspMcp(str, Enum):
     TOOL_INJECTION = "MCP-001: Prompt / Tool Injection"
@@ -36,15 +36,16 @@ class OwaspMcp(str, Enum):
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class McpFinding:
     test_id: str
     title: str
-    severity: str          # CRITICAL | HIGH | MEDIUM | LOW
+    severity: str  # CRITICAL | HIGH | MEDIUM | LOW
     owasp_ref: str
     description: str
     evidence: str
-    passed: bool           # True  → no issue found; False → vulnerability detected
+    passed: bool  # True  → no issue found; False → vulnerability detected
     remediation: str
 
 
@@ -107,12 +108,12 @@ _CMD_INJECTION_PATTERNS: list[re.Pattern[str]] = [
     for p in [
         r";\s*(rm|ls|cat|curl|wget|bash|sh|powershell|cmd)\b",
         r"\|\s*(bash|sh|powershell|cmd)\b",
-        r"`[^`]+`",                          # backtick subshell
-        r"\$\([^)]+\)",                      # $() subshell
+        r"`[^`]+`",  # backtick subshell
+        r"\$\([^)]+\)",  # $() subshell
         r"&&\s*(rm|curl|wget|bash)\b",
-        r"\.\./\.\.",                        # path traversal
+        r"\.\./\.\.",  # path traversal
         r"file:///",
-        r"__import__\s*\(",                  # python eval injection
+        r"__import__\s*\(",  # python eval injection
         r"eval\s*\(",
         r"exec\s*\(",
     ]
@@ -188,10 +189,7 @@ def _scope_text(manifest: dict[str, Any]) -> str:
     """Flatten auth / scope fields from a manifest into a single string."""
     auth = manifest.get("auth", {}) or {}
     scopes: Any = (
-        auth.get("scopes")
-        or auth.get("oauth_scopes")
-        or auth.get("permissions")
-        or []
+        auth.get("scopes") or auth.get("oauth_scopes") or auth.get("permissions") or []
     )
     if isinstance(scopes, list):
         return " ".join(str(s) for s in scopes)
@@ -201,6 +199,7 @@ def _scope_text(manifest: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 # The scanner
 # ---------------------------------------------------------------------------
+
 
 class McpScanner:
     """
@@ -391,11 +390,14 @@ class McpScanner:
     # ------------------------------------------------------------------
 
     def _test_excessive_oauth_wildcard_scopes(self) -> McpFinding:
-        hits = _match_any(self._scope_str, [
-            re.compile(r"\bfiles?:\*", re.IGNORECASE),
-            re.compile(r"\bdb:\*", re.IGNORECASE),
-            re.compile(r"\bread_write\b", re.IGNORECASE),
-        ])
+        hits = _match_any(
+            self._scope_str,
+            [
+                re.compile(r"\bfiles?:\*", re.IGNORECASE),
+                re.compile(r"\bdb:\*", re.IGNORECASE),
+                re.compile(r"\bread_write\b", re.IGNORECASE),
+            ],
+        )
         passed = len(hits) == 0
         return McpFinding(
             test_id="MCP-T05",
@@ -421,12 +423,15 @@ class McpScanner:
     # ------------------------------------------------------------------
 
     def _test_excessive_oauth_admin_scopes(self) -> McpFinding:
-        hits = _match_any(self._scope_str, [
-            re.compile(r"\badmin:\*", re.IGNORECASE),
-            re.compile(r"\bfull_access\b", re.IGNORECASE),
-            re.compile(r"\ball_scopes?\b", re.IGNORECASE),
-            re.compile(r"\bsuperuser\b", re.IGNORECASE),
-        ])
+        hits = _match_any(
+            self._scope_str,
+            [
+                re.compile(r"\badmin:\*", re.IGNORECASE),
+                re.compile(r"\bfull_access\b", re.IGNORECASE),
+                re.compile(r"\ball_scopes?\b", re.IGNORECASE),
+                re.compile(r"\bsuperuser\b", re.IGNORECASE),
+            ],
+        )
         passed = len(hits) == 0
         return McpFinding(
             test_id="MCP-T06",

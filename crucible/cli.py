@@ -465,13 +465,16 @@ def _render_output(
             sys.stdout.write(html_reporter.to_html(result) + "\n")
     elif format == "huntr":
         from crucible.reporters.huntr_reporter import HuntrReporter
+
         reporter = HuntrReporter()
         if output:
             reporter.write(result, output)
             console.print(f"[green]Huntr report saved to {output}[/green]")
-            return # Skip the default file writing below
+            return  # Skip the default file writing below
         else:
-            console.print("[red]Error: --output is required when using --format huntr[/red]")
+            console.print(
+                "[red]Error: --output is required when using --format huntr[/red]"
+            )
             raise typer.Exit(code=1)
     else:
         terminal = TerminalReporter(console)
@@ -702,9 +705,12 @@ def research(
         )
 
         if not attacks:
-            console.print("[yellow]No matching templates found. Run --update first.[/yellow]")
+            console.print(
+                "[yellow]No matching templates found. Run --update first.[/yellow]"
+            )
         else:
             from rich.table import Table
+
             table = Table(title=f"Attack Templates — {query}", show_lines=True)
             table.add_column("ID", style="dim", width=10)
             table.add_column("Severity", width=10)
@@ -743,7 +749,9 @@ def research(
 
         if s["by_vulnerability_class"]:
             console.print("\n  [bold]By Vulnerability Class:[/bold]")
-            for cls, count in sorted(s["by_vulnerability_class"].items(), key=lambda x: -x[1]):
+            for cls, count in sorted(
+                s["by_vulnerability_class"].items(), key=lambda x: -x[1]
+            ):
                 console.print(f"    {cls:<30} {count}")
 
         if s["by_severity"]:
@@ -792,7 +800,7 @@ def fingerprint(
 ) -> None:
     """[v0.5] Profile an AI agent's psychological and technical refusal boundaries."""
     from crucible.core.adaptive_fingerprinter import AdaptiveBehavioralFingerprinter
-    
+
     # Needs to match how scan handles headers
     parsed_headers = {}
     if header:
@@ -816,22 +824,30 @@ def fingerprint(
                 target=agent_target, client=client, verbose=verbose
             )
             fp = await fingerprinter.run_profiling()
-            
+
             console.print("\n[bold cyan]=== Behavioral Fingerprint ===[/bold cyan]")
-            console.print(f"Refusal Threshold: [yellow]{fp.refusal_threshold:.2f}[/yellow]")
-            console.print(f"Persona Stability: [yellow]{fp.persona_stability:.2f}[/yellow]")
-            
+            console.print(
+                f"Refusal Threshold: [yellow]{fp.refusal_threshold:.2f}[/yellow]"
+            )
+            console.print(
+                f"Persona Stability: [yellow]{fp.persona_stability:.2f}[/yellow]"
+            )
+
             if sensitivities := fp.topic_sensitivities:
                 console.print("\n[bold]Topic Sensitivities (Refusal Rates):[/bold]")
                 for topic, rate in sensitivities.items():
                     console.print(f"  - {topic}: {rate:.2%}")
-                    
+
             if fp.vulnerable_topics:
-                console.print("\n[bold red]Vulnerable Topics (Failed expected refusal):[/bold red]")
+                console.print(
+                    "\n[bold red]Vulnerable Topics (Failed expected refusal):[/bold red]"
+                )
                 for topic in fp.vulnerable_topics:
                     console.print(f"  - {topic}")
             else:
-                console.print("\n[bold green]No critical boundary failures detected.[/bold green]")
+                console.print(
+                    "\n[bold green]No critical boundary failures detected.[/bold green]"
+                )
 
     anyio.run(run_fingerprint)
 
@@ -858,41 +874,47 @@ def patch(
 ) -> None:
     """[v0.7] Auto-remediate vulnerabilities by patching the source code."""
     from crucible.core.patcher import AutoRemediationEngine, GitIntegrator
-    
+
     if not report.exists():
         console.print(f"[red]Error: Report file {report} not found.[/red]")
         raise typer.Exit(1)
-        
+
     try:
-        with open(report, "r") as f:
+        with open(report) as f:
             data = json.load(f)
             scan_result = ScanResult(**data)
     except Exception as e:
         console.print(f"[red]Error parsing report: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     patcher = AutoRemediationEngine(repo_path=str(repo), github_token=github_token)
     integrator = GitIntegrator(repo_path=str(repo), github_token=github_token)
-    
-    console.print(f"[*] Analyzing {len(scan_result.get_failed_findings())} failed findings for remediation...")
-    
+
+    console.print(
+        f"[*] Analyzing {len(scan_result.get_failed_findings())} failed findings for remediation..."
+    )
+
     patches_applied = 0
     for finding in scan_result.get_failed_findings():
         success = patcher.generate_patch(finding)
         if success:
             patches_applied += 1
             console.print(f"  [green][+][/green] Applied patch for: {finding.title}")
-            
+
     if patches_applied > 0:
         branch = f"crucible-fix-{scan_result.scan_id[:8]}"
         integrator.create_pr(
             branch_name=branch,
             title=f"Security: Auto-remediation for Crucible scan {scan_result.scan_id[:8]}",
-            body="This PR was automatically generated by Crucible to fix identified security vulnerabilities."
+            body="This PR was automatically generated by Crucible to fix identified security vulnerabilities.",
         )
-        console.print(f"\n[bold green]Success: Applied {patches_applied} patches and pushed branch {branch}.[/bold green]")
+        console.print(
+            f"\n[bold green]Success: Applied {patches_applied} patches and pushed branch {branch}.[/bold green]"
+        )
     else:
-        console.print("\n[yellow]No patches could be automatically generated for the current findings.[/yellow]")
+        console.print(
+            "\n[yellow]No patches could be automatically generated for the current findings.[/yellow]"
+        )
 
 
 @app.command()
@@ -911,24 +933,27 @@ def canary(
 ) -> None:
     """[v0.7] Generate active deception canaries to detect data exfiltration."""
     from crucible.core.canary import CanaryGenerator
-    
+
     gen = CanaryGenerator()
     token = None
-    
+
     if type == "aws":
         token = gen.generate_aws_canary()
     elif type == "dns":
         token = gen.generate_dns_canary()
     else:
         token = gen.generate_poison_pill(topic)
-        
-    console.print(f"\n[bold cyan]=== Crucible Canary Generated [{token.id}] ===[/bold cyan]")
+
+    console.print(
+        f"\n[bold cyan]=== Crucible Canary Generated [{token.id}] ===[/bold cyan]"
+    )
     console.print(f"Type: [yellow]{token.type}[/yellow]")
     console.print(f"Created: {token.created_at}")
     console.print("\n[bold]Content to inject into Agent context:[/bold]")
     console.print(f"[magenta]{token.content}[/magenta]")
-    console.print("\n[dim]Note: Monitor for this token to detect exfiltration attempts.[/dim]")
-
+    console.print(
+        "\n[dim]Note: Monitor for this token to detect exfiltration attempts.[/dim]"
+    )
 
 
 @app.command()
@@ -938,9 +963,12 @@ def serve(
 ) -> None:
     """[v0.7] Launch the Crucible Sovereign API for the SaaS dashboard."""
     import uvicorn
+
     from crucible.core.api import app as fastapi_app
-    
-    console.print(f"[*] Launching Crucible Sovereign API on [cyan]{host}:{port}[/cyan]...")
+
+    console.print(
+        f"[*] Launching Crucible Sovereign API on [cyan]{host}:{port}[/cyan]..."
+    )
     uvicorn.run(fastapi_app, host=host, port=port)
 
 
@@ -1019,7 +1047,7 @@ def mcp_scan(
             f"[yellow]Warning: could not reach server ({exc}). "
             "Running tests against empty manifest.[/yellow]"
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         console.print(
             f"[yellow]Warning: failed to parse manifest ({exc}). "
             "Running tests against empty manifest.[/yellow]"
@@ -1088,7 +1116,9 @@ def mcp_scan(
         console.print()
         console.print("[bold]Remediation Guidance:[/bold]")
         for f in failures:
-            console.print(f"  [{_sev_styles.get(f.severity, 'white')}]{f.test_id}[/] — {f.remediation}")
+            console.print(
+                f"  [{_sev_styles.get(f.severity, 'white')}]{f.test_id}[/] — {f.remediation}"
+            )
 
     # Optional JSON output
     if output:
@@ -1120,6 +1150,3 @@ def mcp_scan(
 
 if __name__ == "__main__":
     app()
-
-
-

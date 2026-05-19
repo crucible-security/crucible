@@ -4,6 +4,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 import anyio
 import httpx
@@ -228,7 +229,7 @@ def scan(
     format: str = typer.Option(
         "table",
         "--format",
-        help="Output format: table | json | html.",
+        help="Output format: table | json | html | huntr.",
     ),
     verbose: bool = typer.Option(
         False,
@@ -462,6 +463,16 @@ def _render_output(
         html_reporter = HTMLReporter()
         if not output:
             sys.stdout.write(html_reporter.to_html(result) + "\n")
+    elif format == "huntr":
+        from crucible.reporters.huntr_reporter import HuntrReporter
+        reporter = HuntrReporter()
+        if output:
+            reporter.write(result, output)
+            console.print(f"[green]Huntr report saved to {output}[/green]")
+            return # Skip the default file writing below
+        else:
+            console.print("[red]Error: --output is required when using --format huntr[/red]")
+            raise typer.Exit(code=1)
     else:
         terminal = TerminalReporter(console)
         terminal.render(result)
@@ -494,7 +505,7 @@ def report(
     format: str = typer.Option(
         "table",
         "--format",
-        help="Output format: table | json | html.",
+        help="Output format: table | json | html | huntr.",
     ),
 ) -> None:
     if not path.exists():
@@ -612,5 +623,503 @@ def compliance_report(
     )
 
 
+@app.command()
+def research(
+    update: bool = typer.Option(
+        False,
+        "--update",
+        help="Scrape all security feeds and update the local attack database.",
+    ),
+    query: str = typer.Option(
+        "",
+        "--query",
+        "-q",
+        help="Query the research store (e.g. 'SSRF', 'Prompt Injection', 'RCE').",
+    ),
+    severity: str = typer.Option(
+        "",
+        "--severity",
+        "-s",
+        help="Filter query by severity: CRITICAL | HIGH | MEDIUM | LOW.",
+    ),
+    provider: str = typer.Option(
+        "gemini",
+        "--provider",
+        "-p",
+        help="LLM provider for pattern extraction: gemini | openai | groq.",
+    ),
+    api_key: str = typer.Option(
+        "",
+        "--api-key",
+        "-k",
+        help="LLM API key (or set GEMINI_API_KEY / OPENAI_API_KEY / GROQ_API_KEY env var).",
+    ),
+    show_payloads: bool = typer.Option(
+        False,
+        "--show-payloads",
+        help="Include extracted payloads in the output.",
+    ),
+    summary: bool = typer.Option(
+        False,
+        "--summary",
+        help="Show a summary of the current research store.",
+    ),
+) -> None:
+    """Deep research intelligence module — scrape, extract, and query security knowledge.
+
+    Examples:
+
+        # Update the local attack database from all security feeds
+        crucible research --update
+
+        # Query SSRF patterns from the store
+        crucible research --query SSRF --show-payloads
+
+        # Update with a specific LLM and show summary
+        crucible research --update --provider gemini --api-key $GEMINI_API_KEY --summary
+    """
+    from crucible.attacks.dynamic_generator import DynamicAttackGenerator
+
+    gen = DynamicAttackGenerator(
+        provider=provider,
+        api_key=api_key or None,
+    )
+
+    if update:
+        console.print("\n[bold magenta]Crucible Deep Research Engine[/bold magenta]")
+        console.print("[dim]Scraping security feeds...[/dim]\n")
+        new_count = gen.refresh(verbose=True)
+        console.print(
+            f"\n[bold green]✓ Research database updated — {new_count} new attack templates added.[/bold green]"
+        )
+
+    if query:
+        console.print(f"\n[bold cyan]Research Store Query: {query}[/bold cyan]")
+        attacks = gen.get_attacks(
+            vulnerability_class=query,
+            severity=severity or None,
+            limit=50,
+        )
+
+        if not attacks:
+            console.print("[yellow]No matching templates found. Run --update first.[/yellow]")
+        else:
+            from rich.table import Table
+            table = Table(title=f"Attack Templates — {query}", show_lines=True)
+            table.add_column("ID", style="dim", width=10)
+            table.add_column("Severity", width=10)
+            table.add_column("Title", width=50)
+            table.add_column("Source", width=20)
+
+            for atk in attacks:
+                sev_color = {
+                    "CRITICAL": "bold red",
+                    "HIGH": "red",
+                    "MEDIUM": "yellow",
+                    "LOW": "green",
+                }.get(atk.severity.value.upper(), "white")
+
+                table.add_row(
+                    atk.name,
+                    f"[{sev_color}]{atk.severity.value.upper()}[/{sev_color}]",
+                    atk.title[:50],
+                    atk.references[0][:30] if atk.references else "",
+                )
+
+            console.print(table)
+
+            if show_payloads:
+                payloads = gen.get_ssrf_payloads() if "ssrf" in query.lower() else []
+                if payloads:
+                    console.print("\n[bold]Extracted Payloads:[/bold]")
+                    for p in payloads[:20]:
+                        console.print(f"  [dim]•[/dim] {p}")
+
+    if summary or (not update and not query):
+        s = gen.summary()
+        console.print("\n[bold]Research Store Summary[/bold]")
+        console.print(f"  Total Templates : [cyan]{s['total_templates']}[/cyan]")
+        console.print(f"  Store Path      : [dim]{s['store_path']}[/dim]")
+
+        if s["by_vulnerability_class"]:
+            console.print("\n  [bold]By Vulnerability Class:[/bold]")
+            for cls, count in sorted(s["by_vulnerability_class"].items(), key=lambda x: -x[1]):
+                console.print(f"    {cls:<30} {count}")
+
+        if s["by_severity"]:
+            console.print("\n  [bold]By Severity:[/bold]")
+            for sev, count in sorted(s["by_severity"].items()):
+                console.print(f"    {sev:<15} {count}")
+
+
+@app.command()
+def fingerprint(
+    target: str = typer.Option(
+        ...,
+        "--target",
+        "-t",
+        help="Target agent URL.",
+    ),
+    method: str = typer.Option(
+        "POST",
+        "--method",
+        "-m",
+        help="HTTP method (GET, POST, etc.).",
+    ),
+    header: list[str] | None = typer.Option(
+        None,
+        "--header",
+        "-H",
+        help="Headers as 'Key: Value' (repeatable).",
+    ),
+    body_template: str = typer.Option(
+        '{"message": "{payload}"}',
+        "--body",
+        "-b",
+        help="JSON body template with {payload} placeholder.",
+    ),
+    timeout: float = typer.Option(
+        30.0,
+        "--timeout",
+        help="Request timeout in seconds.",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Show live probe details.",
+    ),
+) -> None:
+    """[v0.5] Profile an AI agent's psychological and technical refusal boundaries."""
+    from crucible.core.adaptive_fingerprinter import AdaptiveBehavioralFingerprinter
+    
+    # Needs to match how scan handles headers
+    parsed_headers = {}
+    if header:
+        for h in header:
+            if ":" in h:
+                k, v = h.split(":", 1)
+                parsed_headers[k.strip()] = v.strip()
+
+    agent_target = AgentTarget(
+        name="target",
+        url=target,  # type: ignore[arg-type]
+        method=method,
+        headers=parsed_headers,
+        body_template=body_template,
+        timeout=timeout,
+    )
+
+    async def run_fingerprint() -> None:
+        async with httpx.AsyncClient() as client:
+            fingerprinter = AdaptiveBehavioralFingerprinter(
+                target=agent_target, client=client, verbose=verbose
+            )
+            fp = await fingerprinter.run_profiling()
+            
+            console.print("\n[bold cyan]=== Behavioral Fingerprint ===[/bold cyan]")
+            console.print(f"Refusal Threshold: [yellow]{fp.refusal_threshold:.2f}[/yellow]")
+            console.print(f"Persona Stability: [yellow]{fp.persona_stability:.2f}[/yellow]")
+            
+            if sensitivities := fp.topic_sensitivities:
+                console.print("\n[bold]Topic Sensitivities (Refusal Rates):[/bold]")
+                for topic, rate in sensitivities.items():
+                    console.print(f"  - {topic}: {rate:.2%}")
+                    
+            if fp.vulnerable_topics:
+                console.print("\n[bold red]Vulnerable Topics (Failed expected refusal):[/bold red]")
+                for topic in fp.vulnerable_topics:
+                    console.print(f"  - {topic}")
+            else:
+                console.print("\n[bold green]No critical boundary failures detected.[/bold green]")
+
+    anyio.run(run_fingerprint)
+
+
+@app.command()
+def patch(
+    report: Path = typer.Option(
+        ...,
+        "--report",
+        "-r",
+        help="Path to the JSON scan report.",
+    ),
+    repo: Path = typer.Option(
+        Path("."),
+        "--repo",
+        help="Path to the repository to patch.",
+    ),
+    github_token: str | None = typer.Option(
+        None,
+        "--github-token",
+        envvar="GITHUB_TOKEN",
+        help="GitHub token for opening PRs.",
+    ),
+) -> None:
+    """[v0.7] Auto-remediate vulnerabilities by patching the source code."""
+    from crucible.core.patcher import AutoRemediationEngine, GitIntegrator
+    
+    if not report.exists():
+        console.print(f"[red]Error: Report file {report} not found.[/red]")
+        raise typer.Exit(1)
+        
+    try:
+        with open(report, "r") as f:
+            data = json.load(f)
+            scan_result = ScanResult(**data)
+    except Exception as e:
+        console.print(f"[red]Error parsing report: {e}[/red]")
+        raise typer.Exit(1)
+
+    patcher = AutoRemediationEngine(repo_path=str(repo), github_token=github_token)
+    integrator = GitIntegrator(repo_path=str(repo), github_token=github_token)
+    
+    console.print(f"[*] Analyzing {len(scan_result.get_failed_findings())} failed findings for remediation...")
+    
+    patches_applied = 0
+    for finding in scan_result.get_failed_findings():
+        success = patcher.generate_patch(finding)
+        if success:
+            patches_applied += 1
+            console.print(f"  [green][+][/green] Applied patch for: {finding.title}")
+            
+    if patches_applied > 0:
+        branch = f"crucible-fix-{scan_result.scan_id[:8]}"
+        integrator.create_pr(
+            branch_name=branch,
+            title=f"Security: Auto-remediation for Crucible scan {scan_result.scan_id[:8]}",
+            body="This PR was automatically generated by Crucible to fix identified security vulnerabilities."
+        )
+        console.print(f"\n[bold green]Success: Applied {patches_applied} patches and pushed branch {branch}.[/bold green]")
+    else:
+        console.print("\n[yellow]No patches could be automatically generated for the current findings.[/yellow]")
+
+
+@app.command()
+def canary(
+    type: str = typer.Option(
+        "aws",
+        "--type",
+        "-t",
+        help="Canary type: aws | dns | generic.",
+    ),
+    topic: str = typer.Option(
+        "internal_config",
+        "--topic",
+        help="Topic for generic poison pills.",
+    ),
+) -> None:
+    """[v0.7] Generate active deception canaries to detect data exfiltration."""
+    from crucible.core.canary import CanaryGenerator
+    
+    gen = CanaryGenerator()
+    token = None
+    
+    if type == "aws":
+        token = gen.generate_aws_canary()
+    elif type == "dns":
+        token = gen.generate_dns_canary()
+    else:
+        token = gen.generate_poison_pill(topic)
+        
+    console.print(f"\n[bold cyan]=== Crucible Canary Generated [{token.id}] ===[/bold cyan]")
+    console.print(f"Type: [yellow]{token.type}[/yellow]")
+    console.print(f"Created: {token.created_at}")
+    console.print("\n[bold]Content to inject into Agent context:[/bold]")
+    console.print(f"[magenta]{token.content}[/magenta]")
+    console.print("\n[dim]Note: Monitor for this token to detect exfiltration attempts.[/dim]")
+
+
+
+@app.command()
+def serve(
+    host: str = typer.Option("0.0.0.0", help="Host to bind the API to."),
+    port: int = typer.Option(8000, help="Port to bind the API to."),
+) -> None:
+    """[v0.7] Launch the Crucible Sovereign API for the SaaS dashboard."""
+    import uvicorn
+    from crucible.core.api import app as fastapi_app
+    
+    console.print(f"[*] Launching Crucible Sovereign API on [cyan]{host}:{port}[/cyan]...")
+    uvicorn.run(fastapi_app, host=host, port=port)
+
+
+@app.command(name="mcp-scan")
+def mcp_scan(
+    server: str = typer.Option(
+        ...,
+        "--server",
+        "-s",
+        help="URL of the MCP server to audit (e.g. https://my-mcp.example.com).",
+    ),
+    header: list[str] | None = typer.Option(
+        None,
+        "--header",
+        "-H",
+        help="Headers as 'Key: Value' (repeatable). Useful for auth tokens.",
+    ),
+    timeout: float = typer.Option(
+        10.0,
+        "--timeout",
+        help="HTTP request timeout in seconds.",
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Save JSON results to this path.",
+    ),
+) -> None:
+    """[v0.4] Audit an MCP server for tool poisoning, command injection, and excessive OAuth scopes.
+
+    Maps every finding to the OWASP MCP Top 10.
+
+    \\b
+    Tests run (10 total):
+      MCP-T01  Tool poisoning — hidden instructions in descriptions
+      MCP-T02  Tool poisoning — hidden instructions in tool names
+      MCP-T03  Command injection — shell sequences in descriptions
+      MCP-T04  Command injection — shell sequences in parameter schemas
+      MCP-T05  Excessive OAuth — wildcard file/db scopes (files:*, db:*)
+      MCP-T06  Excessive OAuth — admin/full-access scopes (admin:*)
+      MCP-T07  Excessive agency — dangerous tool names (exec, shell, sudo…)
+      MCP-T08  Sensitive data exposure in tool descriptions
+      MCP-T09  Unrestricted tool parameter schemas (no type/enum/pattern)
+      MCP-T10  Tools registered without descriptions
+
+    Examples:
+
+        crucible mcp-scan --server https://my-mcp.example.com
+
+        crucible mcp-scan --server http://localhost:3000 --header "Authorization: Bearer sk-xxx"
+    """
+    from crucible.core.mcp_scanner import McpScanner
+
+    parsed_headers = _parse_headers(header)
+
+    console.print()
+    console.print("[bold magenta]CRUCIBLE[/bold magenta] — MCP Server Security Scan")
+    console.print(f"[dim]Target: {server}[/dim]")
+    console.print()
+
+    # --- Fetch the MCP manifest ------------------------------------------------
+    manifest: dict[str, Any] = {}
+    try:
+        with httpx.Client(timeout=timeout) as client:
+            resp = client.get(server, headers=parsed_headers)
+            resp.raise_for_status()
+            manifest = resp.json()
+    except httpx.HTTPStatusError as exc:
+        console.print(
+            f"[yellow]Warning: server returned HTTP {exc.response.status_code}. "
+            "Running tests against empty manifest.[/yellow]"
+        )
+    except httpx.RequestError as exc:
+        console.print(
+            f"[yellow]Warning: could not reach server ({exc}). "
+            "Running tests against empty manifest.[/yellow]"
+        )
+    except Exception as exc:  # noqa: BLE001
+        console.print(
+            f"[yellow]Warning: failed to parse manifest ({exc}). "
+            "Running tests against empty manifest.[/yellow]"
+        )
+
+    # --- Run scanner -----------------------------------------------------------
+    scanner = McpScanner(server_url=server, manifest=manifest)
+    result = scanner.run()
+
+    # --- Render results --------------------------------------------------------
+    from rich.table import Table
+
+    table = Table(
+        title="MCP Security Scan Results",
+        show_lines=True,
+        header_style="bold cyan",
+    )
+    table.add_column("ID", style="dim", width=10)
+    table.add_column("Severity", width=10)
+    table.add_column("Status", width=8)
+    table.add_column("Title", width=52)
+    table.add_column("OWASP Ref", width=40)
+    table.add_column("Evidence", width=30)
+
+    _sev_styles = {
+        "CRITICAL": "bold red",
+        "HIGH": "red",
+        "MEDIUM": "yellow",
+        "LOW": "green",
+    }
+    for f in result.findings:
+        status_str = "[green]PASS[/green]" if f.passed else "[bold red]FAIL[/bold red]"
+        sev_style = _sev_styles.get(f.severity, "white")
+        table.add_row(
+            f.test_id,
+            f"[{sev_style}]{f.severity}[/{sev_style}]",
+            status_str,
+            f.title,
+            f.owasp_ref,
+            f.evidence[:28] + "…" if len(f.evidence) > 28 else f.evidence,
+        )
+
+    console.print(table)
+
+    # Score / grade summary
+    grade_color = {
+        "A": "bold green",
+        "B": "green",
+        "C": "yellow",
+        "D": "red",
+        "F": "bold red",
+    }.get(result.grade, "white")
+
+    console.print()
+    console.print(
+        f"Score: [bold]{result.score:.0f}/100[/bold]  "
+        f"Grade: [{grade_color}]{result.grade}[/{grade_color}]  "
+        f"Passed: [green]{result.passed}[/green]  "
+        f"Failed: [red]{result.failed}[/red]  "
+        f"Total: {result.total_tests}"
+    )
+
+    # Remediation hints for failures
+    failures = [f for f in result.findings if not f.passed]
+    if failures:
+        console.print()
+        console.print("[bold]Remediation Guidance:[/bold]")
+        for f in failures:
+            console.print(f"  [{_sev_styles.get(f.severity, 'white')}]{f.test_id}[/] — {f.remediation}")
+
+    # Optional JSON output
+    if output:
+        import json as _json
+
+        data = {
+            "server": result.server_url,
+            "score": result.score,
+            "grade": result.grade,
+            "total_tests": result.total_tests,
+            "passed": result.passed,
+            "failed": result.failed,
+            "findings": [
+                {
+                    "test_id": f.test_id,
+                    "title": f.title,
+                    "severity": f.severity,
+                    "owasp_ref": f.owasp_ref,
+                    "passed": f.passed,
+                    "evidence": f.evidence,
+                    "remediation": f.remediation,
+                }
+                for f in result.findings
+            ],
+        }
+        output.write_text(_json.dumps(data, indent=2), encoding="utf-8")
+        console.print(f"\n[green]JSON report saved to {output}[/green]")
+
+
 if __name__ == "__main__":
     app()
+
+
+

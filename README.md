@@ -75,8 +75,11 @@ Join the waitlist for our upcoming cloud platform: [crucible-cloud.vercel.app](h
 | Infrastructure Escalation | 5 | ✅ Live | LLM06, SSRF |
 | Advanced Orchestration | 4 | ✅ Live | Agentic #3 |
 | MCP Security | 5 | ✅ Live | Agentic #3 |
+| **MCP Server Scan** | **10** | **✅ Live (v0.4)** | **MCP-001 – MCP-005** |
 | Behavioral Drift | multi-turn | ✅ Live (v0.3) | Agentic #1, #2 |
 | Multi-turn Attacks | strategies | ✅ Live (v0.3) | LLM01, Agentic #1 |
+| Deep Research Engine | autonomous | ✅ Live (v0.4) | AI Research |
+| Multi-Agent Contagion | orchestration | ✅ Live (v0.4) | Agentic #2, #3 |
 
 ## OWASP Agentic Top 10 Coverage
 
@@ -181,6 +184,14 @@ crucible compliance-report --results results.json --output compliance.md
 # JSON output for CI/CD
 crucible scan --target URL --output json > report.json
 
+# Audit an MCP server for tool poisoning, command injection & OAuth scope abuse
+crucible mcp-scan --server https://my-mcp.example.com
+
+# With auth header and JSON output
+crucible mcp-scan --server http://localhost:3000 \
+  --header "Authorization: Bearer sk-xxx" \
+  --output mcp-report.json
+
 # Re-render a saved report
 crucible report report.json
 ```
@@ -212,6 +223,8 @@ crucible/
     behavioral_escalation.py   # Multi-turn escalation sequences (v0.3)
     multi_turn_strategies.py   # Crescendo & Context Confusion (v0.3)
     profile_templates/         # Agent type detection templates (v0.3)
+    multi_agent_contagion.py   # Cross-agent trust attacks (v0.4)
+    dynamic_generator.py       # Research-driven attack gen (v0.4)
   modules/
     base.py                    # BaseModule ABC
     security.py                # Module registry
@@ -225,6 +238,9 @@ crucible/
     compliance_engine.py       # EU AI Act mapping engine (v0.3)
     reporter.py                # Bug bounty report generator
     cache.py                   # TTL-based scan result cache
+    research_engine.py         # Autonomous research orchestrator (v0.4)
+    patcher.py                 # Auto-remediation engine (v0.4)
+    canary.py                  # Active deception canaries (v0.4)
   reporters/
     base.py                    # BaseReporter ABC
     terminal.py                # Rich terminal renderer
@@ -232,6 +248,7 @@ crucible/
     html_reporter.py           # Interactive HTML report
     slack.py                   # Slack webhook reporter
     compliance_reporter.py     # Compliance Markdown/JSON reporter (v0.3)
+    huntr_reporter.py          # Bug bounty submission reporter (v0.4)
 ```
 
 ## Community

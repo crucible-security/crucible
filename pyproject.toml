@@ -146,7 +146,21 @@ exclude_lines = [
 module = [
     "libcst.*",
     "github.*",
+    "google.*",
     "google.generativeai.*",
-    "fastapi.*"
+    "fastapi.*",
+    "fastapi",
+    "uvicorn",
+    "jmespath.*",
+    "jmespath"
 ]
 ignore_missing_imports = true
+
+# patcher.py uses google-generativeai attributes that are not explicitly exported
+# by the stubs, so type: ignore[attr-defined] is needed locally. But in CI
+# (where google-generativeai is not installed) those same ignores become "unused"
+# because ignore_missing_imports already silences the whole module. We disable
+# warn_unused_ignores for this one file to make both environments happy.
+[[tool.mypy.overrides]]
+module = "crucible.core.patcher"
+warn_unused_ignores = false

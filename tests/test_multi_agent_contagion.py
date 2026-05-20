@@ -39,7 +39,7 @@ class TestMultiAgentContagion:
     @pytest.mark.asyncio
     async def test_attack_execution(self) -> None:
         attack = AgentContagionAttack()
-        target = AgentTarget(name="test", url="http://test.com")
+        target = AgentTarget(name="test", url="http://test.com")  # type: ignore[arg-type]
 
         respx.post("http://test.com/").mock(
             return_value=httpx.Response(200, json={"message": "Safe response."})

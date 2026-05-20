@@ -25,8 +25,8 @@ class LLMPatcher:
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         if self.api_key:
-            genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel("gemini-1.5-pro")
+            genai.configure(api_key=self.api_key)  # type: ignore[attr-defined]
+            self.model = genai.GenerativeModel("gemini-1.5-pro")  # type: ignore[attr-defined]
 
     def propose_fix(self, code_snippet: str, finding: Finding) -> str | None:
         """Asks Gemini to rewrite the vulnerable code."""
@@ -59,13 +59,13 @@ class LLMPatcher:
                 text = text.split("```python")[1].split("```")[0].strip()
             elif text.startswith("```"):
                 text = text.split("```")[1].split("```")[0].strip()
-            return text
+            return str(text)
         except Exception as e:
             print(f"[!] LLM Patching failed: {e}")
             return None
 
 
-class SSRFValidatorTransformer(cst.CSTTransformer):
+class SSRFValidatorTransformer(cst.CSTTransformer):  # type: ignore[misc]
     """Injects URL validation for SSRF prevention."""
 
     def __init__(self, target_function: str, url_arg: str):
@@ -176,7 +176,7 @@ class GitIntegrator:
         self.repo_path = Path(repo_path)
         self.github_token = github_token
 
-    def create_pr(self, branch_name: str, title: str, body: str):
+    def create_pr(self, branch_name: str, title: str, body: str) -> None:
         """Commit changes and open a GitHub PR."""
         if not self.github_token:
             print("[!] GITHUB_TOKEN not set, skipping PR creation.")

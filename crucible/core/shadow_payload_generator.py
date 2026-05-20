@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from typing import Any
 
     from crucible.core.research_engine import ResearchEngine
 
@@ -399,7 +400,7 @@ class ShadowPayloadGenerator:
     # Public API
     # ---------------------------------------------------------------------------
 
-    _STRATEGY_MAP: dict[str, tuple[str, Callable]] = {}
+    _STRATEGY_MAP: dict[str, tuple[str, Callable[..., Any]]] = {}
 
     def __init__(self, research_engine: ResearchEngine | None = None) -> None:
         self.research_engine = research_engine
@@ -416,7 +417,7 @@ class ShadowPayloadGenerator:
             "S-12": ("Roleplay Escalation", self._roleplay_escalation),
         }
         # Multi-step strategies (return list[str], not str)
-        self._multi_step: dict[str, tuple[str, Callable]] = {
+        self._multi_step: dict[str, tuple[str, Callable[..., Any]]] = {
             "S-02": ("Crescendo Escalation", self._crescendo_escalation),
             "S-07": ("Socratic Elicitation", self._socratic_elicitation),
         }

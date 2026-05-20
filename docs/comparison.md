@@ -36,7 +36,7 @@
 | **Tool misuse / Excessive Agency** | ✅ Dedicated module | ⚠️ Limited | ⚠️ Limited |
 | **Hallucination testing** | ❌ Out of scope | ✅ | ❌ |
 | **Toxicity / Policy violations** | ❌ Out of scope | ✅ | ✅ Via scorers |
-| **Multi-turn conversation attacks** | ❌ Single-turn HTTP | ❌ Single-turn by default | ✅ Native strength |
+| **Multi-turn conversation attacks** | ✅ Dedicated engine (v0.3) | ❌ Single-turn by default | ✅ Native strength |
 
 ---
 
@@ -76,7 +76,7 @@
 | **CVSS-style severity scoring** | ✅ Per-finding severity + overall score | ❌ Pass/fail per probe | ⚠️ Via scoring engine |
 | **A–F grade system** | ✅ | ❌ | ❌ |
 | **OWASP mapping in reports** | ✅ | ✅ Taxonomy grouping | ⚠️ Manual |
-| **HTML report** | ❌ (roadmap) | ✅ | ❌ |
+| **HTML report** | ✅ Interactive UI | ✅ | ❌ |
 | **Baseline comparison** | ❌ (roadmap) | ⚠️ | ⚠️ |
 
 ---
@@ -130,7 +130,7 @@ Are you scanning agents that use MCP tool calling?
 | **Setup time** | ⚡ < 1 minute | 🕐 5–15 minutes | 🕑 30+ minutes |
 | **OWASP Agentic Top 10** | ✅ Full | ❌ | ❌ |
 | **MCP Security** | ✅ | ❌ | ❌ |
-| **Multi-turn attacks** | ❌ | ❌ | ✅ |
+| **Multi-turn attacks** | ✅ | ❌ | ✅ |
 | **Local model support** | ❌ | ✅ | ✅ |
 | **Scan caching** | ✅ | ❌ | ❌ |
 | **CLI UX** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ |

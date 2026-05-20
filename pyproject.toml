@@ -141,3 +141,11 @@ exclude_lines = [
     "if __name__ == .__main__.",
     "@overload",
 ]
+
+[[tool.mypy.overrides]]
+module = [
+    "libcst.*",
+    "github.*",
+    "google.generativeai.*"
+]
+ignore_missing_imports = true

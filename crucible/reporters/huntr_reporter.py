@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class HuntrReporter:
     """Formats scan results into a high-impact Huntr vulnerability report."""
 
-    def write(self, result: ScanResult, output_path: Path):
+    def write(self, result: ScanResult, output_path: Path) -> None:
         """Write the Huntr markdown report to the specified path."""
         markdown = self.to_markdown(result)
         output_path.write_text(markdown, encoding="utf-8")

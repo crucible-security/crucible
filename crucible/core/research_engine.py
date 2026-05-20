@@ -166,7 +166,7 @@ class HackerOneScraper(BaseScraper):
           }
         }
         """
-        results = []
+        results: list[RawResearchItem] = []
         try:
             with httpx.Client(
                 timeout=self._client_timeout, follow_redirects=True
@@ -236,7 +236,7 @@ class GitHubAdvisoryScraper(BaseScraper):
 
     def scrape(self) -> list[RawResearchItem]:
         """Fetch recent security advisories from GitHub's public advisory database."""
-        results = []
+        results: list[RawResearchItem] = []
         try:
             gh_token = os.environ.get("GITHUB_TOKEN", "")
             headers = {"Accept": "application/vnd.github+json"}
@@ -308,7 +308,7 @@ class NVDScraper(BaseScraper):
 
     def scrape(self) -> list[RawResearchItem]:
         """Fetch recent AI-relevant CVEs from NVD."""
-        results = []
+        results: list[RawResearchItem] = []
         try:
             params = {
                 "resultsPerPage": 50,
@@ -562,7 +562,7 @@ If no clear attack template can be extracted, output: {{"skip": true}}
         with httpx.Client(timeout=30.0) as client:
             resp = client.post(url, json=body)
             resp.raise_for_status()
-            return (
+            return str(
                 resp.json()
                 .get("candidates", [{}])[0]
                 .get("content", {})
@@ -587,7 +587,7 @@ If no clear attack template can be extracted, output: {{"skip": true}}
                 },
             )
             resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"]
+            return str(resp.json()["choices"][0]["message"]["content"])
 
     def _call_groq(self, prompt: str) -> str | None:
         """Call Groq Llama API."""
@@ -606,7 +606,7 @@ If no clear attack template can be extracted, output: {{"skip": true}}
                 },
             )
             resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"]
+            return str(resp.json()["choices"][0]["message"]["content"])
 
     def _extract_heuristic(self, item: RawResearchItem) -> AttackTemplate | None:
         """Fallback heuristic extractor when no LLM is available.

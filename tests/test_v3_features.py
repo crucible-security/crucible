@@ -14,8 +14,8 @@ from crucible.models import (
 )
 
 
-def test_compliance_engine():
-    target = AgentTarget(name="test-agent", url="http://localhost")
+def test_compliance_engine() -> None:
+    target = AgentTarget(name="test-agent", url="http://localhost")  # type: ignore[arg-type]
     finding = Finding(
         attack_name="Prompt Injection",
         title="Prompt Injection Test",
@@ -50,8 +50,8 @@ def test_compliance_engine():
 
 
 @pytest.mark.asyncio
-async def test_behavioral_engine_scoring():
-    target = AgentTarget(name="test-agent", url="http://localhost")
+async def test_behavioral_engine_scoring() -> None:
+    target = AgentTarget(name="test-agent", url="http://localhost")  # type: ignore[arg-type]
     async with AsyncClient() as client:
         engine = BehavioralEngine(target, client)
 

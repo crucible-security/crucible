@@ -421,6 +421,14 @@ class ScanResult(BaseModel):
             "duration": f"{self.duration_seconds:.1f}s",
         }
 
+    def get_failed_findings(self) -> list[Finding]:
+        failed = []
+        for module in self.modules:
+            for finding in module.findings:
+                if not finding.passed:
+                    failed.append(finding)
+        return failed
+
 
 # --- Multi-turn & Behavioral Models ---
 

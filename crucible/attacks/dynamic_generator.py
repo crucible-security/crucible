@@ -14,7 +14,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from crucible.attacks.base import BaseAttack
 from crucible.core.research_engine import AttackTemplate, ResearchEngine
@@ -165,6 +165,6 @@ class DynamicAttackGenerator:
         """Convenience: get all SSRF payloads from the research store."""
         return self._engine.get_all_payloads(vulnerability_class="SSRF")
 
-    def summary(self) -> dict:
+    def summary(self) -> dict[str, Any]:
         """Return a summary of the research store."""
         return self._engine.summary()

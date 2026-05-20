@@ -44,7 +44,7 @@ class InterdictionEngine:
                 return event
         return None
 
-    def _execute_countermeasure(self, event: InterdictionEvent):
+    def _execute_countermeasure(self, event: InterdictionEvent) -> None:
         """Execute autonomous response logic."""
         # Sovereign Mode: Automatically kill the session or block the IP
         # For now, we simulate the logic

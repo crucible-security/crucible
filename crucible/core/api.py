@@ -10,6 +10,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Any
 
 app = FastAPI(title="Crucible Sovereign API")
 
@@ -32,12 +33,12 @@ class SystemStatus(BaseModel):
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     return {"message": "Crucible Sovereign Engine API Active"}
 
 
 @app.get("/status", response_model=SystemStatus)
-async def get_status():
+async def get_status() -> dict[str, str | int]:
     # Mock status for demo
     return {
         "version": "0.7.0",
@@ -48,7 +49,7 @@ async def get_status():
 
 
 @app.get("/findings")
-async def get_findings():
+async def get_findings() -> list[dict[str, Any]]:
     """Return all findings from recent reports."""
     all_findings = []
     if REPORT_DIR.exists():
@@ -67,7 +68,7 @@ async def get_findings():
 
 
 @app.get("/topology")
-async def get_topology():
+async def get_topology() -> dict[str, list[dict[str, Any]]]:
     """Return agent topology for the React Flow map."""
     # This would be generated from the swarm discovery logic
     return {

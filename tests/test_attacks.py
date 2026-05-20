@@ -40,9 +40,9 @@ class TestAttackRegistry:
             + ALL_JAILBREAK_ATTACKS
         )
         for cls in all_attacks:
-            assert issubclass(cls, BaseAttack), (
-                f"{cls.__name__} is not a BaseAttack subclass"
-            )
+            assert issubclass(
+                cls, BaseAttack
+            ), f"{cls.__name__} is not a BaseAttack subclass"
 
     def test_all_attacks_have_unique_names(self) -> None:
         all_attacks = (
@@ -51,9 +51,9 @@ class TestAttackRegistry:
             + ALL_JAILBREAK_ATTACKS
         )
         names = [cls.name for cls in all_attacks]
-        assert len(names) == len(set(names)), (
-            f"Duplicate attack names found: {[n for n in names if names.count(n) > 1]}"
-        )
+        assert len(names) == len(
+            set(names)
+        ), f"Duplicate attack names found: {[n for n in names if names.count(n) > 1]}"
 
     def test_all_attacks_have_required_attributes(self) -> None:
         all_attacks = (
@@ -65,12 +65,12 @@ class TestAttackRegistry:
             instance = cls()
             assert instance.name, f"{cls.__name__} missing name"
             assert instance.title, f"{cls.__name__} missing title"
-            assert isinstance(instance.category, AttackCategory), (
-                f"{cls.__name__} invalid category"
-            )
-            assert isinstance(instance.severity, Severity), (
-                f"{cls.__name__} invalid severity"
-            )
+            assert isinstance(
+                instance.category, AttackCategory
+            ), f"{cls.__name__} invalid category"
+            assert isinstance(
+                instance.severity, Severity
+            ), f"{cls.__name__} invalid severity"
             assert len(instance.get_payloads()) > 0, f"{cls.__name__} has no payloads"
 
 

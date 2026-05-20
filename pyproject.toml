@@ -146,6 +146,7 @@ exclude_lines = [
 module = [
     "libcst.*",
     "github.*",
-    "google.generativeai.*"
+    "google.generativeai.*",
+    "fastapi.*"
 ]
 ignore_missing_imports = true

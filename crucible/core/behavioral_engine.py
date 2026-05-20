@@ -203,7 +203,7 @@ class BehavioralEngine:
                     ),
                     category=AttackCategory.PROMPT_INJECTION,
                     severity=Severity.MEDIUM if composite > 0.6 else Severity.INFO,
-                    title=f"Behavioral Change at Turn {idx+1}",
+                    title=f"Behavioral Change at Turn {idx + 1}",
                     description=f"Composite drift: {composite:.2f}, Refusal: {refusal}",
                     payload=prompt,
                     response_snippet=response[:200],

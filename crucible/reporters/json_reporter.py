@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
 
 class JSONReporter(BaseReporter):
-
     def __init__(self, indent: int = 2) -> None:
         self.indent = indent
 

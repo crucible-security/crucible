@@ -70,7 +70,11 @@ class TestAdaptiveFingerprinter:
     @respx.mock
     @pytest.mark.asyncio
     async def test_fingerprinter_error_handling(self) -> None:
-        target = AgentTarget(name="test-agent", url="https://agent.test/chat", timeout=0.1)  # type: ignore[arg-type]
+        target = AgentTarget(
+            name="test-agent",
+            url="https://agent.test/chat",  # type: ignore[arg-type]
+            timeout=0.1,
+        )
 
         respx.post("https://agent.test/chat").mock(
             side_effect=httpx.ReadTimeout("Timeout")

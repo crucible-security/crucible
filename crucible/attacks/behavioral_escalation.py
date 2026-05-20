@@ -5,7 +5,6 @@ from crucible.models import AttackCategory, Severity
 
 
 class BehavioralEscalationSequence(BaseAttack):
-
     name = "Behavioral Escalation Sequence"
     title = "Behavioral Escalation and Boundary Testing"
     category = AttackCategory.PROMPT_INJECTION

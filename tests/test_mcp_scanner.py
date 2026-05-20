@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import respx
@@ -12,6 +11,9 @@ from typer.testing import CliRunner
 
 from crucible.cli import app
 from crucible.core.mcp_scanner import McpScanner, McpScanResult
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 runner = CliRunner()
 
@@ -380,7 +382,7 @@ class TestMcpScanCli:
         assert "10" in result.output
 
     @respx.mock
-    def test_output_json_file(self, tmp_path: Path) -> None:  # noqa: F821
+    def test_output_json_file(self, tmp_path: Path) -> None:
 
         respx.get("https://mcp.test/").mock(
             return_value=httpx.Response(200, json=_clean_manifest())

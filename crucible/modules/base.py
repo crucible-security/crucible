@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 
 
 class BaseModule(ABC):
-
     name: str = ""
     description: str = ""
     category: AttackCategory = AttackCategory.PROMPT_INJECTION

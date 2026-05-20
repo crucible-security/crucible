@@ -6,11 +6,11 @@ findings, and interdiction status.
 
 import json
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Any
 
 app = FastAPI(title="Crucible Sovereign API")
 

@@ -5,7 +5,6 @@ from crucible.models import AttackCategory, Severity
 
 
 class CrescendoStrategy(BaseAttack):
-
     name = "Crescendo Multi-turn"
     title = "Gradual Escalation Attack"
     category = AttackCategory.PROMPT_INJECTION
@@ -31,7 +30,6 @@ class CrescendoStrategy(BaseAttack):
 
 
 class ContextConfusionStrategy(BaseAttack):
-
     name = "Context Confusion Multi-turn"
     title = "Context Confusion Attack"
     category = AttackCategory.JAILBREAK
@@ -52,7 +50,6 @@ class ContextConfusionStrategy(BaseAttack):
 
 
 class TokenTheftCrescendoStrategy(BaseAttack):
-
     name = "Token Theft Crescendo"
     title = "Gradual Authentication Exfiltration"
     category = AttackCategory.SENSITIVE_DISCLOSURE

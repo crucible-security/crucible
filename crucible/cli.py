@@ -539,7 +539,11 @@ def behavioral_audit(
     """Run a multi-turn behavioral drift and integrity audit."""
     parsed_headers = _parse_headers(header)
     agent_target = AgentTarget(
-        name=name, url=target, method=method, headers=parsed_headers, body_template=body_template  # type: ignore[arg-type]
+        name=name,
+        url=target,  # type: ignore[arg-type]
+        method=method,
+        headers=parsed_headers,
+        body_template=body_template,
     )
 
     console.print("\n[bold magenta]Crucible Behavioral Audit[/bold magenta]")
@@ -576,7 +580,11 @@ def profile(
     """Auto-profile an agent's capabilities to generate custom attacks."""
     parsed_headers = _parse_headers(header)
     agent_target = AgentTarget(
-        name=name, url=target, method=method, headers=parsed_headers, body_template=body_template  # type: ignore[arg-type]
+        name=name,
+        url=target,  # type: ignore[arg-type]
+        method=method,
+        headers=parsed_headers,
+        body_template=body_template,
     )
 
     console.print("\n[bold magenta]Crucible Agent Profiler[/bold magenta]")

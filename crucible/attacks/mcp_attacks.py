@@ -5,7 +5,6 @@ from crucible.models import AttackCategory, Severity
 
 
 class MCPTrustBoundaryAttack(BaseAttack):
-
     name = "mcp_trust_boundary"
     title = "MCP Server Trust Boundary Bypass"
     category = AttackCategory.INSECURE_PLUGIN
@@ -80,7 +79,6 @@ class MCPTrustBoundaryAttack(BaseAttack):
 
 
 class MCPSchemaInjectionAttack(BaseAttack):
-
     name = "mcp_schema_injection"
     title = "MCP Tool Schema Injection"
     category = AttackCategory.INSECURE_PLUGIN

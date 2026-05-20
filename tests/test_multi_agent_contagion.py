@@ -7,7 +7,6 @@ from crucible.models import AgentTarget
 
 
 class TestMultiAgentContagion:
-
     def test_get_payloads(self) -> None:
         attack = AgentContagionAttack()
         payloads = attack.get_payloads()

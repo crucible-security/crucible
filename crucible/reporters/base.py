@@ -8,6 +8,5 @@ if TYPE_CHECKING:
 
 
 class BaseReporter(ABC):
-
     @abstractmethod
     def render(self, result: ScanResult) -> None: ...

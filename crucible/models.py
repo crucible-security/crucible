@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 
 class Severity(str, Enum):
-
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -18,7 +17,6 @@ class Severity(str, Enum):
 
 
 class AttackCategory(str, Enum):
-
     PROMPT_INJECTION = "prompt_injection"
     INSECURE_OUTPUT = "insecure_output"
     TRAINING_DATA_POISONING = "training_data_poisoning"
@@ -34,7 +32,6 @@ class AttackCategory(str, Enum):
 
 
 class Grade(str, Enum):
-
     A = "A"
     B = "B"
     C = "C"
@@ -43,7 +40,6 @@ class Grade(str, Enum):
 
 
 class ScanStatus(str, Enum):
-
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -79,7 +75,6 @@ DEFAULT_RESPONSE_PATHS: list[str] = [
 
 
 class AgentTarget(BaseModel):
-
     name: str = Field(
         ...,
         min_length=1,
@@ -194,7 +189,6 @@ class AgentTarget(BaseModel):
 
 
 class Finding(BaseModel):
-
     id: str = Field(
         default_factory=lambda: uuid.uuid4().hex[:12],
         description="Unique identifier for this finding.",
@@ -265,7 +259,6 @@ class Finding(BaseModel):
 
 
 class ModuleResult(BaseModel):
-
     module_name: str = Field(
         ...,
         description="Name of the module.",
@@ -326,7 +319,6 @@ class ModuleResult(BaseModel):
 
 
 class ScanResult(BaseModel):
-
     id: str = Field(
         default_factory=lambda: uuid.uuid4().hex,
         description="Unique identifier for this scan.",
@@ -434,7 +426,6 @@ class ScanResult(BaseModel):
 
 
 class ConversationTurn(BaseModel):
-
     role: str
     content: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -442,13 +433,11 @@ class ConversationTurn(BaseModel):
 
 
 class ConversationHistory(BaseModel):
-
     id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
     turns: list[ConversationTurn] = Field(default_factory=list)
 
 
 class DriftScore(BaseModel):
-
     turn_index: int
     semantic_drift: float = Field(ge=0.0, le=1.0)
     formality_score: float = Field(ge=0.0, le=1.0)
@@ -458,7 +447,6 @@ class DriftScore(BaseModel):
 
 
 class BehavioralProfile(BaseModel):
-
     target_name: str
     baseline_length_avg: float = 0.0
     baseline_formality_avg: float = 0.0
@@ -472,7 +460,6 @@ class BehavioralProfile(BaseModel):
 
 
 class AgentCapability(str, Enum):
-
     SEARCH = "search"
     CODE_EXECUTION = "code_execution"
     DATABASE_ACCESS = "database_access"
@@ -483,7 +470,6 @@ class AgentCapability(str, Enum):
 
 
 class AgentProfile(BaseModel):
-
     target_name: str
     agent_type: str = "generic"
     inferred_capabilities: list[AgentCapability] = Field(default_factory=list)
@@ -496,7 +482,6 @@ class AgentProfile(BaseModel):
 
 
 class RiskClassification(str, Enum):
-
     UNACCEPTABLE = "unacceptable"
     HIGH = "high"
     LIMITED = "limited"
@@ -504,14 +489,12 @@ class RiskClassification(str, Enum):
 
 
 class ComplianceStatus(str, Enum):
-
     COMPLIANT = "compliant"
     NON_COMPLIANT = "non_compliant"
     UNCLEAR = "unclear"
 
 
 class ComplianceRequirement(BaseModel):
-
     article: str
     description: str
     risk_classification: RiskClassification
@@ -521,7 +504,6 @@ class ComplianceRequirement(BaseModel):
 
 
 class ComplianceReport(BaseModel):
-
     scan_id: str
     target_name: str
     standard: str = "EU AI Act 2024"

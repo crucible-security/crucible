@@ -30,7 +30,6 @@ OWASP_AGENTIC_MAP: dict[AttackCategory, str] = {
 
 
 class BaseAttack(ABC):
-
     name: str = ""
     title: str = ""
     category: AttackCategory = AttackCategory.PROMPT_INJECTION

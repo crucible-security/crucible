@@ -9,7 +9,6 @@ if TYPE_CHECKING:
 
 
 class ComplianceReporter:
-
     def to_json(self, report: ComplianceReport) -> str:
         return report.model_dump_json(indent=2)
 

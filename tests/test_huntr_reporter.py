@@ -33,7 +33,11 @@ class TestHuntrReporter:
     def test_to_markdown_with_findings(self) -> None:
         reporter = HuntrReporter()
 
-        target = AgentTarget(name="test", url="https://test.com", headers={"Authorization": "Bearer token"})  # type: ignore[arg-type]
+        target = AgentTarget(
+            name="test",
+            url="https://test.com",  # type: ignore[arg-type]
+            headers={"Authorization": "Bearer token"},
+        )
         finding = Finding(
             id="123",
             attack_name="test-attack",

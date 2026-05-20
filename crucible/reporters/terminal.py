@@ -38,7 +38,6 @@ GRADE_LABELS: dict[Grade, str] = {
 
 
 class TerminalReporter(BaseReporter):
-
     def __init__(self, console: Console | None = None) -> None:
         self.console = console or Console()
 
@@ -238,7 +237,7 @@ class TerminalReporter(BaseReporter):
         )
         self.console.print(
             Text(
-                "  Powered by Crucible" " -- github.com/crucible-security/crucible\n",
+                "  Powered by Crucible -- github.com/crucible-security/crucible\n",
                 style="dim",
             ),
         )

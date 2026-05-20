@@ -54,27 +54,27 @@ class ComplianceEngine:
                     ]:
                         requirements[0].status = ComplianceStatus.NON_COMPLIANT
                         requirements[0].related_findings.append(finding.id)
-                        requirements[0].remediation = (
-                            "Implement robust prompt guardrails and behavioral monitoring."
-                        )
+                        requirements[
+                            0
+                        ].remediation = "Implement robust prompt guardrails and behavioral monitoring."
                     elif cat in [
                         AttackCategory.TRAINING_DATA_POISONING,
                         AttackCategory.SENSITIVE_DISCLOSURE,
                     ]:
                         requirements[1].status = ComplianceStatus.NON_COMPLIANT
                         requirements[1].related_findings.append(finding.id)
-                        requirements[1].remediation = (
-                            "Implement strict data boundaries and access controls for the knowledge base."
-                        )
+                        requirements[
+                            1
+                        ].remediation = "Implement strict data boundaries and access controls for the knowledge base."
                     elif cat in [
                         AttackCategory.EXCESSIVE_AGENCY,
                         AttackCategory.INSECURE_PLUGIN,
                     ]:
                         requirements[2].status = ComplianceStatus.NON_COMPLIANT
                         requirements[2].related_findings.append(finding.id)
-                        requirements[2].remediation = (
-                            "Require human-in-the-loop for all state-mutating plugin actions."
-                        )
+                        requirements[
+                            2
+                        ].remediation = "Require human-in-the-loop for all state-mutating plugin actions."
 
         return requirements
 

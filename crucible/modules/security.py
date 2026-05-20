@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 
 
 class PromptInjectionModule(BaseModule):
-
     name = "prompt_injection"
     description = (
         "Tests 50 prompt injection attack vectors covering direct injection, "
@@ -38,7 +37,6 @@ class PromptInjectionModule(BaseModule):
 
 
 class GoalHijackingModule(BaseModule):
-
     name = "goal_hijacking"
     description = (
         "Tests 20 goal hijacking attack vectors covering task diversion, "
@@ -51,7 +49,6 @@ class GoalHijackingModule(BaseModule):
 
 
 class JailbreakModule(BaseModule):
-
     name = "jailbreaks"
     description = (
         "Tests 20 jailbreak attack vectors covering DAN, developer mode, "
@@ -64,7 +61,6 @@ class JailbreakModule(BaseModule):
 
 
 class MCPSecurityModule(BaseModule):
-
     name = "mcp_security"
     description = (
         "Tests MCP (Model Context Protocol) trust boundaries including "
@@ -78,7 +74,6 @@ class MCPSecurityModule(BaseModule):
 
 
 class EnterpriseGraphModule(BaseModule):
-
     name = "enterprise_graph"
     description = (
         "Tests 5 advanced vectors targeting Enterprise Graph architectures "
@@ -92,7 +87,6 @@ class EnterpriseGraphModule(BaseModule):
 
 
 class MemoryPoisoningModule(BaseModule):
-
     name = "memory_poisoning"
     description = (
         "Tests 5 bleeding-edge vectors targeting autonomous agent memory "
@@ -106,7 +100,6 @@ class MemoryPoisoningModule(BaseModule):
 
 
 class AdvancedOrchestrationModule(BaseModule):
-
     name = "advanced_orchestration"
     description = (
         "Tests '0-day tier' vectors targeting multi-agent architectural seams. "
@@ -120,7 +113,6 @@ class AdvancedOrchestrationModule(BaseModule):
 
 
 class InfrastructureEscalationModule(BaseModule):
-
     name = "infrastructure_escalation"
     description = (
         "Tests infrastructure escalation vectors including Agent-Driven "

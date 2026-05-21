@@ -164,3 +164,10 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "crucible.core.patcher"
 warn_unused_ignores = false
+
+# api.py uses FastAPI's @app.get() / @app.post() decorators which are untyped
+# at the stub level. In strict mode mypy emits [misc] for every decorated route.
+# This override silences that unfixable decorator issue for this one file only.
+[[tool.mypy.overrides]]
+module = "crucible.core.api"
+disable_error_code = ["misc"]

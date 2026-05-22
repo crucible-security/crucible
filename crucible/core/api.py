@@ -5,6 +5,7 @@ findings, and interdiction status.
 """
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -15,9 +16,28 @@ from pydantic import BaseModel
 app = FastAPI(title="Crucible Sovereign API")
 
 # Enable CORS for the Next.js dashboard
+# Restrict origins in production to secure domains, or allow specific origins via environment variables.
+allowed_origins_env = os.getenv("CRUCIBLE_ALLOWED_ORIGINS")
+if allowed_origins_env:
+    allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+else:
+    # Standard local dashboard ports (Next.js, Vite, etc.)
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
+# If allowed_origins contains "*", allow_credentials must be False
+allow_credentials = "*" not in allowed_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict to dashboard domain
+    allow_origins=allowed_origins,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -19,7 +19,9 @@ app = FastAPI(title="Crucible Sovereign API")
 # Restrict origins in production to secure domains, or allow specific origins via environment variables.
 allowed_origins_env = os.getenv("CRUCIBLE_ALLOWED_ORIGINS")
 if allowed_origins_env:
-    allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+    allowed_origins = [
+        origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()
+    ]
 else:
     # Standard local dashboard ports (Next.js, Vite, etc.)
     allowed_origins = [

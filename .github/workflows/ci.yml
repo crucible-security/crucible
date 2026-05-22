@@ -37,7 +37,7 @@ jobs:
         run: ruff check crucible/ tests/
 
       - name: Mypy (type checking)
-        run: mypy crucible/
+        run: mypy crucible/ tests/
 
   test:
     name: Test Suite

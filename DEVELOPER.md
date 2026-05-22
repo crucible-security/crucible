@@ -74,7 +74,7 @@ pytest tests/test_attacks.py -v
 
 ```bash
 # Type checking (must pass strict)
-mypy crucible/ --strict
+mypy crucible/ tests/ --strict
 
 # Linting
 ruff check crucible/ tests/

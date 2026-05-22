@@ -32,7 +32,7 @@ pytest tests/ -v  # all 78 should pass
 7. Run quality checks:
 ```bash
    pytest tests/ -v
-   mypy crucible/ --strict
+   mypy crucible/ tests/ --strict
    ruff check crucible/ tests/
    black crucible/ tests/
 ```
@@ -65,7 +65,7 @@ black crucible/ tests/
 ruff check crucible/ tests/
 
 # Type check (strict mode)
-mypy crucible/
+mypy crucible/ tests/
 
 # Run tests
 pytest tests/ -v --cov=crucible

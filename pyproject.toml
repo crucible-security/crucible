@@ -151,7 +151,6 @@ module = [
     "fastapi.*",
     "fastapi",
     "uvicorn",
-    "jmespath.*",
     "jmespath"
 ]
 ignore_missing_imports = true
@@ -170,4 +169,4 @@ warn_unused_ignores = false
 # This override silences that unfixable decorator issue for this one file only.
 [[tool.mypy.overrides]]
 module = "crucible.core.api"
-disable_error_code = ["misc"]
+disable_error_code = ["misc", "untyped-decorator"]

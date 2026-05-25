@@ -29,6 +29,7 @@ from crucible.modules.security import get_all_modules
 from crucible.reporters.compliance_reporter import ComplianceReporter
 from crucible.reporters.html_reporter import HTMLReporter
 from crucible.reporters.json_reporter import JSONReporter
+from crucible.reporters.sarif_reporter import SARIFReporter
 from crucible.reporters.slack import SlackReporter
 from crucible.reporters.terminal import TerminalReporter
 
@@ -229,7 +230,7 @@ def scan(
     format: str = typer.Option(
         "table",
         "--format",
-        help="Output format: table | json | html | huntr.",
+        help="Output format: table | json | html | huntr | sarif.",
     ),
     verbose: bool = typer.Option(
         False,
@@ -463,6 +464,10 @@ def _render_output(
         html_reporter = HTMLReporter()
         if not output:
             sys.stdout.write(html_reporter.to_html(result) + "\n")
+    elif format == "sarif":
+        sarif_reporter = SARIFReporter()
+        if not output:
+            sys.stdout.write(sarif_reporter.to_json(result) + "\n")
     elif format == "huntr":
         from crucible.reporters.huntr_reporter import HuntrReporter
 
@@ -481,14 +486,17 @@ def _render_output(
         terminal.render(result)
 
     if output:
-        if format == "html" or output.suffix == ".html":
+        if format == "sarif" or output.suffix == ".sarif":
+            s_reporter = SARIFReporter()
+            saved = s_reporter.write(result, output)
+        elif format == "html" or output.suffix == ".html":
             h_reporter = HTMLReporter()
             saved = h_reporter.write(result, output)
         else:
             j_reporter = JSONReporter()
             saved = j_reporter.write(result, output)
 
-        if format not in ["json", "html"]:
+        if format not in ["json", "html", "sarif"]:
             console.print(f"[green]Report saved to {saved}[/green]")
 
 

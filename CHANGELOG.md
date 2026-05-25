@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- SARIF 2.1.0 reporter output for GitHub Security tab integration.
+
 ## [0.3.0] - 2026-05-05
 
 ### Added

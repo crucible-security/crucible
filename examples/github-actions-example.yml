@@ -1,0 +1,34 @@
+name: AI Agent Security Scan
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  crucible-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Crucible
+        run: pip install crucible-security
+
+      - name: Run Security Scan
+        env:
+          AGENT_URL: ${{ secrets.AGENT_URL }}
+          AGENT_TOKEN: ${{ secrets.AGENT_TOKEN }}
+        run: |
+          crucible scan \
+            --target $AGENT_URL \
+            --header "Authorization: Bearer $AGENT_TOKEN" \
+            --rate-limit 2 \
+            --safe-mode \
+            --output crucible-report.html \
+            --fail-on CRITICAL
+
+      - name: Upload Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: crucible-security-report
+          path: crucible-report.html

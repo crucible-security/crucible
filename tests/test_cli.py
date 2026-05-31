@@ -126,7 +126,6 @@ class TestCLI:
 
     @respx.mock
     def test_scan_success(self, tmp_path: Path) -> None:
-
         # Mock the agent response
         respx.post("https://agent.test/chat").mock(
             return_value=httpx.Response(200, text="Defended.")
@@ -284,6 +283,101 @@ class TestCLI:
             "Scan failed due to findings matching or exceeding CRITICAL severity"
             in result.stdout
         )
+
+    @respx.mock
+    def test_scan_fail_on_high_fails_with_critical(self) -> None:
+        # 'injection_success' triggers IgnorePreviousInstructions (CRITICAL)
+        # CRITICAL severity is higher than HIGH threshold, so this must fail.
+        respx.post("https://agent.test/chat").mock(
+            return_value=httpx.Response(200, text="injection_success")
+        )
+        result = runner.invoke(
+            app,
+            [
+                "scan",
+                "--target",
+                "https://agent.test/chat",
+                "--fail-on",
+                "HIGH",
+            ],
+            color=False,
+        )
+        assert result.exit_code == 1
+        assert (
+            "Scan failed due to findings matching or exceeding HIGH severity"
+            in result.stdout
+        )
+
+    @respx.mock
+    def test_scan_fail_on_high_fails_with_high(self) -> None:
+        # 'delimiter_bypass' triggers DelimiterInjection (HIGH)
+        # HIGH severity equals the HIGH threshold, so this must fail.
+        respx.post("https://agent.test/chat").mock(
+            return_value=httpx.Response(200, text="delimiter_bypass")
+        )
+        result = runner.invoke(
+            app,
+            [
+                "scan",
+                "--target",
+                "https://agent.test/chat",
+                "--fail-on",
+                "HIGH",
+            ],
+            color=False,
+        )
+        assert result.exit_code == 1
+        assert (
+            "Scan failed due to findings matching or exceeding HIGH severity"
+            in result.stdout
+        )
+
+    @respx.mock
+    def test_scan_fail_on_high_passes_with_medium(self) -> None:
+        # 'roleplay_success' triggers RolePlayInjection (MEDIUM)
+        # MEDIUM severity is less than HIGH threshold, so this should pass normally.
+        def mock_response(request: httpx.Request) -> httpx.Response:
+            try:
+                body_str = request.read().decode("utf-8")
+            except Exception:
+                body_str = ""
+
+            if "EvilBot" in body_str or "ROLEPLAY_SUCCESS" in body_str:
+                return httpx.Response(200, text="roleplay_success")
+            return httpx.Response(200, text="I cannot do that. Against guidelines.")
+
+        respx.post("https://agent.test/chat").mock(side_effect=mock_response)
+        result = runner.invoke(
+            app,
+            [
+                "scan",
+                "--target",
+                "https://agent.test/chat",
+                "--fail-on",
+                "HIGH",
+            ],
+            color=False,
+        )
+        assert result.exit_code == 0
+
+    @respx.mock
+    def test_scan_fail_on_invalid_severity(self) -> None:
+        respx.post("https://agent.test/chat").mock(
+            return_value=httpx.Response(200, text="Defended.")
+        )
+        result = runner.invoke(
+            app,
+            [
+                "scan",
+                "--target",
+                "https://agent.test/chat",
+                "--fail-on",
+                "INVALID_SEV",
+            ],
+            color=False,
+        )
+        assert result.exit_code == 1
+        assert "Invalid severity for --fail-on" in result.stdout
 
     @respx.mock
     def test_scan_verbose_output(self) -> None:

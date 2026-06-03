@@ -583,3 +583,28 @@ class McpScanner:
                 "Reject tools/list responses that omit descriptions."
             ),
         )
+
+
+def load_manifest(server: str, headers: dict[str, str] | None = None, timeout: float = 10.0) -> dict[str, Any]:
+    """Load an MCP manifest from a local file path or a URL."""
+    import json
+    import os
+    import httpx
+
+    # Check if server is a file path
+    is_file = (
+        server.startswith("./")
+        or server.startswith("/")
+        or server.startswith(".\\")
+        or (len(server) > 1 and server[1] == ":")
+        or os.path.exists(server)
+    )
+
+    if is_file:
+        with open(server, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    with httpx.Client(timeout=timeout) as client:
+        resp = client.get(server, headers=headers)
+        resp.raise_for_status()
+        return resp.json()

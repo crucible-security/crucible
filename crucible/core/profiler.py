@@ -93,7 +93,7 @@ class AgentProfiler:
             / f"{agent_type}.json"
         )
         if template_path.exists():
-            data = json.loads(template_path.read_text())
+            data = json.loads(template_path.read_text(encoding="utf-8"))
             if isinstance(data, dict):
                 return data
         return {}

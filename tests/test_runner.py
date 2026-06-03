@@ -74,7 +74,7 @@ class TestRunner:
         )
 
         assert result.status == ScanStatus.COMPLETED
-        assert len(result.modules) == 10
+        assert len(result.modules) == 12
 
     @respx.mock
     @pytest.mark.asyncio()

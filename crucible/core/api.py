@@ -77,7 +77,7 @@ async def get_findings() -> list[dict[str, Any]]:
     if REPORT_DIR.exists():
         for report_file in REPORT_DIR.glob("*.json"):
             try:
-                with open(report_file) as f:
+                with open(report_file, encoding="utf-8") as f:
                     data = json.load(f)
                     # Extract failed findings
                     for module in data.get("modules", []):

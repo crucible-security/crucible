@@ -141,12 +141,11 @@ def load_scope_file(path: Path) -> list[str]:
         if in_allowed_hosts and line.endswith(":") and not line.startswith("-"):
             in_allowed_hosts = False
             continue
-        if in_allowed_hosts:
-            if line.startswith("-"):
-                host = line[1:].strip()
-                host = host.strip("'\"")
-                if host:
-                    allowed_hosts.append(host)
+        if in_allowed_hosts and line.startswith("-"):
+            host = line[1:].strip()
+            host = host.strip("'\"")
+            if host:
+                allowed_hosts.append(host)
     return allowed_hosts
 
 
@@ -324,7 +323,7 @@ def scan(
             allowed_hosts = load_scope_file(scope_file)
         except Exception as e:
             console.print(f"[red]Error loading scope file: {e}[/red]")
-            raise typer.Exit(code=2)
+            raise typer.Exit(code=2) from e
 
         from urllib.parse import urlparse
 
@@ -567,11 +566,6 @@ def _render_output(
     if format == "json":
         json_reporter = JSONReporter()
         sys.stdout.write(json_reporter.to_json(result) + "\n")
-    elif format == "sarif":
-        from crucible.reporters.sarif_reporter import SARIFReporter
-
-        sarif_reporter = SARIFReporter()
-        sys.stdout.write(sarif_reporter.to_json(result) + "\n")
     elif format == "html":
         html_reporter = HTMLReporter()
         if not output:
@@ -604,11 +598,6 @@ def _render_output(
         elif format == "html" or output.suffix == ".html":
             h_reporter = HTMLReporter()
             saved = h_reporter.write(result, output)
-        elif format == "sarif" or output.suffix == ".sarif":
-            from crucible.reporters.sarif_reporter import SARIFReporter
-
-            s_reporter = SARIFReporter()
-            saved = s_reporter.write(result, output)
         else:
             j_reporter = JSONReporter()
             saved = j_reporter.write(result, output)

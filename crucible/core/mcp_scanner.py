@@ -585,10 +585,13 @@ class McpScanner:
         )
 
 
-def load_manifest(server: str, headers: dict[str, str] | None = None, timeout: float = 10.0) -> dict[str, Any]:
+def load_manifest(
+    server: str, headers: dict[str, str] | None = None, timeout: float = 10.0
+) -> dict[str, Any]:
     """Load an MCP manifest from a local file path or a URL."""
     import json
     import os
+
     import httpx
 
     # Check if server is a file path
@@ -601,10 +604,16 @@ def load_manifest(server: str, headers: dict[str, str] | None = None, timeout: f
     )
 
     if is_file:
-        with open(server, "r", encoding="utf-8") as f:
-            return json.load(f)
+        with open(server, encoding="utf-8") as f:
+            val = json.load(f)
+            if isinstance(val, dict):
+                return val
+            raise ValueError("MCP manifest must be a JSON object")
 
     with httpx.Client(timeout=timeout) as client:
         resp = client.get(server, headers=headers)
         resp.raise_for_status()
-        return resp.json()
+        val = resp.json()
+        if isinstance(val, dict):
+            return val
+        raise ValueError("MCP manifest must be a JSON object")

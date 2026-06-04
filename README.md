@@ -34,7 +34,7 @@ pip install crucible-security
 
 ## Quick Start
 
-> 🆕 **New to AI security?** Read our [Beginner's Getting Started Guide](docs/getting_started.md).
+> 🆕 **New to AI security?** Read our [Beginner's Getting Started Guide](docs/getting_started.md) or set up a local test target with the [n8n Local Demo Target Guide](docs/n8n_demo_guide.md).
 
 
 ```bash

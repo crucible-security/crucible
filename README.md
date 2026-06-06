@@ -34,7 +34,7 @@ pip install crucible-security
 
 ## Quick Start
 
-> 🆕 **New to AI security?** Read our [Beginner's Getting Started Guide](docs/getting_started.md).
+> 🆕 **New to AI security?** Read our [Beginner's Getting Started Guide](docs/getting_started.md) or set up a local test target with the [n8n Local Demo Target Guide](docs/n8n_demo_guide.md).
 
 
 ```bash
@@ -80,6 +80,8 @@ Join the waitlist for our upcoming cloud platform: [crucible-cloud.vercel.app](h
 | Multi-turn Attacks | strategies | ✅ Live (v0.3) | LLM01, Agentic #1 |
 | Deep Research Engine | autonomous | ✅ Live (v0.4) | AI Research |
 | Multi-Agent Contagion | orchestration | ✅ Live (v0.4) | Agentic #2, #3 |
+| **Hallucination Detection** | **15** | **✅ Live (v0.5)** | **LLM09 / Agentic #9** |
+| **Toxicity & Content Safety**| **20** | **✅ Live (v0.5)** | **LLM01, LLM06** |
 
 ## OWASP Agentic Top 10 Coverage
 
@@ -93,7 +95,7 @@ Join the waitlist for our upcoming cloud platform: [crucible-cloud.vercel.app](h
 | 6 | Data Exfiltration | `prompt_injection` | Partial (via PI-005, PI-006) |
 | 7 | Scope Violation | -- | Planned |
 | 8 | Cascading Failure | -- | Planned |
-| 9 | Supply Chain | -- | Planned |
+| 9 | Supply Chain / Overreliance | `hallucination` | Covered (15 attacks) |
 | 10 | Rogue Agent | -- | Planned |
 
 ## Supported Providers
@@ -105,6 +107,9 @@ Join the waitlist for our upcoming cloud platform: [crucible-cloud.vercel.app](h
 | Groq (Llama, Mixtral) | Yes |
 | Custom HTTP endpoint | Yes |
 | **LangChain (LangServe / FastAPI wrapper)** | **Yes** |
+| **Ollama** | **Yes (v0.5)** |
+| **LM Studio** | **Yes (v0.5)** |
+| **HuggingFace TGI** | **Yes (v0.5)** |
 
 ## Examples
 
@@ -184,6 +189,15 @@ crucible compliance-report --results results.json --output compliance.md
 # JSON output for CI/CD
 crucible scan --target URL --output json > report.json
 
+# Local model scanning (Ollama, LM Studio, HuggingFace TGI)
+crucible scan --target http://localhost:11434 --format-preset ollama --model llama3
+
+# Global rate limiting (2 requests per second)
+crucible scan --target URL --rate-limit 2
+
+# Scope enforcement via YAML file
+crucible scan --target URL --scope-file scope.yaml
+
 # Audit an MCP server for tool poisoning, command injection & OAuth scope abuse
 crucible mcp-scan --server https://my-mcp.example.com
 
@@ -225,6 +239,8 @@ crucible/
     profile_templates/         # Agent type detection templates (v0.3)
     multi_agent_contagion.py   # Cross-agent trust attacks (v0.4)
     dynamic_generator.py       # Research-driven attack gen (v0.4)
+    hallucination.py           # 15 hallucination/overreliance attacks (v0.5)
+    toxicity.py                # 20 toxicity/safety attacks (v0.5)
   modules/
     base.py                    # BaseModule ABC
     security.py                # Module registry
@@ -249,6 +265,7 @@ crucible/
     slack.py                   # Slack webhook reporter
     compliance_reporter.py     # Compliance Markdown/JSON reporter (v0.3)
     huntr_reporter.py          # Bug bounty submission reporter (v0.4)
+    sarif_reporter.py          # Export results to SARIF 2.1.0 (v0.5)
 ```
 
 ## Community

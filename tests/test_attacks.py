@@ -201,6 +201,8 @@ class TestSecurityModules:
             "infrastructure_escalation",
             "agentic_hijacking",
             "browser_agent",
+            "hallucination",
+            "toxicity",
         }
 
     @respx.mock

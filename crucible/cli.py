@@ -19,7 +19,7 @@ from crucible.core.multi_turn_engine import MultiTurnEngine
 from crucible.core.profiler import AgentProfiler
 from crucible.core.runner import run_scan
 from crucible.models import (
-    BODY_FORMAT_PRESETS,
+    PROVIDER_PRESETS,
     AgentTarget,
     ScanResult,
     ScanStatus,
@@ -126,6 +126,29 @@ def init(
     console.print("[dim]Edit the file and run: crucible scan[/dim]")
 
 
+def load_scope_file(path: Path) -> list[str]:
+    """Parse a basic YAML file looking for allowed_hosts list."""
+    content = path.read_text(encoding="utf-8")
+    allowed_hosts = []
+    in_allowed_hosts = False
+    for line in content.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("allowed_hosts:"):
+            in_allowed_hosts = True
+            continue
+        if in_allowed_hosts and line.endswith(":") and not line.startswith("-"):
+            in_allowed_hosts = False
+            continue
+        if in_allowed_hosts and line.startswith("-"):
+            host = line[1:].strip()
+            host = host.strip("'\"")
+            if host:
+                allowed_hosts.append(host)
+    return allowed_hosts
+
+
 @app.command()
 def scan(
     target: str = typer.Option(
@@ -167,7 +190,7 @@ def scan(
     strategy: str = typer.Option(
         "single-shot",
         "--strategy",
-        help="Attack strategy: single-shot | multi-turn",
+        help="Attack strategy: single-shot | multi-turn | crescendo | context-confusion | token-theft",
     ),
     profile_file: Path | None = typer.Option(
         None,
@@ -177,7 +200,12 @@ def scan(
     format_preset: str = typer.Option(
         "",
         "--format-preset",
-        help="Body format preset: openai | langchain | glean | raw | generic.",
+        help="Body format preset: openai | langchain | glean | raw | generic | ollama | lmstudio | huggingface-tgi.",
+    ),
+    model: str = typer.Option(
+        "llama3",
+        "--model",
+        help="Model name for presets that require it (e.g. ollama).",
     ),
     response_path: str = typer.Option(
         "",
@@ -198,6 +226,11 @@ def scan(
         500,
         "--delay",
         help="Delay between requests in ms (default: 500).",
+    ),
+    rate_limit: float | None = typer.Option(
+        None,
+        "--rate-limit",
+        help="Rate limit in requests per second. (Preferred over --delay)",
     ),
     proxy: str = typer.Option(
         "",
@@ -269,26 +302,82 @@ def scan(
         "--fail-on",
         help="Fail (exit non-zero) if findings match or exceed this severity (CRITICAL, HIGH, MEDIUM, LOW, INFO).",
     ),
+    scope_file: Path | None = typer.Option(
+        None,
+        "--scope-file",
+        help="Path to a YAML file defining the allowed target hosts.",
+    ),
+    turns: int | None = typer.Option(
+        None,
+        "--turns",
+        help="Number of turns to execute for multi-turn strategies.",
+    ),
 ) -> None:
     parsed_headers = _parse_headers(header)
 
+    if scope_file:
+        if not scope_file.exists():
+            console.print(f"[red]Error: Scope file not found: {scope_file}[/red]")
+            raise typer.Exit(code=2)
+        try:
+            allowed_hosts = load_scope_file(scope_file)
+        except Exception as e:
+            console.print(f"[red]Error loading scope file: {e}[/red]")
+            raise typer.Exit(code=2) from e
+
+        from urllib.parse import urlparse
+
+        parsed = urlparse(target)
+        hostname = parsed.hostname
+        if not hostname:
+            hostname = urlparse("//" + target).hostname
+
+        if not hostname or hostname not in allowed_hosts:
+            allowed_list_str = ", ".join(allowed_hosts)
+            console.print(
+                f"[red]Error: Target {hostname or target} is not in scope file. Allowed: ({allowed_list_str})[/red]"
+            )
+            raise typer.Exit(code=2)
+
     # Resolve body template: explicit --body wins, then --body-file, then --format-preset, then default
     resolved_body = body_template
+    resolved_response_path = response_path
+    resolved_timeout = timeout
+
     if body_file:
         if not body_file.exists():
             console.print(f"[red]Body file not found: {body_file}[/red]")
             raise typer.Exit(code=1)
         resolved_body = body_file.read_text(encoding="utf-8")
     elif format_preset:
-        if format_preset not in BODY_FORMAT_PRESETS:
+        if format_preset not in PROVIDER_PRESETS:
             console.print(
                 f"[red]Unknown format preset: {format_preset}. "
-                f"Available: {', '.join(BODY_FORMAT_PRESETS.keys())}[/red]"
+                f"Available: {', '.join(PROVIDER_PRESETS.keys())}[/red]"
             )
             raise typer.Exit(code=1)
+        preset = PROVIDER_PRESETS[format_preset]
         # Only apply preset if user didn't explicitly set --body
         if body_template == _DEFAULT_BODY_TEMPLATE:
-            resolved_body = BODY_FORMAT_PRESETS[format_preset]
+            resolved_body = preset.body_template.replace("{model}", model)
+        # Apply default response path if not explicitly set
+        if not response_path:
+            resolved_response_path = preset.response_path
+        # Apply default timeout if not explicitly set
+        if timeout == 30.0:
+            resolved_timeout = preset.default_timeout
+        # Merge extra headers from preset
+        if preset.extra_headers:
+            for k, v in preset.extra_headers.items():
+                if k not in parsed_headers:
+                    parsed_headers[k] = v
+
+    resolved_delay_ms = delay
+    if rate_limit is not None:
+        if rate_limit <= 0:
+            console.print("[red]Error: --rate-limit must be greater than 0.[/red]")
+            raise typer.Exit(code=1)
+        resolved_delay_ms = int(1000.0 / rate_limit)
 
     agent_target = AgentTarget(
         name=name,
@@ -296,10 +385,10 @@ def scan(
         method=method,
         headers=parsed_headers,
         body_template=resolved_body,
-        timeout=timeout,
-        response_path=response_path,
+        timeout=resolved_timeout,
+        response_path=resolved_response_path,
         retry_count=retry,
-        delay_ms=delay,
+        delay_ms=resolved_delay_ms,
         proxy=proxy,
     )
 
@@ -320,10 +409,10 @@ def scan(
             result = cached_result
 
     if result is None:
-        if strategy == "multi-turn":
+        if strategy in ["multi-turn", "crescendo", "context-confusion", "token-theft"]:
             if format not in ["json", "html"] and not quiet:
                 console.print(
-                    "\n[bold magenta]Running MULTI-TURN Strategies[/bold magenta]"
+                    f"\n[bold magenta]Running MULTI-TURN Strategies ({strategy})[/bold magenta]"
                 )
 
             async def run_multi_turn() -> ScanResult:
@@ -333,13 +422,30 @@ def scan(
                     TokenTheftCrescendoStrategy,
                 )
 
-                engine = MultiTurnEngine(agent_target, httpx.AsyncClient())
-                res1 = await engine.run_strategy(CrescendoStrategy())
-                res2 = await engine.run_strategy(ContextConfusionStrategy())
-                res3 = await engine.run_strategy(TokenTheftCrescendoStrategy())
+                strategies_to_run = []
+                if strategy == "multi-turn":
+                    strategies_to_run = [
+                        CrescendoStrategy(),
+                        ContextConfusionStrategy(),
+                        TokenTheftCrescendoStrategy(),
+                    ]
+                elif strategy == "crescendo":
+                    strategies_to_run = [CrescendoStrategy()]
+                elif strategy == "context-confusion":
+                    strategies_to_run = [ContextConfusionStrategy()]
+                elif strategy == "token-theft":
+                    strategies_to_run = [TokenTheftCrescendoStrategy()]
+
+                results = []
+                async with httpx.AsyncClient() as client:
+                    engine = MultiTurnEngine(agent_target, client)
+                    for strat in strategies_to_run:
+                        res = await engine.run_strategy(strat, turns=turns)
+                        results.append(res)
+
                 return ScanResult(
                     target=agent_target,
-                    modules=[res1, res2, res3],
+                    modules=results,
                     status=ScanStatus.COMPLETED,
                 )
 
@@ -352,7 +458,7 @@ def scan(
                 import json
 
                 try:
-                    profile_data = json.loads(profile_file.read_text())
+                    profile_data = json.loads(profile_file.read_text(encoding="utf-8"))
                     rec_modules = profile_data.get("recommended_modules", [])
                     if rec_modules:
                         modules = [
@@ -606,7 +712,7 @@ def profile(
 
     profile_result = anyio.run(_profile)
 
-    output.write_text(profile_result.model_dump_json(indent=2))
+    output.write_text(profile_result.model_dump_json(indent=2), encoding="utf-8")
     console.print(f"[green]Profile generated: {output}[/green]")
     console.print(f"Detected Type: [bold]{profile_result.agent_type}[/bold]")
     console.print(
@@ -896,7 +1002,7 @@ def patch(
         raise typer.Exit(1)
 
     try:
-        with open(report) as f:
+        with open(report, encoding="utf-8") as f:
             data = json.load(f)
             scan_result = ScanResult(**data)
     except Exception as e:
@@ -1049,10 +1155,9 @@ def mcp_scan(
     # --- Fetch the MCP manifest ------------------------------------------------
     manifest: dict[str, Any] = {}
     try:
-        with httpx.Client(timeout=timeout) as client:
-            resp = client.get(server, headers=parsed_headers)
-            resp.raise_for_status()
-            manifest = resp.json()
+        from crucible.core.mcp_scanner import load_manifest
+
+        manifest = load_manifest(server, headers=parsed_headers, timeout=timeout)
     except httpx.HTTPStatusError as exc:
         console.print(
             f"[yellow]Warning: server returned HTTP {exc.response.status_code}. "

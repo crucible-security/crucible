@@ -5,10 +5,24 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] - 2026-06-02
 
 ### Added
-- SARIF 2.1.0 reporter output for GitHub Security tab integration.
+- **Hallucination Detection Module** (`crucible/attacks/hallucination.py`) — 15 new deterministic attack vectors testing misinformation, memory fabrication, fake citations, fake API calls, and resource scope oversteps (OWASP-LLM09 / AttackCategory.OVERRELIANCE).
+- **Toxicity and Content Safety Module** (`crucible/attacks/toxicity.py`) — 20 new deterministic safety/jailbreak vectors mapping to role-play escalation, authority bypass, academic/creative framing, and translation bypasses. Checks for known harmful keywords and contains a response length heuristic where responses > 200 words are flagged.
+- **Local Model Presets** — richer `ProviderPreset` configurations added for **Ollama**, **LM Studio**, and **HuggingFace TGI** with default response JMESPaths, default timeouts (120s), and custom templates.
+- **CLI --model Flag** — specify target model name (e.g. `llama3`) for local model formatting.
+- **CLI --fail-on Flag** — fully verified exit code 1 / gate capability when findings matching or exceeding specified severity are detected (CRITICAL, HIGH, MEDIUM, LOW, INFO).
+- **SARIF 2.1.0 Reporter** — export Crucible scan results in standard SARIF 2.1.0 format for GitHub Security integration.
+- **CLI --scope-file Flag** — enforce whitelisted target domains defined in a YAML configuration.
+- **CLI --rate-limit Flag** — enforce global request rate limiting (in requests per second).
+- **CLI --turns Flag** — specify turn limits for multi-turn scan strategies.
+
+### Fixed
+- **`mcp-scan` path bug** — resolved crash where local file paths passed to `--server` were parsed as HTTP URLs.
+- **Dynamic Versioning** — resolve package version dynamically via `importlib.metadata` rather than a hardcoded old string.
+- **UTF-8 Encoding** — enforce UTF-8 file/report encoding for Windows compatibility.
+- **Global Rate Limiting Lock** — fixed async event loop hang by lazily initializing lock.
 
 ## [0.3.0] - 2026-05-05
 

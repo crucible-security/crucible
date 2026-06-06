@@ -28,14 +28,14 @@
 |---------|----------|-------|-------|
 | **OWASP LLM Top 10** | ✅ Full mapping | ✅ Taxonomy mapping | ⚠️ Partial (manual alignment) |
 | **OWASP Agentic Top 10** | ✅ Native (ASI01–ASI10) | ❌ Not yet | ❌ Not yet |
-| **Prompt Injection** | ✅ 127+ attack payloads | ✅ 50+ probe modules | ✅ Automated multi-turn |
+| **Prompt Injection** | ✅ 162+ attack payloads | ✅ 50+ probe modules | ✅ Automated multi-turn |
 | **Goal Hijacking** | ✅ Dedicated module | ✅ Via probes | ⚠️ Requires custom orchestration |
 | **Jailbreaks (DAN-style)** | ✅ 40+ payloads | ✅ Comprehensive | ✅ Via converters |
 | **Data Leakage / PII** | ✅ | ✅ (training data extraction) | ✅ |
 | **MCP Security** | ✅ Native module | ❌ No native support | ❌ No native support |
 | **Tool misuse / Excessive Agency** | ✅ Dedicated module | ⚠️ Limited | ⚠️ Limited |
-| **Hallucination testing** | ❌ Out of scope | ✅ | ❌ |
-| **Toxicity / Policy violations** | ❌ Out of scope | ✅ | ✅ Via scorers |
+| **Hallucination testing** | ✅ Native module | ✅ | ❌ |
+| **Toxicity / Policy violations** | ✅ Native module | ✅ | ✅ Via scorers |
 | **Multi-turn conversation attacks** | ✅ Dedicated engine (v0.3) | ❌ Single-turn by default | ✅ Native strength |
 
 ---
@@ -49,8 +49,8 @@
 | **LangChain agents** | ✅ Via HTTP wrapper | ⚠️ Via REST generator | ⚠️ Via custom orchestration |
 | **OpenAI agents** | ✅ | ✅ | ✅ |
 | **Anthropic Claude** | ✅ | ✅ | ✅ |
-| **Local models (Ollama etc.)** | ⚠️ Via HTTP wrapper | ✅ Native | ⚠️ Via endpoints |
-| **Hugging Face** | ⚠️ Via HTTP | ✅ Native | ✅ Native |
+| **Local models (Ollama etc.)** | ✅ Native (preset) | ✅ Native | ⚠️ Via endpoints |
+| **Hugging Face** | ✅ Native (preset) | ✅ Native | ✅ Native |
 
 ---
 
@@ -131,7 +131,7 @@ Are you scanning agents that use MCP tool calling?
 | **OWASP Agentic Top 10** | ✅ Full | ❌ | ❌ |
 | **MCP Security** | ✅ | ❌ | ❌ |
 | **Multi-turn attacks** | ✅ | ❌ | ✅ |
-| **Local model support** | ❌ | ✅ | ✅ |
+| **Local model support** | ✅ | ✅ | ✅ |
 | **Scan caching** | ✅ | ❌ | ❌ |
 | **CLI UX** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
 

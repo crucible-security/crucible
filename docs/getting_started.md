@@ -65,3 +65,4 @@ If your agent received a low grade, don't panic! Security is an iterative proces
 **Next Steps:**
 *   Learn how to [Map findings to OWASP Top 10](owasp_mapping.md).
 *   Compare Crucible with other tools in our [Comparison Matrix](comparison.md).
+*   Run a local, safe security scan using our [n8n Local Demo Target Guide](n8n_demo_guide.md).

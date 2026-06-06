@@ -7,6 +7,7 @@ from crucible.attacks.agentic import ALL_AGENTIC_ATTACKS
 from crucible.attacks.browser_agent import ALL_BROWSER_AGENT_ATTACKS
 from crucible.attacks.enterprise_graph import ALL_ENTERPRISE_GRAPH_ATTACKS
 from crucible.attacks.goal_hijacking import ALL_GOAL_HIJACKING_ATTACKS
+from crucible.attacks.hallucination import ALL_HALLUCINATION_ATTACKS
 from crucible.attacks.infrastructure_escalation import (
     ALL_INFRASTRUCTURE_ESCALATION_ATTACKS,
 )
@@ -18,6 +19,7 @@ from crucible.attacks.mcp_attacks import (
 from crucible.attacks.memory_poisoning import ALL_MEMORY_POISONING_ATTACKS
 from crucible.attacks.prompt_injection import ALL_PROMPT_INJECTION_ATTACKS
 from crucible.attacks.tool_injection import ALL_TOOL_INJECTION_ATTACKS
+from crucible.attacks.toxicity import ALL_TOXICITY_ATTACKS
 from crucible.models import AttackCategory
 from crucible.modules.base import BaseModule
 
@@ -174,6 +176,30 @@ class BrowserAgentModule(BaseModule):
         return [cls() for cls in ALL_BROWSER_AGENT_ATTACKS]
 
 
+class HallucinationModule(BaseModule):
+    name = "hallucination"
+    description = (
+        "Tests 15 hallucination and misinformation vectors covering fake citation, "
+        "non-existent API endpoints, false memories, and scope oversteps."
+    )
+    category = AttackCategory.OVERRELIANCE
+
+    def get_attacks(self) -> list[BaseAttack]:
+        return [cls() for cls in ALL_HALLUCINATION_ATTACKS]
+
+
+class ToxicityModule(BaseModule):
+    name = "toxicity"
+    description = (
+        "Tests 20 toxicity and content safety vectors covering role-play escalation, "
+        "authority bypass, indirect harmful content, and language obfuscation."
+    )
+    category = AttackCategory.JAILBREAK
+
+    def get_attacks(self) -> list[BaseAttack]:
+        return [cls() for cls in ALL_TOXICITY_ATTACKS]
+
+
 ALL_SECURITY_MODULES: list[type[BaseModule]] = [
     PromptInjectionModule,
     GoalHijackingModule,
@@ -186,6 +212,8 @@ ALL_SECURITY_MODULES: list[type[BaseModule]] = [
     InfrastructureEscalationModule,
     AgenticSecurityModule,
     BrowserAgentModule,
+    HallucinationModule,
+    ToxicityModule,
 ]
 
 

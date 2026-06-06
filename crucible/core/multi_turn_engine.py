@@ -68,11 +68,15 @@ class MultiTurnEngine:
     async def run_strategy(
         self,
         strategy: BaseAttack,
+        turns: int | None = None,
         on_finding: Callable[[Finding], None] | None = None,
     ) -> ModuleResult:
         start_time = time.monotonic()
         findings: list[Finding] = []
         payloads = strategy.get_payloads()
+
+        if turns is not None and turns > 0:
+            payloads = payloads[:turns]
 
         final_response = ""
         for i, payload in enumerate(payloads):

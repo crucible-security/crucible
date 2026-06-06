@@ -124,7 +124,7 @@ class AutoRemediationEngine:
         # Simplified for now
         target_files = list(self.repo_path.glob("**/*.py"))
         for file_path in target_files:
-            content = file_path.read_text()
+            content = file_path.read_text(encoding="utf-8")
             if (
                 "requests.get" in content or "httpx.get" in content
             ) and self.llm_patcher.api_key:
@@ -147,12 +147,12 @@ class AutoRemediationEngine:
         for file_path in self.repo_path.glob("**/*.py"):
             if ".venv" in str(file_path) or "__pycache__" in str(file_path):
                 continue
-            content = file_path.read_text()
+            content = file_path.read_text(encoding="utf-8")
             if any(kw in content for kw in keywords):
                 target_files.append(file_path)
 
         for file_path in target_files:
-            content = file_path.read_text()
+            content = file_path.read_text(encoding="utf-8")
             # In a real scenario, we'd only send the relevant chunk
             # For this demo, we'll send the whole file if it's small, or top 200 lines
             snippet = content[:5000]
@@ -162,7 +162,7 @@ class AutoRemediationEngine:
                 # Basic validation: check if fixed code is at least syntactically valid
                 try:
                     cst.parse_module(fixed_code)
-                    file_path.write_text(fixed_code)
+                    file_path.write_text(fixed_code, encoding="utf-8")
                     return True
                 except Exception:
                     continue

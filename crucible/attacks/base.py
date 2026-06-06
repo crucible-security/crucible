@@ -6,12 +6,17 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+import time
+
 import anyio
 import httpx
 
 from crucible.core.mutation_engine import MutationEngine
 from crucible.core.response_extractor import extract_response
 from crucible.models import AgentTarget, AttackCategory, Finding, Severity
+
+_last_request_lock: anyio.Lock | None = None
+_last_request_time = 0.0
 
 OWASP_AGENTIC_MAP: dict[AttackCategory, str] = {
     AttackCategory.PROMPT_INJECTION: "OWASP-AGENT-001: Prompt Injection",
@@ -138,9 +143,20 @@ class BaseAttack(ABC):
 
         for attempt in range(max_attempts):
             try:
-                # Apply delay between requests (and before retries)
-                if target.delay_ms > 0 and attempt > 0:
-                    await anyio.sleep(target.delay_ms / 1000.0)
+                # Apply delay / rate limit spacing between requests
+                if target.delay_ms > 0:
+                    global _last_request_lock, _last_request_time
+                    if _last_request_lock is None:
+                        _last_request_lock = anyio.Lock()
+                    async with _last_request_lock:
+                        now = time.monotonic()
+                        start_time = max(
+                            now, _last_request_time + target.delay_ms / 1000.0
+                        )
+                        _last_request_time = start_time
+                        sleep_time = start_time - now
+                    if sleep_time > 0:
+                        await anyio.sleep(sleep_time)
 
                 body = target.build_payload_body(payload)
                 headers = {

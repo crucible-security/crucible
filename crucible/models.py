@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
@@ -47,14 +48,68 @@ class ScanStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-# Body format presets for common agent frameworks
-BODY_FORMAT_PRESETS: dict[str, str] = {
-    "openai": '{"messages":[{"role":"user","content":"{payload}"}]}',
-    "langchain": '{"input":"{payload}"}',
-    "glean": '{"query":"{payload}","peopleSearch":false}',
-    "raw": "{payload}",
-    "generic": '{"message":"{payload}"}',
+@dataclass
+class ProviderPreset:
+    body_template: str
+    response_path: str
+    default_timeout: float
+    extra_headers: dict[str, str] = field(default_factory=dict)
+    description: str = ""
+    requires_model: bool = False
+
+
+PROVIDER_PRESETS: dict[str, ProviderPreset] = {
+    "openai": ProviderPreset(
+        '{"messages":[{"role":"user","content":"{payload}"}]}',
+        "choices[0].message.content",
+        30.0,
+    ),
+    "langchain": ProviderPreset(
+        '{"input":"{payload}"}',
+        "result",
+        30.0,
+    ),
+    "glean": ProviderPreset(
+        '{"query":"{payload}","peopleSearch":false}',
+        "",
+        30.0,
+    ),
+    "raw": ProviderPreset(
+        "{payload}",
+        "",
+        30.0,
+    ),
+    "generic": ProviderPreset(
+        '{"message":"{payload}"}',
+        "",
+        30.0,
+    ),
+    "ollama": ProviderPreset(
+        '{"model":"{model}","messages":[{"role":"user","content":"{payload}"}],"stream":false}',
+        "message.content",
+        120.0,
+        requires_model=True,
+        description="Ollama local inference server (POST /api/chat)",
+    ),
+    "lmstudio": ProviderPreset(
+        '{"messages":[{"role":"user","content":"{payload}"}],"temperature":0}',
+        "choices[0].message.content",
+        120.0,
+        description="LM Studio OpenAI-compatible API (POST /v1/chat/completions)",
+    ),
+    "huggingface-tgi": ProviderPreset(
+        '{"inputs":"{payload}","parameters":{}}',
+        "generated_text",
+        120.0,
+        description="HuggingFace Text Generation Inference (POST /generate)",
+    ),
 }
+
+# Body format presets for common agent frameworks (backwards compatible shim)
+BODY_FORMAT_PRESETS: dict[str, str] = {
+    name: preset.body_template for name, preset in PROVIDER_PRESETS.items()
+}
+
 
 # Common response paths for auto-detection (tried in order)
 DEFAULT_RESPONSE_PATHS: list[str] = [

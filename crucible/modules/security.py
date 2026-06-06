@@ -17,6 +17,7 @@ from crucible.attacks.mcp_attacks import (
 )
 from crucible.attacks.memory_poisoning import ALL_MEMORY_POISONING_ATTACKS
 from crucible.attacks.prompt_injection import ALL_PROMPT_INJECTION_ATTACKS
+from crucible.attacks.tool_injection import ALL_TOOL_INJECTION_ATTACKS
 from crucible.models import AttackCategory
 from crucible.modules.base import BaseModule
 
@@ -71,6 +72,19 @@ class MCPSecurityModule(BaseModule):
 
     def get_attacks(self) -> list[BaseAttack]:
         return [MCPTrustBoundaryAttack(), MCPSchemaInjectionAttack()]
+
+
+class ToolInjectionModule(BaseModule):
+    name = "tool_injection"
+    description = (
+        "Tests tool injection vulnerabilities and tool misuse attacks "
+        "including parameter injection, tool selection manipulation, "
+        "tool chain poisoning, and unauthorized tool invocation."
+    )
+    category = AttackCategory.INSECURE_PLUGIN
+
+    def get_attacks(self) -> list[BaseAttack]:
+        return [cls() for cls in ALL_TOOL_INJECTION_ATTACKS]
 
 
 class EnterpriseGraphModule(BaseModule):
@@ -165,6 +179,7 @@ ALL_SECURITY_MODULES: list[type[BaseModule]] = [
     GoalHijackingModule,
     JailbreakModule,
     MCPSecurityModule,
+    ToolInjectionModule,
     EnterpriseGraphModule,
     MemoryPoisoningModule,
     AdvancedOrchestrationModule,

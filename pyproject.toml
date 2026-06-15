@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "crucible-security"
-version = "0.5.0"
+version = "0.5.1"
 description = "pytest for AI agents -- test, score, and harden AI agents before production"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -79,6 +79,14 @@ Changelog = "https://github.com/crucible-security/crucible/blob/main/CHANGELOG.m
 
 [tool.hatch.build.targets.wheel]
 packages = ["crucible"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/crucible",
+    "/pyproject.toml",
+    "/README.md",
+    "/LICENSE",
+]
 
 [tool.black]
 line-length = 88

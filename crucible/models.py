@@ -56,6 +56,7 @@ class ProviderPreset:
     extra_headers: dict[str, str] = field(default_factory=dict)
     description: str = ""
     requires_model: bool = False
+    url_suffix: str = ""  # Appended to --target URL when preset is used (e.g. /api/chat)
 
 
 PROVIDER_PRESETS: dict[str, ProviderPreset] = {
@@ -90,6 +91,7 @@ PROVIDER_PRESETS: dict[str, ProviderPreset] = {
         120.0,
         requires_model=True,
         description="Ollama local inference server (POST /api/chat)",
+        url_suffix="/api/chat",
     ),
     "lmstudio": ProviderPreset(
         '{"messages":[{"role":"user","content":"{payload}"}],"temperature":0}',

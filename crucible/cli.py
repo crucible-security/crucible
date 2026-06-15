@@ -371,6 +371,9 @@ def scan(
             for k, v in preset.extra_headers.items():
                 if k not in parsed_headers:
                     parsed_headers[k] = v
+        # Append url_suffix if the target doesn't already end with it
+        if preset.url_suffix and not target.rstrip("/").endswith(preset.url_suffix.rstrip("/")):
+            target = target.rstrip("/") + preset.url_suffix
 
     resolved_delay_ms = delay
     if rate_limit is not None:
@@ -478,7 +481,7 @@ def scan(
                 agent_target,
                 modules,
                 concurrency,
-                timeout,
+                resolved_timeout,
                 quiet,
                 format,
                 verbose,

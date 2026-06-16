@@ -56,7 +56,9 @@ class ProviderPreset:
     extra_headers: dict[str, str] = field(default_factory=dict)
     description: str = ""
     requires_model: bool = False
-    url_suffix: str = ""  # Appended to --target URL when preset is used (e.g. /api/chat)
+    url_suffix: str = (
+        ""  # Appended to --target URL when preset is used (e.g. /api/chat)
+    )
 
 
 PROVIDER_PRESETS: dict[str, ProviderPreset] = {

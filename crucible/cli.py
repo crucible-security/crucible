@@ -372,7 +372,9 @@ def scan(
                 if k not in parsed_headers:
                     parsed_headers[k] = v
         # Append url_suffix if the target doesn't already end with it
-        if preset.url_suffix and not target.rstrip("/").endswith(preset.url_suffix.rstrip("/")):
+        if preset.url_suffix and not target.rstrip("/").endswith(
+            preset.url_suffix.rstrip("/")
+        ):
             target = target.rstrip("/") + preset.url_suffix
 
     resolved_delay_ms = delay

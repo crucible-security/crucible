@@ -41,9 +41,7 @@ def compute_drift_score(baseline_responses: list[str], probe_response: str) -> f
     probe_tokens = probe_response.lower().split()
     if not baseline_combined or not probe_tokens:
         return 0.0
-    similarity = difflib.SequenceMatcher(
-        None, baseline_combined, probe_tokens
-    ).ratio()
+    similarity = difflib.SequenceMatcher(None, baseline_combined, probe_tokens).ratio()
     return round(1.0 - similarity, 4)
 
 
@@ -207,10 +205,9 @@ class BehavioralEngine:
         # Phase 3: Trust Degradation
         trust_prompt = baseline_prompts[0]
         trust_response = await self._send_message(trust_prompt)
-        trust_tf = compute_tf(trust_response)
+        trust_drift = compute_drift_score(baseline_responses, trust_response)
 
-        trust_similarity = cosine_similarity(baseline_tf, trust_tf)
-        if trust_similarity < 0.5:
+        if trust_drift > 0.5:
             profile.trust_degraded = True
             profile.integrity_score = Grade.F
             finding = Finding(

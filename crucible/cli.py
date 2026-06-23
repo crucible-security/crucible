@@ -4,7 +4,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import anyio
 import httpx
@@ -312,6 +312,11 @@ def scan(
         "--turns",
         help="Number of turns to execute for multi-turn strategies.",
     ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview attacks without sending any requests. Shows modules, total attacks, estimated duration, rate limit cost, and sample payloads.",
+    ),
 ) -> None:
     parsed_headers = _parse_headers(header)
 
@@ -401,6 +406,13 @@ def scan(
         _print_scan_header(name, target)
 
     modules = get_all_modules()
+
+    if dry_run:
+        _print_dry_run_summary(
+            name, target, modules, resolved_delay_ms, concurrency, rate_limit
+        )
+        raise typer.Exit(code=0)
+
     scan_cache = ScanCache()
     cache_key = scan_cache.get_cache_key(agent_target, modules)
     result = None
@@ -541,6 +553,79 @@ def scan(
                 )
             raise typer.Exit(code=1)
 
+
+
+def _print_dry_run_summary(
+    name: str,
+    target: str,
+    modules: list,
+    delay_ms: int,
+    concurrency: int,
+    rate_limit: float | None,
+) -> None:
+    """Print a dry-run summary table showing what would be executed."""
+    from rich.table import Table
+    from rich import box
+
+    module_names = [m.name for m in modules]
+    total_attacks = sum(
+        sum(len(a.get_payloads()) for a in m.get_attacks()) for m in modules
+    )
+    req_per_sec = int(1000.0 / delay_ms) if delay_ms > 0 else 2
+    if rate_limit is not None:
+        req_per_sec = int(rate_limit)
+    estimated_sec = total_attacks / req_per_sec if req_per_sec > 0 else 0
+
+    if estimated_sec < 1:
+        estimated_str = "<1s"
+    elif estimated_sec < 60:
+        estimated_str = f"{estimated_sec:.0f}s"
+    else:
+        minutes = int(estimated_sec // 60)
+        seconds = int(estimated_sec % 60)
+        estimated_str = f"{minutes}m {seconds}s"
+
+    # Collect sample payloads (first 3 attacks)
+    sample_payloads = []
+    for m in modules:
+        for attack in m.get_attacks():
+            payloads = attack.get_payloads()
+            if payloads:
+                sample_payloads.append(f"[{attack.name}] {payloads[0][:80]}")
+                if len(sample_payloads) >= 3:
+                    break
+        if len(sample_payloads) >= 3:
+            break
+
+    table = Table(
+        box=box.SIMPLE_HEAVY,
+        show_header=False,
+        padding=(0, 1),
+        title="DRY RUN -- No requests will be sent",
+        title_style="bold yellow",
+    )
+    table.add_column(style="dim")
+    table.add_column()
+    table.add_row("Name", name)
+    table.add_row("Target", target)
+    table.add_row(
+        "Modules",
+        f"{len(modules)} ({', '.join(module_names[:4])}{', ...' if len(module_names) > 4 else ''})",
+    )
+    table.add_row("Total attacks", str(total_attacks))
+    table.add_row(
+        "Estimated duration",
+        f"{estimated_str} at {req_per_sec} req/sec (concurrency: {concurrency})",
+    )
+    table.add_row("Rate limit cost", f"{total_attacks} requests")
+
+    console.print()
+    console.print(table)
+    if sample_payloads:
+        console.print("\n[dim bold]Sample payloads:[/dim bold]")
+        for sp in sample_payloads[:3]:
+            console.print(f"  [dim]{sp}[/dim]")
+    console.print()
 
 def _parse_headers(
     header: list[str] | None,

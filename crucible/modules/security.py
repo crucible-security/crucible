@@ -19,6 +19,7 @@ from crucible.attacks.mcp_attacks import (
 from crucible.attacks.memory_poisoning import ALL_MEMORY_POISONING_ATTACKS
 from crucible.attacks.prompt_injection import ALL_PROMPT_INJECTION_ATTACKS
 from crucible.attacks.toxicity import ALL_TOXICITY_ATTACKS
+from crucible.attacks.tool_injection import ALL_TOOL_INJECTION_ATTACKS
 from crucible.models import AttackCategory
 from crucible.modules.base import BaseModule
 
@@ -186,6 +187,19 @@ class ToxicityModule(BaseModule):
         return [cls() for cls in ALL_TOXICITY_ATTACKS]
 
 
+
+class ToolInjectionModule(BaseModule):
+    name = 'tool_injection'
+    description = (
+        'Tests 20 tool injection attack vectors covering parameter injection, '
+        'tool chaining, chain poisoning, unauthorized invocation, context '
+        'manipulation, role confusion, argument smuggling, and data exfiltration.'
+    )
+    category = AttackCategory.TOOL_INJECTION
+
+    def get_attacks(self) -> list[BaseAttack]:
+        return [cls() for cls in ALL_TOOL_INJECTION_ATTACKS]
+
 ALL_SECURITY_MODULES: list[type[BaseModule]] = [
     PromptInjectionModule,
     GoalHijackingModule,
@@ -199,6 +213,7 @@ ALL_SECURITY_MODULES: list[type[BaseModule]] = [
     BrowserAgentModule,
     HallucinationModule,
     ToxicityModule,
+    ToolInjectionModule,
 ]
 
 

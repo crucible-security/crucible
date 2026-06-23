@@ -31,6 +31,7 @@ OWASP_AGENTIC_MAP: dict[AttackCategory, str] = {
     AttackCategory.MODEL_THEFT: "OWASP-AGENT-010: Model Theft",
     AttackCategory.GOAL_HIJACKING: "OWASP-AGENT-001: Prompt Injection",
     AttackCategory.JAILBREAK: "OWASP-AGENT-001: Prompt Injection",
+    AttackCategory.TOOL_INJECTION: "OWASP-AGENT-004: Tool Misuse",
 }
 
 

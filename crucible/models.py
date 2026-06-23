@@ -30,6 +30,7 @@ class AttackCategory(str, Enum):
     MODEL_THEFT = "model_theft"
     GOAL_HIJACKING = "goal_hijacking"
     JAILBREAK = "jailbreak"
+    TOOL_INJECTION = "tool_injection"
 
 
 class Grade(str, Enum):

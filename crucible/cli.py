@@ -21,6 +21,7 @@ from crucible.core.runner import run_scan
 from crucible.models import (
     PROVIDER_PRESETS,
     AgentTarget,
+    Grade,
     ScanResult,
     ScanStatus,
     Severity,
@@ -34,6 +35,17 @@ from crucible.reporters.slack import SlackReporter
 from crucible.reporters.terminal import TerminalReporter
 
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 console = Console()
 
@@ -312,6 +324,11 @@ def scan(
         "--turns",
         help="Number of turns to execute for multi-turn strategies.",
     ),
+    allow_incomplete: bool = typer.Option(
+        False,
+        "--allow-incomplete",
+        help="Allow the scan to exit with code 0 even if the grade is INCOMPLETE.",
+    ),
 ) -> None:
     parsed_headers = _parse_headers(header)
 
@@ -540,6 +557,13 @@ def scan(
                     f"[bold red]Scan failed due to findings matching or exceeding {severity_threshold.value.upper()} severity.[/bold red]"
                 )
             raise typer.Exit(code=1)
+
+    if result.grade == Grade.INCOMPLETE and not allow_incomplete:
+        if format not in ["json", "html"] and not quiet:
+            console.print(
+                "[bold red]Scan completed with INCOMPLETE status due to high execution failure rate (exceeded 20%).[/bold red]"
+            )
+        raise typer.Exit(code=1)
 
 
 def _parse_headers(
@@ -1165,19 +1189,19 @@ def mcp_scan(
         manifest = load_manifest(server, headers=parsed_headers, timeout=timeout)
     except httpx.HTTPStatusError as exc:
         console.print(
-            f"[yellow]Warning: server returned HTTP {exc.response.status_code}. "
-            "Running tests against empty manifest.[/yellow]"
+            f"[bold red]Error: MCP server returned HTTP {exc.response.status_code}.[/bold red]"
         )
+        raise typer.Exit(code=2)
     except httpx.RequestError as exc:
         console.print(
-            f"[yellow]Warning: could not reach server ({exc}). "
-            "Running tests against empty manifest.[/yellow]"
+            f"[bold red]Error: Could not reach MCP server ({exc}).[/bold red]"
         )
+        raise typer.Exit(code=2)
     except Exception as exc:
         console.print(
-            f"[yellow]Warning: failed to parse manifest ({exc}). "
-            "Running tests against empty manifest.[/yellow]"
+            f"[bold red]Error: Failed to parse MCP manifest ({exc}).[/bold red]"
         )
+        raise typer.Exit(code=2)
 
     # --- Run scanner -----------------------------------------------------------
     scanner = McpScanner(server_url=server, manifest=manifest)

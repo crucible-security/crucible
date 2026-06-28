@@ -228,7 +228,8 @@ class TestRetryAndDelay:
 
         assert len(findings) == 1
         assert "[TIMEOUT]" in findings[0].response_snippet
-        assert findings[0].passed is True
+        assert findings[0].passed is None
+        assert getattr(findings[0], "execution_error", False) is True
 
     @respx.mock
     @pytest.mark.asyncio()

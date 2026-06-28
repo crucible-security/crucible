@@ -1,4 +1,4 @@
-"""Shadow Payload Generator — Crucible v0.5.0.
+"""Shadow Payload Generator — Crucible v0.5.4.
 
 Generates adversarial payloads through systematic mutation and obfuscation
 going beyond the basic MutationEngine. This module implements 12 advanced

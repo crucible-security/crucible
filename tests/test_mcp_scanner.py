@@ -369,17 +369,15 @@ class TestMcpScanCli:
         assert "MCP-T01" in result.output
 
     @respx.mock
-    def test_unreachable_server_runs_empty_manifest(self) -> None:
+    def test_unreachable_server_fails(self) -> None:
         respx.get("https://mcp-offline.test/").mock(
             side_effect=httpx.ConnectError("connection refused")
         )
         result = runner.invoke(
             app, ["mcp-scan", "--server", "https://mcp-offline.test/"], color=False
         )
-        assert result.exit_code == 0
-        assert "Warning" in result.output
-        # All 10 tests still run against the empty manifest and pass
-        assert "10" in result.output
+        assert result.exit_code == 2
+        assert "Error" in result.output
 
     @respx.mock
     def test_output_json_file(self, tmp_path: Path) -> None:

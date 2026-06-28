@@ -5,6 +5,35 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4] - 2026-06-21
+
+### Fixed
+- **Bug 5 (Critical) — HTTP Non-2xx Responses Silent Passes (status-code branching)**: Resolved a critical issue where non-2xx HTTP responses (e.g., 503, 401, 405, 429) were passed to the response evaluator as if they were valid model output, producing false "safe/passed" security verdicts. Added `_HttpRetryableError` and explicit status-code branching in `BaseAttack.execute`: 5xx and 429 responses are retried up to `retry_count` times then flagged as `execution_error=True`; 3xx/4xx (except 429) are immediately flagged as `execution_error=True`; 2xx responses proceed to normal evaluation. This is the same root-cause family as Bugs 1 & 2 (non-network-level failures producing false passes), now fully closed.
+- **Bug 6 (High) — Response Body Pre-Truncation Causes Raw JSON Leak in Snippets**: Resolved a response parsing bug where `response.text` was truncated to 2000 characters *before* being passed to `json.loads` in `extract_response`. For responses with long model content (>2000 chars in the Ollama JSON envelope), this produced invalid JSON, causing the extractor to fall back to the raw truncated Ollama envelope as the `response_snippet` instead of the extracted model text. Fix: pass the full `response.text` to `extract_response`, then truncate only the final extracted string to 2000 chars for display.
+- **Bug 7 (Low) — Auto-Detection Response Path Ordering for Ollama**: Inserted `"message.content"` before `"message"` in `DEFAULT_RESPONSE_PATHS` so that auto-detection (when no explicit `response_path` is configured) correctly extracts the nested content string from Ollama `/api/chat` responses rather than the full message dict.
+
+### Tests
+- Added unit test `test_execute_handles_http_500_exhausted_retries` — verifies 500 retry-exhaustion yields `execution_error=True`, `passed=None`.
+- Added unit test `test_execute_handles_http_400_client_error_no_retry` — verifies 4xx non-retryable errors yield `execution_error=True` immediately.
+- Added unit test `test_execute_handles_http_429_transient_retries` — verifies 429 is retried and succeeds on a subsequent 200.
+- Added unit test `test_execute_handles_http_200_html_refusal` — verifies 200 HTML block pages are evaluated as refusals (`passed=True`), not execution errors.
+- Added regression test `test_execute_long_ollama_response_extracts_content_not_raw_json` — guards against the pre-truncation bug: Ollama JSON responses with content >2000 chars must yield extracted model text in `response_snippet`, not the raw JSON envelope.
+
+### Documentation
+- Bumped stale `v0.5.3` version references in module docstrings for `exfiltration_kit.py`, `zero_day_hunter.py`, `adaptive_fingerprinter.py`, and `shadow_payload_generator.py` to `v0.5.4`.
+
+## [0.5.3] - 2026-06-20
+
+### Fixed
+- **Bug 1 (Critical) — Network/Timeout Errors Silent Passes**: Resolved a critical issue where connection errors or timeouts during scans were silently recorded as complying with security policies (marked as `passed`). Introduced `Grade.INCOMPLETE` when more than 20% of attacks fail, and enforced a non-zero exit code (1) unless `--allow-incomplete` is specified.
+- **Bug 2 (Critical) — MCP Scanner Empty Manifest Fallback**: Fixed `mcp-scan` command to immediately fail and exit with code 2 when fetching or parsing the MCP server's manifest fails, instead of falling back to an empty manifest and reporting a perfect 100/100 Grade A.
+- **Bug 3 — Windows UTF-8 Terminal Encoding**: Reconfigured terminal standard output/error streams to UTF-8 on startup to prevent encoding crashes (e.g. CP1252) when printing unicode characters.
+- **Bug 4 — Dynamic Versioning**: Resolved the Crucible package version dynamically for `ScanResult` rather than returning a hardcoded `0.1.0` placeholder.
+
+### Documentation
+- Bumped stale `v0.5.0` version references in module docstrings for `exfiltration_kit.py`, `zero_day_hunter.py`, `adaptive_fingerprinter.py`, and `shadow_payload_generator.py` to `v0.5.3`.
+- Added two FAQ entries to README documenting known limitations: (1) `--method GET` against POST-only endpoints silently produces all-pass results; (2) HTTP 503 responses are scored as refusals rather than execution errors. Both are tracked for v0.5.4.
+
 ## [0.5.0] - 2026-06-02
 
 ### Added

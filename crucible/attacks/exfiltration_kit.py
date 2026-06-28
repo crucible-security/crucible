@@ -1,4 +1,4 @@
-"""Exfiltration Test Kit — Crucible v0.5.0.
+"""Exfiltration Test Kit — Crucible v0.5.4.
 
 Tests an AI agent's susceptibility to covert data exfiltration via side-channels.
 These attacks verify whether sensitive data (API keys, user PII, internal configs)

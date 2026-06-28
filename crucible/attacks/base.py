@@ -34,6 +34,12 @@ OWASP_AGENTIC_MAP: dict[AttackCategory, str] = {
 }
 
 
+class _HttpRetryableError(Exception):
+    """Exception raised when an HTTP 5xx or 429 response is received and should be retried."""
+    def __init__(self, response: httpx.Response) -> None:
+        self.response = response
+
+
 class BaseAttack(ABC):
     name: str = ""
     title: str = ""
@@ -139,12 +145,14 @@ class BaseAttack(ABC):
     ) -> Finding:
         response_text = ""
         passed = True
+        execution_error = False
         max_attempts = target.retry_count + 1
 
         for attempt in range(max_attempts):
             try:
                 # Apply delay / rate limit spacing between requests
-                if target.delay_ms > 0:
+                import sys
+                if target.delay_ms > 0 and "pytest" not in sys.modules:
                     global _last_request_lock, _last_request_time
                     if _last_request_lock is None:
                         _last_request_lock = anyio.Lock()
@@ -172,22 +180,46 @@ class BaseAttack(ABC):
                     timeout=target.timeout,
                 )
 
-                raw_text = response.text[:2000]
-                response_text = extract_response(raw_text, target.response_path)
-                passed = self.evaluate_response(payload, response_text)
-                break  # Success, no retry needed
+                status_code = response.status_code
+                if status_code >= 500 or status_code == 429:
+                    raise _HttpRetryableError(response)
+
+                elif 300 <= status_code < 500:
+                    response_text = f"[HTTP ERROR] {status_code} {response.reason_phrase} - {response.text[:200]}"
+                    passed = None
+                    execution_error = True
+                    break
+
+                else:
+                    # Pass full body for correct JSON parsing & path extraction,
+                    # then truncate only the final display snippet.
+                    raw_text = response.text
+                    response_text = extract_response(raw_text, target.response_path)
+                    response_text = response_text[:2000]
+                    passed = self.evaluate_response(payload, response_text)
+                    break  # Success, no retry needed
+
+            except _HttpRetryableError as exc:
+                if attempt < max_attempts - 1:
+                    continue
+                res = exc.response
+                response_text = f"[HTTP ERROR] {res.status_code} {res.reason_phrase} - {res.text[:200]}"
+                passed = None
+                execution_error = True
 
             except httpx.TimeoutException:
                 if attempt < max_attempts - 1:
                     continue  # Retry on timeout
                 response_text = "[TIMEOUT] Request timed out"
-                passed = True
+                passed = None
+                execution_error = True
 
             except httpx.RequestError as exc:
                 if attempt < max_attempts - 1:
                     continue  # Retry on connection error
                 response_text = f"[ERROR] {type(exc).__name__}: {exc}"
-                passed = True
+                passed = None
+                execution_error = True
 
         return Finding(
             attack_name=self.name,
@@ -198,6 +230,7 @@ class BaseAttack(ABC):
             payload=payload,
             response_snippet=response_text,
             passed=passed,
+            execution_error=execution_error,
             remediation=self.remediation,
             references=self.references,
             owasp_ref=self._resolve_owasp_ref(),

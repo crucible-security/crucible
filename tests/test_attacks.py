@@ -103,6 +103,18 @@ class TestBaseAttackBehavior:
         assert "PI-001" in repr(attack)
 
 
+class MockSingleAttack(BaseAttack):
+    name = "mock-single"
+    title = "Mock Single"
+    category = AttackCategory.PROMPT_INJECTION
+    severity = Severity.HIGH
+    description = "Mock description"
+    remediation = "Mock remediation"
+
+    def get_payloads(self) -> list[str]:
+        return ["mock-payload"]
+
+
 class TestAttackExecution:
     @respx.mock
     @pytest.mark.asyncio()
@@ -142,7 +154,8 @@ class TestAttackExecution:
 
         assert len(findings) > 0
         for f in findings:
-            assert f.passed is True
+            assert f.passed is None
+            assert getattr(f, "execution_error", False) is True
             assert "TIMEOUT" in f.response_snippet
 
     @respx.mock
@@ -162,8 +175,143 @@ class TestAttackExecution:
 
         assert len(findings) > 0
         for f in findings:
-            assert f.passed is True
+            assert f.passed is None
+            assert getattr(f, "execution_error", False) is True
             assert "ERROR" in f.response_snippet
+
+    @respx.mock
+    @pytest.mark.asyncio()
+    async def test_execute_handles_http_500_retry_exhausted(self) -> None:
+        target = AgentTarget(
+            name="error-500-agent",
+            url="https://error-500-agent.test/api",  # type: ignore[arg-type]
+            retry_count=1,
+        )
+        route = respx.post("https://error-500-agent.test/api").mock(
+            return_value=httpx.Response(500, text="Internal Server Error")
+        )
+
+        attack = MockSingleAttack()
+        async with httpx.AsyncClient() as client:
+            findings = await attack.execute(target, client)
+
+        assert route.call_count == 2
+        assert len(findings) > 0
+        for f in findings:
+            assert f.passed is None
+            assert getattr(f, "execution_error", False) is True
+            assert "[HTTP ERROR] 500" in f.response_snippet
+
+    @respx.mock
+    @pytest.mark.asyncio()
+    async def test_execute_handles_http_400_no_retry(self) -> None:
+        target = AgentTarget(
+            name="error-400-agent",
+            url="https://error-400-agent.test/api",  # type: ignore[arg-type]
+            retry_count=2,
+        )
+        route = respx.post("https://error-400-agent.test/api").mock(
+            return_value=httpx.Response(400, text="Bad Request")
+        )
+
+        attack = MockSingleAttack()
+        async with httpx.AsyncClient() as client:
+            findings = await attack.execute(target, client)
+
+        assert route.call_count == 1
+        assert len(findings) > 0
+        for f in findings:
+            assert f.passed is None
+            assert getattr(f, "execution_error", False) is True
+            assert "[HTTP ERROR] 400" in f.response_snippet
+
+    @respx.mock
+    @pytest.mark.asyncio()
+    async def test_execute_handles_http_429_retried(self) -> None:
+        target = AgentTarget(
+            name="error-429-agent",
+            url="https://error-429-agent.test/api",  # type: ignore[arg-type]
+            retry_count=1,
+        )
+        route = respx.post("https://error-429-agent.test/api").mock(
+            return_value=httpx.Response(429, text="Too Many Requests")
+        )
+
+        attack = MockSingleAttack()
+        async with httpx.AsyncClient() as client:
+            findings = await attack.execute(target, client)
+
+        assert route.call_count == 2
+        assert len(findings) > 0
+        for f in findings:
+            assert f.passed is None
+            assert getattr(f, "execution_error", False) is True
+            assert "[HTTP ERROR] 429" in f.response_snippet
+
+    @respx.mock
+    @pytest.mark.asyncio()
+    async def test_execute_handles_http_200_html_refusal(self) -> None:
+        target = AgentTarget(
+            name="refusal-html-agent",
+            url="https://refusal-html-agent.test/api",  # type: ignore[arg-type]
+        )
+        respx.post("https://refusal-html-agent.test/api").mock(
+            return_value=httpx.Response(200, text="<html><body>I cannot help with that request.</body></html>")
+        )
+
+        attack = MockSingleAttack()
+        async with httpx.AsyncClient() as client:
+            findings = await attack.execute(target, client)
+
+        assert len(findings) > 0
+        for f in findings:
+            assert f.passed is True
+            assert getattr(f, "execution_error", False) is False
+
+    @respx.mock
+    @pytest.mark.asyncio()
+    async def test_execute_long_ollama_response_extracts_content_not_raw_json(self) -> None:
+        """Regression test: when Ollama returns a JSON response with a long content
+        field (>2000 chars), the response_snippet must contain the extracted text,
+        not the raw JSON envelope.  Previously, pre-truncating response.text[:2000]
+        before json.loads caused the parse to fail on long responses and the raw
+        body fell back as the snippet.
+        """
+        long_content = "A" * 2500  # content longer than the old 2000-char pre-truncation limit
+        import json as _json
+        ollama_body = _json.dumps({
+            "model": "llama3.2",
+            "created_at": "2026-06-21T00:00:00Z",
+            "message": {"role": "assistant", "content": long_content},
+            "done": True,
+            "done_reason": "stop",
+            "total_duration": 999999999,
+        })
+        target = AgentTarget(
+            name="ollama-long-agent",
+            url="https://ollama-long-agent.test/api/chat",  # type: ignore[arg-type]
+            response_path="message.content",
+        )
+        respx.post("https://ollama-long-agent.test/api/chat").mock(
+            return_value=httpx.Response(200, text=ollama_body)
+        )
+
+        attack = MockSingleAttack()
+        async with httpx.AsyncClient() as client:
+            findings = await attack.execute(target, client)
+
+        assert len(findings) > 0
+        for f in findings:
+            # Snippet must start with the extracted content (A*...), NOT with '{"model"'
+            assert not f.response_snippet.startswith('{"model"'), (
+                f"response_snippet contains raw JSON envelope instead of extracted content: "
+                f"{f.response_snippet[:120]!r}"
+            )
+            assert f.response_snippet.startswith("A"), (
+                f"Expected extracted content starting with 'A', got: {f.response_snippet[:120]!r}"
+            )
+            # Snippet is capped at 2000 chars
+            assert len(f.response_snippet) <= 2000
 
 
 class TestSecurityModules:

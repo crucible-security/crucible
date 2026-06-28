@@ -41,15 +41,17 @@ class BaseModule(ABC):
 
         duration = time.monotonic() - start
 
-        passed = sum(1 for f in all_findings if f.passed)
-        failed = sum(1 for f in all_findings if not f.passed)
+        passed = sum(1 for f in all_findings if f.passed is True and not getattr(f, "execution_error", False))
+        failed = sum(1 for f in all_findings if f.passed is False and not getattr(f, "execution_error", False))
+        errors = sum(1 for f in all_findings if getattr(f, "execution_error", False))
         total = len(all_findings)
 
-        score = (passed / total * 100.0) if total > 0 else 0.0
+        valid_total = total - errors
+        score = (passed / valid_total * 100.0) if valid_total > 0 else 0.0
 
         severity_counts: dict[str, int] = {}
         for f in all_findings:
-            if not f.passed:
+            if f.passed is False and not getattr(f, "execution_error", False):
                 key = f.severity.value
                 severity_counts[key] = severity_counts.get(key, 0) + 1
 
@@ -65,7 +67,7 @@ class BaseModule(ABC):
             total_attacks=total,
             passed=passed,
             failed=failed,
-            errors=0,
+            errors=errors,
             findings=all_findings,
             score=round(score, 2),
             duration_seconds=round(duration, 3),

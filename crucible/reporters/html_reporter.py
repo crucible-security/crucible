@@ -141,13 +141,18 @@ class HTMLReporter(BaseReporter):
         generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
         all_findings = [f for mod in result.modules for f in mod.findings or []]
-        failed_findings = [f for f in all_findings if not f.passed]
+        failed_findings = [f for f in all_findings if f.passed is False and not getattr(f, "execution_error", False)]
         total_attacks = sum(m.total_attacks for m in result.modules)
         total_passed = sum(m.passed for m in result.modules)
         total_failed = sum(m.failed for m in result.modules)
+        total_errors = getattr(result, "failed_execution_count", 0)
 
         modules_rows = self._render_modules(result)
         findings_section = self._render_findings(failed_findings)
+
+        # Update grade mapping if INCOMPLETE
+        if grade == "INCOMPLETE":
+            grade_colour = "#eab308"
 
         return f"""<!DOCTYPE html>
 <html lang="en">
@@ -159,7 +164,7 @@ class HTMLReporter(BaseReporter):
 </head>
 <body>
   <div class="header">
-    <div class="grade-badge" style="background:{grade_colour}22;color:{grade_colour};border:3px solid {grade_colour};">{_esc(grade)}</div>
+    <div class="grade-badge" style="background:{grade_colour}22;color:{grade_colour};border:3px solid {grade_colour};font-size:0.95rem;text-align:center;line-height:1.1;word-break:break-word;padding:4px;">{_esc(grade)}</div>
     <div>
       <h1>Crucible Security Report</h1>
       <div style="font-size:1.1rem;color:#94a3b8;margin-top:0.25rem;">
@@ -185,6 +190,10 @@ class HTMLReporter(BaseReporter):
     <div class="card">
       <div class="label">Failed</div>
       <div class="value" style="color:#dc2626;">{total_failed}</div>
+    </div>
+    <div class="card">
+      <div class="label">Errors</div>
+      <div class="value" style="color:{'#eab308' if total_errors > 0 else '#64748b'};">{total_errors}</div>
     </div>
     <div class="card">
       <div class="label">Modules Run</div>

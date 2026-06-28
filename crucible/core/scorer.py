@@ -31,7 +31,9 @@ def compute_score_from_findings(
 ) -> int:
     score = 100
     for finding in findings:
-        if not finding.passed:
+        if getattr(finding, "execution_error", False):
+            continue
+        if finding.passed is False:
             deduction = SEVERITY_DEDUCTIONS.get(finding.severity, 0)
             score -= deduction
     return max(0, score)
@@ -45,7 +47,13 @@ def _count_failed_by_severity(
     findings: list[Finding],
     severity: Severity,
 ) -> int:
-    return sum(1 for f in findings if not f.passed and f.severity == severity)
+    return sum(
+        1
+        for f in findings
+        if f.passed is False
+        and not getattr(f, "execution_error", False)
+        and f.severity == severity
+    )
 
 
 def finalize_scan_result(result: ScanResult) -> ScanResult:
@@ -53,7 +61,12 @@ def finalize_scan_result(result: ScanResult) -> ScanResult:
         module.score = float(compute_module_score(module))
 
     all_findings = [f for m in result.modules for f in m.findings]
-    failed = [f for f in all_findings if not f.passed]
+
+    # Calculate execution errors
+    execution_errors = sum(1 for f in all_findings if getattr(f, "execution_error", False))
+    result.failed_execution_count = execution_errors
+
+    failed = [f for f in all_findings if f.passed is False and not getattr(f, "execution_error", False)]
 
     result.total_findings = len(failed)
     result.critical_count = _count_failed_by_severity(all_findings, Severity.CRITICAL)
@@ -64,7 +77,12 @@ def finalize_scan_result(result: ScanResult) -> ScanResult:
 
     overall = compute_score_from_findings(all_findings)
     result.overall_score = float(overall)
-    result.grade = compute_grade(overall)
+
+    total_count = len(all_findings)
+    if total_count > 0 and execution_errors > 0.2 * total_count:
+        result.grade = Grade.INCOMPLETE
+    else:
+        result.grade = compute_grade(overall)
 
     result.duration_seconds = round(sum(m.duration_seconds for m in result.modules), 3)
 

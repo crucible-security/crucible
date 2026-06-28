@@ -1,4 +1,4 @@
-"""Adaptive Behavioral Fingerprinter — Crucible v0.5.0.
+"""Adaptive Behavioral Fingerprinter — Crucible v0.5.4.
 
 Profiles the psychological and technical boundaries of an AI agent by
 probing its refusal thresholds, semantic drift over long contexts, and

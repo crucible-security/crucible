@@ -214,7 +214,7 @@ class TestEnums:
     def test_grade_values(self) -> None:
         assert Grade.A.value == "A"
         assert Grade.F.value == "F"
-        assert len(Grade) == 5
+        assert len(Grade) == 6
 
     def test_scan_status_values(self) -> None:
         assert ScanStatus.COMPLETED.value == "completed"

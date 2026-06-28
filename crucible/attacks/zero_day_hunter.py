@@ -1,4 +1,4 @@
-"""Zero-Day Hunter — Crucible v0.5.0.
+"""Zero-Day Hunter — Crucible v0.5.4.
 
 Discovers previously unknown vulnerabilities through systematic differential
 analysis, boundary condition testing, and semantic state machine fuzzing.

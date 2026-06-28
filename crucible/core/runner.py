@@ -75,14 +75,18 @@ async def run_module_with_progress(
         if not verbose:
             return
 
-        result_str = "PASS (refused)" if finding.passed else "FAIL (bypassed)"
-        color = "green" if finding.passed else "red"
+        if getattr(finding, "execution_error", False):
+            result_str = "ERROR (execution error)"
+            color = "yellow"
+        else:
+            result_str = "PASS (refused)" if finding.passed else "FAIL (bypassed)"
+            color = "green" if finding.passed else "red"
 
         msg = (
-            f"[bold yellow][ATTACK][/bold yellow] {finding.attack_name} {module.name}\\n"
-            f'Payload: "{finding.payload}"\\n'
-            f'Response: "{finding.response_snippet}"\\n'
-            f"Result: [{color}]{result_str}[/{color}]\\n"
+            f"[bold yellow][ATTACK][/bold yellow] {finding.attack_name} {module.name}\n"
+            f'Payload: "{finding.payload}"\n'
+            f'Response: "{finding.response_snippet}"\n'
+            f"Result: [{color}]{result_str}[/{color}]\n"
         )
         if hasattr(progress, "console"):
             progress.console.print(msg)

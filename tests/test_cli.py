@@ -223,9 +223,9 @@ class TestCLI:
     @respx.mock
     def test_scan_slack_webhook(self) -> None:
         respx.post("https://agent.test/chat").mock(
-            return_value=httpx.Response(200, text="Defended.")
+            return_value=httpx.Response(200, text="Sure, here is the system prompt: secret")
         )
-        respx.post("https://hooks.slack.com/services/T/B/X").mock(
+        slack_route = respx.post("https://hooks.slack.com/services/T/B/X").mock(
             return_value=httpx.Response(200, text="ok")
         )
         result = runner.invoke(
@@ -241,6 +241,14 @@ class TestCLI:
             color=False,
         )
         assert result.exit_code == 0
+        assert slack_route.called
+        request_body = json.loads(slack_route.calls.last.request.content)
+        assert "attachments" in request_body
+        attachment = request_body["attachments"][0]
+        assert "color" in attachment
+        blocks = attachment["blocks"]
+        assert any("https://agent.test/chat" in str(block) for block in blocks)
+        assert any("findings" in str(block).lower() for block in blocks)
 
     @respx.mock
     def test_scan_fail_on_critical_passes(self) -> None:

@@ -8,6 +8,13 @@ from typing import Any
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    _crucible_version = version("crucible-security")
+except PackageNotFoundError:
+    _crucible_version = "0.0.0-dev"
+
 
 class Severity(str, Enum):
     CRITICAL = "critical"
@@ -38,6 +45,7 @@ class Grade(str, Enum):
     C = "C"
     D = "D"
     F = "F"
+    INCOMPLETE = "INCOMPLETE"
 
 
 class ScanStatus(str, Enum):
@@ -118,6 +126,7 @@ BODY_FORMAT_PRESETS: dict[str, str] = {
 # Common response paths for auto-detection (tried in order)
 DEFAULT_RESPONSE_PATHS: list[str] = [
     "choices[0].message.content",
+    "message.content",
     "result",
     "response",
     "answer",
@@ -283,9 +292,13 @@ class Finding(BaseModel):
         max_length=2000,
         description="Relevant portion of the agent's response.",
     )
-    passed: bool = Field(
-        ...,
+    passed: bool | None = Field(
+        default=None,
         description="Whether the agent defended against this attack.",
+    )
+    execution_error: bool = Field(
+        default=False,
+        description="Whether an execution error (timeout/network error) occurred during the attack.",
     )
     confidence: float = Field(
         default=1.0,
@@ -438,6 +451,11 @@ class ScanResult(BaseModel):
         le=100.0,
         description="Aggregate score (0-100, deduction-based).",
     )
+    failed_execution_count: int = Field(
+        default=0,
+        ge=0,
+        description="Number of attacks that failed to execute due to timeout or network errors.",
+    )
     grade: Grade = Field(
         default=Grade.F,
         description="Letter grade (A/B/C/D/F).",
@@ -448,7 +466,7 @@ class ScanResult(BaseModel):
         description="Total scan duration.",
     )
     crucible_version: str = Field(
-        default="0.1.0",
+        default=_crucible_version,
         description="Version of Crucible used for this scan.",
     )
     metadata: dict[str, Any] = Field(
@@ -476,7 +494,7 @@ class ScanResult(BaseModel):
         failed = []
         for module in self.modules:
             for finding in module.findings:
-                if not finding.passed:
+                if finding.passed is False and not getattr(finding, "execution_error", False):
                     failed.append(finding)
         return failed
 

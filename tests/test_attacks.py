@@ -187,13 +187,14 @@ class TestSecurityModules:
 
     def test_get_all_modules(self) -> None:
         modules = get_all_modules()
-        assert len(modules) == 12
+        assert any(m.name == "tool_injection" for m in modules)
         names = {m.name for m in modules}
         assert names == {
             "prompt_injection",
             "goal_hijacking",
             "jailbreaks",
             "mcp_security",
+            "tool_injection",
             "enterprise_graph",
             "memory_poisoning",
             "advanced_orchestration",

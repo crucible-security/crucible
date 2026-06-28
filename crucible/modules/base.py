@@ -41,8 +41,16 @@ class BaseModule(ABC):
 
         duration = time.monotonic() - start
 
-        passed = sum(1 for f in all_findings if f.passed is True and not getattr(f, "execution_error", False))
-        failed = sum(1 for f in all_findings if f.passed is False and not getattr(f, "execution_error", False))
+        passed = sum(
+            1
+            for f in all_findings
+            if f.passed is True and not getattr(f, "execution_error", False)
+        )
+        failed = sum(
+            1
+            for f in all_findings
+            if f.passed is False and not getattr(f, "execution_error", False)
+        )
         errors = sum(1 for f in all_findings if getattr(f, "execution_error", False))
         total = len(all_findings)
 

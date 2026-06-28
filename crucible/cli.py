@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import sys
@@ -37,15 +38,11 @@ from crucible.reporters.terminal import TerminalReporter
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
 if hasattr(sys.stdout, "reconfigure"):
-    try:
+    with contextlib.suppress(Exception):
         sys.stdout.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
 if hasattr(sys.stderr, "reconfigure"):
-    try:
+    with contextlib.suppress(Exception):
         sys.stderr.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
 
 console = Console()
 
@@ -1191,17 +1188,17 @@ def mcp_scan(
         console.print(
             f"[bold red]Error: MCP server returned HTTP {exc.response.status_code}.[/bold red]"
         )
-        raise typer.Exit(code=2)
+        raise typer.Exit(code=2) from None
     except httpx.RequestError as exc:
         console.print(
             f"[bold red]Error: Could not reach MCP server ({exc}).[/bold red]"
         )
-        raise typer.Exit(code=2)
+        raise typer.Exit(code=2) from None
     except Exception as exc:
         console.print(
             f"[bold red]Error: Failed to parse MCP manifest ({exc}).[/bold red]"
         )
-        raise typer.Exit(code=2)
+        raise typer.Exit(code=2) from None
 
     # --- Run scanner -----------------------------------------------------------
     scanner = McpScanner(server_url=server, manifest=manifest)

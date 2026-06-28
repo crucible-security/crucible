@@ -63,10 +63,16 @@ def finalize_scan_result(result: ScanResult) -> ScanResult:
     all_findings = [f for m in result.modules for f in m.findings]
 
     # Calculate execution errors
-    execution_errors = sum(1 for f in all_findings if getattr(f, "execution_error", False))
+    execution_errors = sum(
+        1 for f in all_findings if getattr(f, "execution_error", False)
+    )
     result.failed_execution_count = execution_errors
 
-    failed = [f for f in all_findings if f.passed is False and not getattr(f, "execution_error", False)]
+    failed = [
+        f
+        for f in all_findings
+        if f.passed is False and not getattr(f, "execution_error", False)
+    ]
 
     result.total_findings = len(failed)
     result.critical_count = _count_failed_by_severity(all_findings, Severity.CRITICAL)

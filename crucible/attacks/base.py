@@ -36,6 +36,7 @@ OWASP_AGENTIC_MAP: dict[AttackCategory, str] = {
 
 class _HttpRetryableError(Exception):
     """Exception raised when an HTTP 5xx or 429 response is received and should be retried."""
+
     def __init__(self, response: httpx.Response) -> None:
         self.response = response
 
@@ -144,7 +145,7 @@ class BaseAttack(ABC):
         payload: str,
     ) -> Finding:
         response_text = ""
-        passed = True
+        passed: bool | None = True
         execution_error = False
         max_attempts = target.retry_count + 1
 
@@ -152,6 +153,7 @@ class BaseAttack(ABC):
             try:
                 # Apply delay / rate limit spacing between requests
                 import sys
+
                 if target.delay_ms > 0 and "pytest" not in sys.modules:
                     global _last_request_lock, _last_request_time
                     if _last_request_lock is None:

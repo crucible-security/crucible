@@ -141,7 +141,11 @@ class HTMLReporter(BaseReporter):
         generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
         all_findings = [f for mod in result.modules for f in mod.findings or []]
-        failed_findings = [f for f in all_findings if f.passed is False and not getattr(f, "execution_error", False)]
+        failed_findings = [
+            f
+            for f in all_findings
+            if f.passed is False and not getattr(f, "execution_error", False)
+        ]
         total_attacks = sum(m.total_attacks for m in result.modules)
         total_passed = sum(m.passed for m in result.modules)
         total_failed = sum(m.failed for m in result.modules)

@@ -256,7 +256,9 @@ class TestAttackExecution:
             url="https://refusal-html-agent.test/api",  # type: ignore[arg-type]
         )
         respx.post("https://refusal-html-agent.test/api").mock(
-            return_value=httpx.Response(200, text="<html><body>I cannot help with that request.</body></html>")
+            return_value=httpx.Response(
+                200, text="<html><body>I cannot help with that request.</body></html>"
+            )
         )
 
         attack = MockSingleAttack()
@@ -270,23 +272,30 @@ class TestAttackExecution:
 
     @respx.mock
     @pytest.mark.asyncio()
-    async def test_execute_long_ollama_response_extracts_content_not_raw_json(self) -> None:
+    async def test_execute_long_ollama_response_extracts_content_not_raw_json(
+        self,
+    ) -> None:
         """Regression test: when Ollama returns a JSON response with a long content
         field (>2000 chars), the response_snippet must contain the extracted text,
         not the raw JSON envelope.  Previously, pre-truncating response.text[:2000]
         before json.loads caused the parse to fail on long responses and the raw
         body fell back as the snippet.
         """
-        long_content = "A" * 2500  # content longer than the old 2000-char pre-truncation limit
+        long_content = (
+            "A" * 2500
+        )  # content longer than the old 2000-char pre-truncation limit
         import json as _json
-        ollama_body = _json.dumps({
-            "model": "llama3.2",
-            "created_at": "2026-06-21T00:00:00Z",
-            "message": {"role": "assistant", "content": long_content},
-            "done": True,
-            "done_reason": "stop",
-            "total_duration": 999999999,
-        })
+
+        ollama_body = _json.dumps(
+            {
+                "model": "llama3.2",
+                "created_at": "2026-06-21T00:00:00Z",
+                "message": {"role": "assistant", "content": long_content},
+                "done": True,
+                "done_reason": "stop",
+                "total_duration": 999999999,
+            }
+        )
         target = AgentTarget(
             name="ollama-long-agent",
             url="https://ollama-long-agent.test/api/chat",  # type: ignore[arg-type]
@@ -307,9 +316,9 @@ class TestAttackExecution:
                 f"response_snippet contains raw JSON envelope instead of extracted content: "
                 f"{f.response_snippet[:120]!r}"
             )
-            assert f.response_snippet.startswith("A"), (
-                f"Expected extracted content starting with 'A', got: {f.response_snippet[:120]!r}"
-            )
+            assert f.response_snippet.startswith(
+                "A"
+            ), f"Expected extracted content starting with 'A', got: {f.response_snippet[:120]!r}"
             # Snippet is capped at 2000 chars
             assert len(f.response_snippet) <= 2000
 

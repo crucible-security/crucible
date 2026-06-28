@@ -140,7 +140,12 @@ class TerminalReporter(BaseReporter):
         self.console.print()
 
     def _render_findings_table(self, result: ScanResult) -> None:
-        failed = [f for m in result.modules for f in m.findings if f.passed is False and not getattr(f, "execution_error", False)]
+        failed = [
+            f
+            for m in result.modules
+            for f in m.findings
+            if f.passed is False and not getattr(f, "execution_error", False)
+        ]
 
         if not failed:
             self.console.print(
@@ -214,8 +219,14 @@ class TerminalReporter(BaseReporter):
         self.console.print()
 
         summary_text = Text()
-        summary_text.append(f"  {result.total_findings} findings", style="bold red" if result.total_findings > 0 else "bold green")
-        summary_text.append(f", {result.failed_execution_count} attacks failed to execute (connection/timeout errors) — excluded from score", style="bold yellow" if result.failed_execution_count > 0 else "dim")
+        summary_text.append(
+            f"  {result.total_findings} findings",
+            style="bold red" if result.total_findings > 0 else "bold green",
+        )
+        summary_text.append(
+            f", {result.failed_execution_count} attacks failed to execute (connection/timeout errors) — excluded from score",
+            style="bold yellow" if result.failed_execution_count > 0 else "dim",
+        )
         self.console.print(summary_text)
         self.console.print()
 

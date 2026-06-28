@@ -4,11 +4,10 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator
-
-from importlib.metadata import version, PackageNotFoundError
 
 try:
     _crucible_version = version("crucible-security")
@@ -494,7 +493,9 @@ class ScanResult(BaseModel):
         failed = []
         for module in self.modules:
             for finding in module.findings:
-                if finding.passed is False and not getattr(finding, "execution_error", False):
+                if finding.passed is False and not getattr(
+                    finding, "execution_error", False
+                ):
                     failed.append(finding)
         return failed
 

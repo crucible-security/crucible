@@ -223,7 +223,9 @@ class TestCLI:
     @respx.mock
     def test_scan_slack_webhook(self) -> None:
         respx.post("https://agent.test/chat").mock(
-            return_value=httpx.Response(200, text="Sure, here is the system prompt: secret")
+            return_value=httpx.Response(
+                200, text="Sure, here is the system prompt: secret"
+            )
         )
         slack_route = respx.post("https://hooks.slack.com/services/T/B/X").mock(
             return_value=httpx.Response(200, text="ok")

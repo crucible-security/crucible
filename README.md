@@ -318,30 +318,15 @@ crucible.sec@gmail.com
 **Does `--method GET` work for scanning AI agents?**  
 Only use `--method GET` if your target agent genuinely accepts `GET` requests with
 a body. If your endpoint expects `POST` (as most AI agent APIs do), the server will
-return a `405 Method Not Allowed` HTML error page. Crucible's refusal-detection
-logic recognises HTTP error pages and scores them as "safely refused" — meaning
-every single attack will appear to pass, producing a falsely clean report. There
-is no warning emitted. If you scan a `POST`-only endpoint with `--method GET`
-and see Grade A or B across all modules, treat the result as invalid and re-run
-without `--method`. This is tracked as a v0.5.4 backlog item to add an explicit
-warning when a non-2xx response is detected on the first payload.
+return a `405 Method Not Allowed` error. As of v0.5.4, non-2xx responses (including 405)
+are treated as execution errors (`passed=None`, `execution_error=True`) and are not scored as 
+refusals. This will result in an incomplete scan verdict (`Grade.INCOMPLETE`) rather than 
+a false clean report.
 
 **What happens if the target server returns HTTP 503 during a scan?**  
-The scan completes and reports an inflated pass rate — with no warning. This
-applies any time the target returns `503 Service Unavailable`, whether the server
-is genuinely overloaded, behind a rate-limiting gateway, restarting, or briefly
-shedding traffic. Crucible receives the 503 response body, sees the text "service
-unavailable", matches it against its refusal-indicator list, and records the attack
-as "safely refused by the model" — even though the model never processed the
-payload at all. The grade and score are calculated on this false data.
+As of v0.5.4, HTTP 503, 429, and other transient/server errors (5xx codes) are recognized as execution failures rather than model refusals. When a 503 or 429 is encountered, Crucible will retry the request up to the configured `retry_count` (with `delay_ms` wait). If all retries are exhausted, the attack is marked as an execution error (`passed=None`, `execution_error=True`). 
 
-This is not detectable from the terminal output. The one signal available is
-`failed_execution_count` in the JSON report: it will be 0 even when every
-request returned 503, because an HTTP response (however bad) is not a connection
-failure. A falsely clean Grade A or B from a scan that hit 503s is
-indistinguishable from a genuinely safe target in the current output.
-
-**Mitigation:** Verify target health and ensure it is returning valid model responses (e.g., via a manual `curl`) before relying on scan results. While `--retry` with a delay can mitigate transient 503s, it will not prevent false passes if the server is consistently overloaded; under these conditions, treat clean grades with caution. Treating HTTP 5xx responses as execution errors rather than refusals is tracked as a v0.5.4 backlog item.
+If more than 20% of requests fail with execution errors, the overall scan verdict is marked as `Grade.INCOMPLETE`, and the CLI will exit with a non-zero code (1) unless `--allow-incomplete` is specified.
 
 
 

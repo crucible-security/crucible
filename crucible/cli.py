@@ -828,6 +828,73 @@ def compliance_report(
 
 
 @app.command()
+def diff(
+    scan_a: Path = typer.Argument(..., help="Path to baseline scan results JSON."),
+    scan_b: Path = typer.Argument(..., help="Path to current scan results JSON."),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Save diff report to file."),
+    format: str = typer.Option("terminal", "--format", "-f", help="Diff report format: terminal | json | html | markdown"),
+    show_unchanged: bool = typer.Option(False, "--show-unchanged", help="Include UNCHANGED_PASS findings (default: hidden)."),
+    module: str | None = typer.Option(None, "--module", "-m", help="Filter diff to a specific module."),
+    severity: str | None = typer.Option(None, "--severity", "-s", help="Filter diff by severity: CRITICAL | HIGH | MEDIUM | LOW"),
+) -> None:
+    """Compare two scan results and show the difference in security posture (Fixed, Regressed, New)."""
+    try:
+        data_a = json.loads(scan_a.read_text(encoding="utf-8"))
+        result_a = ScanResult.model_validate(data_a)
+    except Exception as e:
+        console.print(f"[red]Failed to load scan baseline {scan_a}: {e}[/red]")
+        raise typer.Exit(code=1) from e
+
+    try:
+        data_b = json.loads(scan_b.read_text(encoding="utf-8"))
+        result_b = ScanResult.model_validate(data_b)
+    except Exception as e:
+        console.print(f"[red]Failed to load scan current {scan_b}: {e}[/red]")
+        raise typer.Exit(code=1) from e
+
+    min_sev = None
+    if severity:
+        try:
+            min_sev = Severity(severity.lower().strip())
+        except ValueError:
+            console.print(f"[red]Invalid severity: {severity}. Use: CRITICAL | HIGH | MEDIUM | LOW[/red]")
+            raise typer.Exit(code=1) from None
+
+    from crucible.core.differ import compute_diff
+    diff_res = compute_diff(result_a, result_b)
+    diff_res.scan_a_path = str(scan_a)
+    diff_res.scan_b_path = str(scan_b)
+
+    from crucible.reporters.diff_reporter import DiffReporter
+    reporter = DiffReporter(
+        show_unchanged=show_unchanged,
+        module_filter=module,
+        min_severity=min_sev,
+    )
+
+    if output:
+        try:
+            reporter.write(diff_res, output, format=format)
+            console.print(f"[green]Diff report ({format}) saved to {output}[/green]")
+        except Exception as e:
+            console.print(f"[red]Failed to write diff report to {output}: {e}[/red]")
+            raise typer.Exit(code=1) from e
+    else:
+        if format == "terminal":
+            content = reporter.to_terminal(diff_res)
+            console.print(content)
+        elif format == "json":
+            console.print(reporter.to_json(diff_res))
+        elif format == "markdown":
+            console.print(reporter.to_markdown(diff_res))
+        elif format == "html":
+            console.print(reporter.to_html(diff_res))
+        else:
+            console.print(f"[red]Unknown format: {format}. Use: terminal | json | html | markdown[/red]")
+            raise typer.Exit(code=1)
+
+
+@app.command()
 def research(
     update: bool = typer.Option(
         False,

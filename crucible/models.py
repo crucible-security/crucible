@@ -604,3 +604,57 @@ class ComplianceReport(BaseModel):
     requirements: list[ComplianceRequirement] = Field(default_factory=list)
     overall_status: ComplianceStatus = ComplianceStatus.UNCLEAR
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class FindingStatus(str, Enum):
+    FIXED = "fixed"           # was failing in scan_a, passing in scan_b
+    REGRESSED = "regressed"   # was passing in scan_a, failing in scan_b
+    NEW = "new"               # not present in scan_a, failing in scan_b
+    RESOLVED = "resolved"     # not present in scan_a, passing in scan_b
+    UNCHANGED_FAIL = "unchanged_fail"  # failing in both
+    UNCHANGED_PASS = "unchanged_pass"  # passing in both
+    EXECUTION_ERROR = "execution_error"  # errored in one or both
+
+
+class FindingDiff(BaseModel):
+    attack_id: str
+    attack_name: str
+    status: FindingStatus
+    severity: Severity
+    scan_a_passed: bool | None = None   # None if not present
+    scan_b_passed: bool | None = None   # None if not present
+    atlas_technique: str = ""
+    nist_category: str = ""
+    module: str = ""
+
+
+class ModuleDiff(BaseModel):
+    module_name: str
+    score_a: float
+    score_b: float
+    score_delta: float
+    fixed_count: int
+    regressed_count: int
+    new_count: int
+    findings: list[FindingDiff]
+
+
+class DiffResult(BaseModel):
+    scan_a_path: str
+    scan_b_path: str
+    scan_a_version: str
+    scan_b_version: str
+    scan_a_timestamp: str | None = None
+    scan_b_timestamp: str | None = None
+    score_a: float
+    score_b: float
+    score_delta: float
+    grade_a: Grade
+    grade_b: Grade
+    total_fixed: int
+    total_regressed: int
+    total_new: int
+    total_unchanged_fail: int
+    modules: list[ModuleDiff]
+    generated_at: str
+    warning: str | None = None

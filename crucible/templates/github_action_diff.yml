@@ -1,0 +1,35 @@
+name: Crucible Security Diff
+on: [pull_request]
+jobs:
+  security-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          pip install crucible-security
+      - name: Run scan on PR
+        run: |
+          crucible scan --target ${{ secrets.AGENT_URL }} --output pr_scan.json
+      - name: Generate diff against main branch baseline
+        run: |
+          # Download main branch baseline scan result
+          curl -s -o baseline.json https://my-security-baseline-store.com/baseline.json
+          # Run diff and generate markdown
+          crucible diff baseline.json pr_scan.json --format markdown > diff_report.md
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs')
+            const body = fs.readFileSync('diff_report.md', 'utf8')
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            })

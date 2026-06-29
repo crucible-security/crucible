@@ -5,6 +5,16 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.6] - 2026-06-29
+
+### Added
+- **`crucible diff` CLI Command** — Added a git-diff-like command to compare two scan results: `crucible diff scan_a.json scan_b.json`.
+- **FindingStatus Enumeration** — Added `FindingStatus` enum with `FIXED`, `REGRESSED`, `NEW`, `RESOLVED`, `UNCHANGED_FAIL`, `UNCHANGED_PASS`, and `EXECUTION_ERROR` statuses.
+- **Diff Models** — Added `FindingDiff`, `ModuleDiff`, and `DiffResult` models in `models.py`.
+- **Diff Reporters** — Implemented console/terminal (with rich formatting), json, markdown, and html diff reports in `crucible/reporters/diff_reporter.py`.
+- **GitHub Action Template** — Added a reference workflow template at `crucible/templates/github_action_diff.yml` for automated PR security diff comments.
+- **15 new tests** in `tests/test_differ.py` testing different status assignments, delta computations, CLI output formats, and edge cases.
+
 ## [0.5.5] - 2026-06-29
 
 ### Added

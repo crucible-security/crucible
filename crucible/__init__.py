@@ -1,8 +1,21 @@
-from crucible.models import AgentTarget, Finding, ModuleResult, ScanResult
+from crucible.models import (
+    AgentTarget,
+    DiffResult,
+    Finding,
+    FindingDiff,
+    FindingStatus,
+    ModuleDiff,
+    ModuleResult,
+    ScanResult,
+)
 
 __all__: list[str] = [
     "AgentTarget",
+    "DiffResult",
     "Finding",
+    "FindingDiff",
+    "FindingStatus",
+    "ModuleDiff",
     "ModuleResult",
     "ScanResult",
 ]

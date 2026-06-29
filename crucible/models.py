@@ -399,12 +399,8 @@ class StatisticalFinding(BaseModel):
         ),
     )
     severity: Severity = Field(..., description="Severity of this attack class.")
-    atlas_technique: str = Field(
-        default="", description="MITRE ATLAS technique ID."
-    )
-    nist_category: str = Field(
-        default="", description="NIST AI RMF category."
-    )
+    atlas_technique: str = Field(default="", description="MITRE ATLAS technique ID.")
+    nist_category: str = Field(default="", description="NIST AI RMF category.")
 
 
 class ModuleResult(BaseModel):
@@ -837,6 +833,7 @@ class WatchStatus(BaseModel):
 # Phase 7 — crucible poison-test (v0.8.0)
 # =============================================================================
 
+
 class MemoryType(str, Enum):
     RAG = "rag"
     EPISODIC = "episodic"
@@ -857,13 +854,27 @@ class PoisonPlantRecord(BaseModel):
     memory_type: MemoryType = Field(description="The memory subsystem target type.")
     topic: str = Field(description="The target topic/subject of the poisoning.")
     technique: int = Field(description="The generation technique used (1 to 4).")
-    trigger: str = Field(description="The prompt trigger phrase used to activate the poison.")
-    activation_signal: str = Field(description="The unique 8-character confirmation code.")
-    document_text: str = Field(description="The full generated document content with embedded code.")
-    planted_at: str = Field(description="ISO timestamp of when the session was created.")
-    status: PoisonStatus = Field(default=PoisonStatus.PLANTED, description="Current evaluation status.")
-    verified_at: str | None = Field(default=None, description="ISO timestamp of the last verification attempt.")
-    activation_response: str | None = Field(default=None, description="The raw agent output that verified activation.")
+    trigger: str = Field(
+        description="The prompt trigger phrase used to activate the poison."
+    )
+    activation_signal: str = Field(
+        description="The unique 8-character confirmation code."
+    )
+    document_text: str = Field(
+        description="The full generated document content with embedded code."
+    )
+    planted_at: str = Field(
+        description="ISO timestamp of when the session was created."
+    )
+    status: PoisonStatus = Field(
+        default=PoisonStatus.PLANTED, description="Current evaluation status."
+    )
+    verified_at: str | None = Field(
+        default=None, description="ISO timestamp of the last verification attempt."
+    )
+    activation_response: str | None = Field(
+        default=None, description="The raw agent output that verified activation."
+    )
     target_url: str = Field(description="Target URL of the agent/RAG system.")
 
 
@@ -874,6 +885,9 @@ class PoisonTestResult(BaseModel):
     activation_signal: str = Field(description="The targeted confirmation token.")
     trigger: str = Field(description="The trigger query sent to the agent.")
     response_snippet: str = Field(description="Snippet of the agent response.")
-    is_active: bool = Field(description="True if the activation signal was found in the response.")
-    error_message: str | None = Field(default=None, description="Detailed error description if verification failed.")
-
+    is_active: bool = Field(
+        description="True if the activation signal was found in the response."
+    )
+    error_message: str | None = Field(
+        default=None, description="Detailed error description if verification failed."
+    )

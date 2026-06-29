@@ -9,6 +9,7 @@ Supported JSON-RPC methods:
   - tools/call   → echoes back a success response
   - anything else → returns a JSON-RPC error
 """
+
 from __future__ import annotations
 
 import json
@@ -19,49 +20,71 @@ from typing import Any
 
 
 class _Handler(BaseHTTPRequestHandler):
-    def log_message(self, *args: Any) -> None:  # type: ignore[override]
+    def log_message(self, *args: Any) -> None:
         """Suppress default request logging during tests."""
 
-    def do_POST(self) -> None:  # noqa: N802  (stdlib naming)
+    def do_POST(self) -> None:
         length = int(self.headers.get("Content-Length", 0))
         body_bytes = self.rfile.read(length) if length else b""
 
         try:
             body: dict[str, Any] = json.loads(body_bytes)
         except (json.JSONDecodeError, ValueError):
-            self._send_json({"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": None})
+            self._send_json(
+                {
+                    "jsonrpc": "2.0",
+                    "error": {"code": -32700, "message": "Parse error"},
+                    "id": None,
+                }
+            )
             return
 
         method = body.get("method", "")
         rpc_id = body.get("id")
 
         if method == "tools/list":
-            self._send_json({
-                "jsonrpc": "2.0",
-                "result": {
-                    "tools": [
-                        {"name": "read_file", "description": "Read a file", "inputSchema": {}},
-                        {"name": "bash", "description": "Run bash", "inputSchema": {}},
-                    ]
-                },
-                "id": rpc_id,
-            })
+            self._send_json(
+                {
+                    "jsonrpc": "2.0",
+                    "result": {
+                        "tools": [
+                            {
+                                "name": "read_file",
+                                "description": "Read a file",
+                                "inputSchema": {},
+                            },
+                            {
+                                "name": "bash",
+                                "description": "Run bash",
+                                "inputSchema": {},
+                            },
+                        ]
+                    },
+                    "id": rpc_id,
+                }
+            )
         elif method == "tools/call":
             tool_name = body.get("params", {}).get("name", "unknown")
-            self._send_json({
-                "jsonrpc": "2.0",
-                "result": {
-                    "content": [{"type": "text", "text": f"OK: {tool_name} executed"}],
-                    "isError": False,
-                },
-                "id": rpc_id,
-            })
+            self._send_json(
+                {
+                    "jsonrpc": "2.0",
+                    "result": {
+                        "content": [
+                            {"type": "text", "text": f"OK: {tool_name} executed"}
+                        ],
+                        "isError": False,
+                    },
+                    "id": rpc_id,
+                }
+            )
         else:
-            self._send_json({
-                "jsonrpc": "2.0",
-                "error": {"code": -32601, "message": f"Method not found: {method}"},
-                "id": rpc_id,
-            })
+            self._send_json(
+                {
+                    "jsonrpc": "2.0",
+                    "error": {"code": -32601, "message": f"Method not found: {method}"},
+                    "id": rpc_id,
+                }
+            )
 
     def _send_json(self, data: dict[str, Any]) -> None:
         payload = json.dumps(data).encode()

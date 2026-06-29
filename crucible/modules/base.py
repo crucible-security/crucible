@@ -4,7 +4,13 @@ import time
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
-from crucible.models import AgentTarget, AttackCategory, Finding, ModuleResult, StatisticalFinding
+from crucible.models import (
+    AgentTarget,
+    AttackCategory,
+    Finding,
+    ModuleResult,
+    StatisticalFinding,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -87,9 +93,7 @@ class BaseModule(ABC):
 
             for attack_name, afindings in by_attack.items():
                 valid = [
-                    f
-                    for f in afindings
-                    if not getattr(f, "execution_error", False)
+                    f for f in afindings if not getattr(f, "execution_error", False)
                 ]
                 if not valid:
                     continue
@@ -98,9 +102,7 @@ class BaseModule(ABC):
                 n_total = len(valid)
                 bp_rate = n_fail / n_total
                 ps_rate = n_pass / n_total
-                ci = bootstrap_confidence_interval(
-                    successes=n_fail, trials=n_total
-                )
+                ci = bootstrap_confidence_interval(successes=n_fail, trials=n_total)
                 sig = interpret_significance(ci)
                 # Pull atlas/nist from one finding
                 sample_f = valid[0]

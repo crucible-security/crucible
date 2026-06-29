@@ -25,21 +25,24 @@ Windows note
 anyio.run() is called with ``backend="asyncio"`` everywhere, which is the
 only backend tested to work reliably on Windows 11.
 """
+
 from __future__ import annotations
 
 import json
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import anyio
 import anyio.abc
 import h11
 import httpx
 
-from crucible.trace.audit_log import AuditLog
 from crucible.trace.models import Policy, PolicyAction, TraceEntry
 from crucible.trace.policy import evaluate_policy
+
+if TYPE_CHECKING:
+    from crucible.trace.audit_log import AuditLog
 
 
 def is_tool_call(body: dict[str, Any]) -> tuple[bool, str | None]:
@@ -60,7 +63,9 @@ def is_tool_call(body: dict[str, Any]) -> tuple[bool, str | None]:
     return True, name
 
 
-def _build_deny_response(request_id: Any, tool_name: str | None, rule_name: str | None) -> bytes:
+def _build_deny_response(
+    request_id: Any, tool_name: str | None, rule_name: str | None
+) -> bytes:
     """Build an HTTP 200 response carrying a JSON-RPC error body for denied calls."""
     error_body = json.dumps(
         {
@@ -121,7 +126,9 @@ class TraceProxy:
     # Public API
     # ------------------------------------------------------------------
 
-    async def handle_connection(self, stream: anyio.abc.ByteStream, caller_ip: str) -> None:
+    async def handle_connection(
+        self, stream: anyio.abc.ByteStream, caller_ip: str
+    ) -> None:
         """Handle one TCP connection end-to-end."""
         raw = await self._read_all(stream)
         response_bytes, _ = await self._process(raw, caller_ip)
@@ -207,7 +214,7 @@ class TraceProxy:
         else:
             if action == PolicyAction.ALERT:
                 self._alerts += 1
-                print(  # noqa: T201
+                print(
                     f"[crucible trace] ALERT — tool '{tool_name}' matched rule "
                     f"'{rule_matched}' (forwarding anyway)",
                     flush=True,
@@ -277,6 +284,7 @@ class TraceProxy:
         url = self.upstream + path.decode("latin-1")
 
         import time  # local import to avoid circular top-level
+
         t0 = time.perf_counter()
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -302,7 +310,11 @@ class TraceProxy:
         except Exception as exc:
             latency_ms = (time.perf_counter() - t0) * 1000.0
             error_body = json.dumps(
-                {"jsonrpc": "2.0", "error": {"code": -32603, "message": str(exc)}, "id": None}
+                {
+                    "jsonrpc": "2.0",
+                    "error": {"code": -32603, "message": str(exc)},
+                    "id": None,
+                }
             ).encode()
             response_bytes = (
                 b"HTTP/1.1 502 Bad Gateway\r\nContent-Type: application/json\r\n"
@@ -323,25 +335,28 @@ class TraceProxy:
             local_host=self.listen_host,
             local_port=self.listen_port,
         )
-        async with listener:
-            async with anyio.create_task_group() as tg:
-                async def _serve_one(stream: anyio.abc.ByteStream) -> None:
-                    caller_ip = "unknown"
-                    try:
-                        # anyio SocketStream exposes .extra() for peer info
-                        import anyio.abc
-                        if hasattr(stream, "extra"):
-                            try:
-                                peer = stream.extra(anyio.abc.SocketAttribute.remote_address)
-                                caller_ip = str(peer[0]) if peer else "unknown"
-                            except Exception:
-                                pass
-                        async with stream:
-                            await self.handle_connection(stream, caller_ip)
-                    except Exception:
-                        pass
+        async with listener, anyio.create_task_group() as tg:
 
-                await listener.serve(_serve_one, task_group=tg)
+            async def _serve_one(stream: anyio.abc.ByteStream) -> None:
+                caller_ip = "unknown"
+                try:
+                    # anyio SocketStream exposes .extra() for peer info
+                    import anyio.abc
+
+                    if hasattr(stream, "extra"):
+                        try:
+                            peer = stream.extra(
+                                anyio.abc.SocketAttribute.remote_address
+                            )
+                            caller_ip = str(peer[0]) if peer else "unknown"
+                        except Exception:
+                            pass
+                    async with stream:
+                        await self.handle_connection(stream, caller_ip)
+                except Exception:
+                    pass
+
+            await listener.serve(_serve_one, task_group=tg)
 
     @property
     def counters(self) -> dict[str, int]:

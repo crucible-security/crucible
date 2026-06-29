@@ -1,9 +1,10 @@
 """Persistent memory poisoning session store."""
+
 from __future__ import annotations
 
+import contextlib
 import json
 from pathlib import Path
-from typing import Any
 
 from crucible.models import PoisonPlantRecord, PoisonStatus
 
@@ -42,10 +43,8 @@ class PoisonSessionStore:
             tmp.replace(path)
         finally:
             if tmp.exists():
-                try:
+                with contextlib.suppress(OSError):
                     tmp.unlink()
-                except OSError:
-                    pass
 
     def load(self, session_id: str) -> PoisonPlantRecord | None:
         """Load a PoisonPlantRecord by session ID.

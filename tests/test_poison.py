@@ -1,12 +1,12 @@
 """Tests for memory and RAG poisoning evaluation (Phase 7 / v0.8.0)."""
+
 from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
-import pytest
 from typer.testing import CliRunner
 
 from crucible.cli import app
@@ -14,10 +14,13 @@ from crucible.models import MemoryType, PoisonPlantRecord, PoisonStatus
 from crucible.poison.document_generator import DocumentGenerator
 from crucible.poison.session_store import PoisonSessionStore
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ===========================================================================
 # Document Generator Tests
 # ===========================================================================
+
 
 def test_document_generator_technique_1() -> None:
     generator = DocumentGenerator()
@@ -62,6 +65,7 @@ def test_activation_signal_unique_per_call() -> None:
 # ===========================================================================
 # Session Store Tests
 # ===========================================================================
+
 
 def test_poison_session_store_saves_and_loads(tmp_path: Path) -> None:
     store = PoisonSessionStore(store_dir=tmp_path)
@@ -113,10 +117,11 @@ def test_poison_session_store_lists_all(tmp_path: Path) -> None:
 # Verification Logic Tests
 # ===========================================================================
 
+
 def test_verify_detects_activation_when_signal_present() -> None:
     # A test helper check: does signal appear in response
     signal = "X7K2M9QP"
-    response = f"Sure, the answer contains X7K2M9QP token."
+    response = "Sure, the answer contains X7K2M9QP token."
     assert signal in response
 
 
@@ -130,8 +135,11 @@ def test_verify_detects_no_activation() -> None:
 # CLI Integration Tests
 # ===========================================================================
 
+
 @patch("httpx.Client")
-def test_rag_plant_via_ingest_endpoint(mock_client_class: MagicMock, tmp_path: Path) -> None:
+def test_rag_plant_via_ingest_endpoint(
+    mock_client_class: MagicMock, tmp_path: Path
+) -> None:
     # Setup mock Client and response
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -178,7 +186,6 @@ def test_rag_plant_via_ingest_endpoint(mock_client_class: MagicMock, tmp_path: P
         mock_client.post.assert_called()  # Ingest + Query calls
 
         assert session_file.exists()
-
 
 
 def test_plant_command_creates_record_file(tmp_path: Path) -> None:
@@ -267,4 +274,3 @@ def test_status_command_shows_single_session() -> None:
         assert result.exit_code == 0, result.output
         assert "sess-b" in result.output.lower()
         assert "verified_active" in result.output.lower()
-

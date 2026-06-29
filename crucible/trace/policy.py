@@ -1,14 +1,17 @@
 """YAML policy loader and evaluator for the crucible trace proxy."""
+
 from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from crucible.trace.models import Policy, PolicyAction, PolicyRule
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class PolicyError(Exception):

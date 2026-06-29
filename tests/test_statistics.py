@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 import json
-import pytest
+
 import httpx
+import pytest
 import respx
 
+from crucible.core.runner import run_scan
 from crucible.core.statistics import (
     bootstrap_confidence_interval,
     interpret_significance,
 )
-from crucible.models import ConfidenceInterval, AgentTarget, ScanStatus
-from crucible.core.runner import run_scan
+from crucible.models import AgentTarget, ConfidenceInterval, ScanStatus
 from crucible.modules.security import GoalHijackingModule
 
 
@@ -46,8 +47,10 @@ def test_significance_inconclusive() -> None:
 
 def test_pure_python_no_numpy() -> None:
     """Confirm statistics.py does not import numpy or scipy."""
-    import crucible.core.statistics as s
     import inspect
+
+    import crucible.core.statistics as s
+
     source = inspect.getsource(s)
     assert "import numpy" not in source
     assert "from numpy" not in source
@@ -89,7 +92,7 @@ async def test_confidence_mode_runs_each_attack_n_times() -> None:
     assert route.call_count == total_payloads * 3
     assert result.status == ScanStatus.COMPLETED
     assert len(result.modules[0].statistical_findings) == n_attacks
-    
+
     attacks_dict = {a.name: a for a in module.get_attacks()}
     for sf in result.modules[0].statistical_findings:
         attack_obj = attacks_dict[sf.attack_id]

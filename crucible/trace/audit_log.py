@@ -1,10 +1,14 @@
 """Append-only JSONL audit log for the crucible trace proxy."""
+
 from __future__ import annotations
 
 import threading
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from crucible.trace.models import TraceEntry
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class AuditLog:
@@ -39,9 +43,8 @@ class AuditLog:
             entry: The audit log entry to persist.
         """
         line = entry.model_dump_json() + "\n"
-        with self._lock:
-            with self._path.open("a", encoding="utf-8") as fh:
-                fh.write(line)
+        with self._lock, self._path.open("a", encoding="utf-8") as fh:
+            fh.write(line)
 
     def read_all(self) -> list[TraceEntry]:
         """Read and deserialise all entries from the log file.

@@ -1950,7 +1950,9 @@ def trace_report(
         ts = entry.timestamp.strftime("%Y-%m-%d %H:%M:%S")
         tool = entry.tool_name or "[dim]—[/dim]"
         action_style = _action_style.get(entry.policy_action, "white")
-        action_text = f"[{action_style}]{entry.policy_action.value.upper()}[/{action_style}]"
+        action_text = (
+            f"[{action_style}]{entry.policy_action.value.upper()}[/{action_style}]"
+        )
         rule = entry.policy_rule_matched or "[dim]default[/dim]"
         latency = (
             f"{entry.upstream_latency_ms:.1f}"
@@ -2053,10 +2055,8 @@ def trace_start(
         listen_port=listen_port,
     )
 
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         anyio.run(proxy.serve, backend="asyncio")
-    except KeyboardInterrupt:
-        pass
 
     counters = proxy.counters
     console.print(
@@ -2135,6 +2135,7 @@ def poison_plant(
     """
     import uuid
     from datetime import datetime, timezone
+
     from crucible.models import MemoryType, PoisonPlantRecord
     from crucible.poison.document_generator import DocumentGenerator
     from crucible.poison.session_store import PoisonSessionStore
@@ -2143,12 +2144,14 @@ def poison_plant(
     try:
         m_type = MemoryType(memory_type.lower())
     except ValueError:
-        console.print(f"[red]✗ Invalid memory type: {memory_type}. Must be rag, episodic, semantic, or unknown.[/red]")
-        raise typer.Exit(code=1)
+        console.print(
+            f"[red]✗ Invalid memory type: {memory_type}. Must be rag, episodic, semantic, or unknown.[/red]"
+        )
+        raise typer.Exit(code=1) from None
 
     # Validate technique
     if technique not in (1, 2, 3, 4):
-        console.print(f"[red]✗ Technique must be 1, 2, 3, or 4.[/red]")
+        console.print("[red]✗ Technique must be 1, 2, 3, or 4.[/red]")
         raise typer.Exit(code=1)
 
     resolved_session_id = session_id or str(uuid.uuid4())
@@ -2180,7 +2183,9 @@ def poison_plant(
 
     store.save(record)
 
-    console.print(f"[green]✓ Planted session [bold]{resolved_session_id}[/bold][/green]")
+    console.print(
+        f"[green]✓ Planted session [bold]{resolved_session_id}[/bold][/green]"
+    )
     console.print(f"  • Memory Type : {m_type.value}")
     console.print(f"  • Topic       : {topic}")
     console.print(f"  • Signal      : [bold cyan]{activation_signal}[/bold cyan]")
@@ -2195,9 +2200,9 @@ def poison_plant(
 
     # Print document snippet
     console.print("\n[bold]Generated Document Text Snippet:[/bold]")
-    console.print(f"---")
+    console.print("---")
     console.print(record.document_text)
-    console.print(f"---")
+    console.print("---")
 
 
 @poison_app.command("verify")
@@ -2229,8 +2234,10 @@ def poison_verify(
     Sends the trigger query to the target agent and checks for the presence of
     the activation signal in the response.
     """
-    import httpx
     from datetime import datetime, timezone
+
+    import httpx
+
     from crucible.models import PoisonPlantRecord, PoisonStatus, PoisonTestResult
     from crucible.poison.session_store import PoisonSessionStore
 
@@ -2242,17 +2249,21 @@ def poison_verify(
             console.print(f"[red]✗ Plant record file not found: {plant_record}[/red]")
             raise typer.Exit(code=1)
         try:
-            record = PoisonPlantRecord.model_validate_json(plant_record.read_text(encoding="utf-8"))
+            record = PoisonPlantRecord.model_validate_json(
+                plant_record.read_text(encoding="utf-8")
+            )
         except Exception as exc:
             console.print(f"[red]✗ Failed to parse plant record: {exc}[/red]")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
     elif session_id is not None:
         record = store.load(session_id)
         if record is None:
             console.print(f"[red]✗ Session '{session_id}' not found in store.[/red]")
             raise typer.Exit(code=1)
     else:
-        console.print("[red]✗ Must specify either --session-id or --plant-record.[/red]")
+        console.print(
+            "[red]✗ Must specify either --session-id or --plant-record.[/red]"
+        )
         raise typer.Exit(code=1)
 
     # Check status
@@ -2274,7 +2285,7 @@ def poison_verify(
     payload = {
         "model": "llama3.2",
         "messages": [{"role": "user", "content": record.trigger}],
-        "stream": False
+        "stream": False,
     }
 
     headers = {"Content-Type": "application/json"}
@@ -2321,9 +2332,13 @@ def poison_verify(
 
     # Print results
     if status == PoisonStatus.VERIFIED_ACTIVE:
-        console.print(f"[bold green]✔ POISON ACTIVE[/bold green] — Activation signal [bold]{record.activation_signal}[/bold] found in response!")
+        console.print(
+            f"[bold green]✔ POISON ACTIVE[/bold green] — Activation signal [bold]{record.activation_signal}[/bold] found in response!"
+        )
     elif status == PoisonStatus.VERIFIED_INACTIVE:
-        console.print(f"[bold yellow]✘ POISON INACTIVE[/bold yellow] — Activation signal not found.")
+        console.print(
+            "[bold yellow]✘ POISON INACTIVE[/bold yellow] — Activation signal not found."
+        )
     else:
         console.print(f"[bold red]✗ VERIFICATION ERROR[/bold red] — {error_msg}")
 
@@ -2385,11 +2400,18 @@ def poison_rag(
     Generates a document using Technique 4 (RAG-specific), ingests it into
     the ingest endpoint, waits, queries the query endpoint, and returns status.
     """
-    import uuid
-    import httpx
     import time
+    import uuid
     from datetime import datetime, timezone
-    from crucible.models import MemoryType, PoisonPlantRecord, PoisonStatus, PoisonTestResult
+
+    import httpx
+
+    from crucible.models import (
+        MemoryType,
+        PoisonPlantRecord,
+        PoisonStatus,
+        PoisonTestResult,
+    )
     from crucible.poison.document_generator import DocumentGenerator
     from crucible.poison.session_store import PoisonSessionStore
 
@@ -2412,7 +2434,7 @@ def poison_rag(
     )
 
     # Ingest document
-    console.print(f"[cyan]Ingesting poisoned document into RAG database...[/cyan]")
+    console.print("[cyan]Ingesting poisoned document into RAG database...[/cyan]")
     console.print(f"  • Ingest URL: {ingest_endpoint}")
 
     ingest_payload = {"document": document_text}
@@ -2427,7 +2449,9 @@ def poison_rag(
             ingested_ok = True
             console.print("[green]✓ Document ingested successfully.[/green]")
         else:
-            ingest_error = f"Ingestion returned HTTP status code {resp.status_code}: {resp.text}"
+            ingest_error = (
+                f"Ingestion returned HTTP status code {resp.status_code}: {resp.text}"
+            )
     except Exception as exc:
         ingest_error = f"Ingestion connection failed: {exc}"
 
@@ -2446,7 +2470,7 @@ def poison_rag(
     time.sleep(1.0)
 
     # Query endpoint
-    console.print(f"[cyan]Querying RAG system to verify activation...[/cyan]")
+    console.print("[cyan]Querying RAG system to verify activation...[/cyan]")
     console.print(f"  • Query URL: {query_endpoint}")
     console.print(f"  • Trigger  : {trigger}")
 
@@ -2463,7 +2487,9 @@ def poison_rag(
             # Try JSON extraction
             try:
                 body = resp.json()
-                query_response = body.get("response", body.get("message", {}).get("content", resp.text))
+                query_response = body.get(
+                    "response", body.get("message", {}).get("content", resp.text)
+                )
             except Exception:
                 pass
         else:
@@ -2489,9 +2515,13 @@ def poison_rag(
     )
 
     if status == PoisonStatus.VERIFIED_ACTIVE:
-        console.print(f"[bold green]✔ POISON ACTIVE[/bold green] — Activation signal [bold]{activation_signal}[/bold] found in response!")
+        console.print(
+            f"[bold green]✔ POISON ACTIVE[/bold green] — Activation signal [bold]{activation_signal}[/bold] found in response!"
+        )
     elif status == PoisonStatus.VERIFIED_INACTIVE:
-        console.print(f"[bold yellow]✘ POISON INACTIVE[/bold yellow] — Activation signal not found.")
+        console.print(
+            "[bold yellow]✘ POISON INACTIVE[/bold yellow] — Activation signal not found."
+        )
     else:
         console.print(f"[bold red]✗ VERIFICATION ERROR[/bold red] — {error_msg}")
 
@@ -2518,6 +2548,7 @@ def poison_rag(
 def poison_list() -> None:
     """List all memory poisoning evaluation sessions in the store."""
     from rich.table import Table
+
     from crucible.poison.session_store import PoisonSessionStore
 
     store = PoisonSessionStore()
@@ -2584,7 +2615,9 @@ def poison_status(
         raise typer.Exit(code=1)
 
     console.print(f"\n[bold cyan]Poison Session Status: {session_id}[/bold cyan]")
-    console.print(f"  • Status             : [bold]{record.status.value.upper()}[/bold]")
+    console.print(
+        f"  • Status             : [bold]{record.status.value.upper()}[/bold]"
+    )
     console.print(f"  • Memory Type        : {record.memory_type.value}")
     console.print(f"  • Topic              : {record.topic}")
     console.print(f"  • Technique          : {record.technique}")
@@ -2594,12 +2627,11 @@ def poison_status(
     console.print(f"  • Last Verified At   : {record.verified_at or 'Never'}")
     console.print(f"  • Target URL         : {record.target_url}")
     if record.activation_response:
-        console.print(f"\n[bold]Last Activation Response Output Snippet:[/bold]")
-        console.print(f"---")
+        console.print("\n[bold]Last Activation Response Output Snippet:[/bold]")
+        console.print("---")
         console.print(record.activation_response[:500])
-        console.print(f"---")
+        console.print("---")
 
 
 if __name__ == "__main__":
     app()
-

@@ -189,7 +189,7 @@ class TerminalReporter(BaseReporter):
 
     def _render_confidence_tables(self, result: ScanResult) -> None:
         """Render per-module confidence interval tables."""
-        SIGS = {"yes": "✅ Yes", "no": "❌ No ⚠️"}
+        sigs = {"yes": "✅ Yes", "no": "❌ No ⚠️"}
 
         for mod in result.modules:
             if not mod.statistical_findings:
@@ -215,7 +215,7 @@ class TerminalReporter(BaseReporter):
                 )
                 ci = sf.confidence_interval
                 ci_str = f"[{ci.lower:.2f}, {ci.upper:.2f}]"
-                sig_str = SIGS["yes"] if sf.is_significant else SIGS["no"]
+                sig_str = sigs["yes"] if sf.is_significant else sigs["no"]
                 if not sf.is_significant:
                     inconclusive += 1
                 table.add_row(

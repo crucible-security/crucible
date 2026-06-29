@@ -32,7 +32,7 @@ def bootstrap_confidence_interval(
     confidence_level: float = 0.95,
     n_bootstrap: int = _DEFAULT_N_BOOTSTRAP,
     random_seed: int = 42,
-) -> "ConfidenceInterval":
+) -> ConfidenceInterval:
     """Compute a bootstrap confidence interval for a binomial proportion.
 
     Implementation:
@@ -84,9 +84,9 @@ def bootstrap_confidence_interval(
     # --- percentiles ----------------------------------------------------------
     means.sort()
     alpha = 1.0 - confidence_level
-    lower_idx = max(0, min(int(round((alpha / 2.0) * n_bootstrap)), n_bootstrap - 1))
+    lower_idx = max(0, min(round((alpha / 2.0) * n_bootstrap), n_bootstrap - 1))
     upper_idx = max(
-        0, min(int(round((1.0 - alpha / 2.0) * n_bootstrap)) - 1, n_bootstrap - 1)
+        0, min(round((1.0 - alpha / 2.0) * n_bootstrap) - 1, n_bootstrap - 1)
     )
 
     return ConfidenceInterval(
@@ -96,7 +96,7 @@ def bootstrap_confidence_interval(
     )
 
 
-def interpret_significance(ci: "ConfidenceInterval") -> bool:
+def interpret_significance(ci: ConfidenceInterval) -> bool:
     """Return True if the CI clearly indicates a pass or fail result.
 
     i.e. the CI does NOT straddle 0.5 (50% pass rate).

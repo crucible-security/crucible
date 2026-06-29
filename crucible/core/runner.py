@@ -280,7 +280,9 @@ async def run_scan(
             max_keepalive_connections=concurrency,
         )
         with progress_cm as progress:
-            task_id = progress.add_task("Starting scan...", total=total_attacks * (samples if confidence else 1))
+            task_id = progress.add_task(
+                "Starting scan...", total=total_attacks * (samples if confidence else 1)
+            )
 
             # ── Confidence-mode warning ────────────────────────────────────────
             if confidence:
@@ -371,7 +373,7 @@ async def run_scan(
 
     # Aggregate statistical findings from all modules into ScanResult
     if confidence:
-        all_stat: list = []
+        all_stat: list[Any] = []
         for mr in module_results:
             all_stat.extend(mr.statistical_findings)
         scan.statistical_findings = all_stat

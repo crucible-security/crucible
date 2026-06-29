@@ -72,7 +72,12 @@ class TestRunner:
         )
 
         result = await run_scan(
-            target, concurrency=10, timeout=1.0, quiet=False, verbose=False, skip_preflight=True
+            target,
+            concurrency=10,
+            timeout=1.0,
+            quiet=False,
+            verbose=False,
+            skip_preflight=True,
         )
 
         assert result.status == ScanStatus.COMPLETED

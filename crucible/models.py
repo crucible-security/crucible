@@ -667,3 +667,97 @@ class PreflightResult(BaseModel):
     status_code: int
     warnings: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — crucible watch models
+# ---------------------------------------------------------------------------
+
+
+class WatchInterval(str, Enum):
+    FIVE_MINUTES = "5m"
+    FIFTEEN_MINUTES = "15m"
+    ONE_HOUR = "1h"
+    SIX_HOURS = "6h"
+    TWELVE_HOURS = "12h"
+    DAILY = "24h"
+
+    def to_seconds(self) -> int:
+        """Convert the interval string to seconds."""
+        mapping = {
+            "5m": 300,
+            "15m": 900,
+            "1h": 3600,
+            "6h": 21600,
+            "12h": 43200,
+            "24h": 86400,
+        }
+        return mapping[self.value]
+
+
+class WatchConfig(BaseModel):
+    """Configuration for a crucible watch session."""
+
+    target: AgentTarget
+    interval: WatchInterval = WatchInterval.ONE_HOUR
+    drift_threshold: float = 0.15  # 15% behavioral change triggers alert
+    score_threshold: float = 10.0  # 10-point score drop triggers alert
+    alert_slack_webhook: str | None = None
+    alert_email: str | None = None  # future use
+    modules: list[str] | None = None  # restrict to specific modules
+    fail_on_alert: bool = False  # exit code 1 when alert fires (for CI)
+    skip_preflight: bool = False
+
+
+class WatchBaseline(BaseModel):
+    """A stored baseline scan result used as the reference for drift detection."""
+
+    created_at: str
+    target_url: str
+    scan_result: ScanResult
+    behavioral_profile: BehavioralProfile | None = None
+    version: str  # Crucible version that created this baseline
+
+
+class WatchAlert(BaseModel):
+    """An alert fired when behavioral drift or score regression is detected."""
+
+    fired_at: str
+    alert_type: str  # "score_drop" | "drift_detected" | "regression"
+    score_before: float
+    score_after: float
+    score_delta: float
+    drift_score: float | None = None
+    diff_result: DiffResult
+    severity: str  # "WARNING" | "CRITICAL"
+    target_url: str
+
+
+class WatchCheckResult(BaseModel):
+    """Result of a single watch check cycle."""
+
+    checked_at: str
+    target_url: str
+    cycle_number: int
+    baseline_score: float
+    current_score: float
+    score_delta: float
+    alert_fired: bool
+    alert: WatchAlert | None = None
+    regressed_count: int = 0
+    fixed_count: int = 0
+    new_count: int = 0
+
+
+class WatchStatus(BaseModel):
+    """Summary of a watch session, read from watch_log.jsonl."""
+
+    running: bool
+    started_at: str | None
+    last_check_at: str | None
+    next_check_at: str | None
+    alert_count: int
+    check_count: int
+    baseline_path: str
+    current_score: float | None
+    baseline_score: float | None

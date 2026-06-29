@@ -1462,5 +1462,365 @@ def mcp_scan(
         console.print(f"\n[green]JSON report saved to {output}[/green]")
 
 
+# ---------------------------------------------------------------------------
+# crucible watch sub-app (Phase 4)
+# ---------------------------------------------------------------------------
+
+watch_app = typer.Typer(
+    name="watch",
+    help="Monitor an AI agent for behavioral drift over time.",
+    add_completion=False,
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+)
+app.add_typer(watch_app, name="watch")
+
+
+def _build_agent_target_for_watch(
+    target: str,
+    name: str,
+    method: str,
+    header: list[str] | None,
+    body_template: str,
+    format_preset: str,
+    model: str,
+    response_path: str,
+    timeout: float,
+    proxy: str,
+) -> AgentTarget:
+    """Build an AgentTarget from the common watch CLI options."""
+    parsed_headers = _parse_headers(header)
+    resolved_body = body_template
+    resolved_response_path = response_path
+    resolved_timeout = timeout
+
+    if format_preset:
+        if format_preset not in PROVIDER_PRESETS:
+            console.print(
+                f"[red]Unknown format preset: {format_preset}. "
+                f"Available: {', '.join(PROVIDER_PRESETS.keys())}[/red]"
+            )
+            raise typer.Exit(code=1)
+        preset = PROVIDER_PRESETS[format_preset]
+        if body_template == _DEFAULT_BODY_TEMPLATE:
+            resolved_body = preset.body_template.replace("{model}", model)
+        if not response_path:
+            resolved_response_path = preset.response_path
+        if timeout == 30.0:
+            resolved_timeout = preset.default_timeout
+        if preset.extra_headers:
+            for k, v in preset.extra_headers.items():
+                if k not in parsed_headers:
+                    parsed_headers[k] = v
+        if preset.url_suffix and not target.rstrip("/").endswith(
+            preset.url_suffix.rstrip("/")
+        ):
+            target = target.rstrip("/") + preset.url_suffix
+
+    return AgentTarget(
+        name=name,
+        url=target,  # type: ignore[arg-type]
+        method=method,
+        headers=parsed_headers,
+        body_template=resolved_body,
+        timeout=resolved_timeout,
+        response_path=resolved_response_path,
+        proxy=proxy,
+    )
+
+
+_WATCH_TARGET_OPT = typer.Option(
+    ..., "--target", "-t", help="Target URL of the AI agent endpoint."
+)
+_WATCH_NAME_OPT = typer.Option(
+    "target-agent", "--name", "-n", help="Human-readable name."
+)
+_WATCH_METHOD_OPT = typer.Option("POST", "--method", "-m", help="HTTP method.")
+_WATCH_HEADER_OPT = typer.Option(
+    None, "--header", "-H", help="Headers as 'Key: Value' (repeatable)."
+)
+_WATCH_BODY_OPT = typer.Option(
+    _DEFAULT_BODY_TEMPLATE, "--body", "-b", help="JSON body template."
+)
+_WATCH_PRESET_OPT = typer.Option(
+    "", "--format-preset", help="Body format preset (openai, ollama, etc.)."
+)
+_WATCH_MODEL_OPT = typer.Option(
+    "llama3", "--model", help="Model name for presets that require it."
+)
+_WATCH_RPATH_OPT = typer.Option(
+    "", "--response-path", help="JMESPath to extract LLM response."
+)
+_WATCH_TIMEOUT_OPT = typer.Option(30.0, "--timeout", help="Request timeout in seconds.")
+_WATCH_PROXY_OPT = typer.Option("", "--proxy", help="HTTP proxy URL.")
+_WATCH_SKIP_PF_OPT = typer.Option(
+    False, "--skip-preflight", help="Skip preflight endpoint check."
+)
+
+
+@watch_app.command("set-baseline")
+def watch_set_baseline(
+    target: str = _WATCH_TARGET_OPT,
+    name: str = _WATCH_NAME_OPT,
+    method: str = _WATCH_METHOD_OPT,
+    header: list[str] | None = _WATCH_HEADER_OPT,
+    body_template: str = _WATCH_BODY_OPT,
+    format_preset: str = _WATCH_PRESET_OPT,
+    model: str = _WATCH_MODEL_OPT,
+    response_path: str = _WATCH_RPATH_OPT,
+    timeout: float = _WATCH_TIMEOUT_OPT,
+    proxy: str = _WATCH_PROXY_OPT,
+    skip_preflight: bool = _WATCH_SKIP_PF_OPT,
+) -> None:
+    """Run a full scan and store the result as the behavioral baseline."""
+    agent_target = _build_agent_target_for_watch(
+        target,
+        name,
+        method,
+        header,
+        body_template,
+        format_preset,
+        model,
+        response_path,
+        timeout,
+        proxy,
+    )
+    from crucible.core.watcher import set_baseline
+
+    anyio.run(set_baseline, agent_target, skip_preflight)
+
+
+@watch_app.command("check")
+def watch_check(
+    target: str = _WATCH_TARGET_OPT,
+    name: str = _WATCH_NAME_OPT,
+    method: str = _WATCH_METHOD_OPT,
+    header: list[str] | None = _WATCH_HEADER_OPT,
+    body_template: str = _WATCH_BODY_OPT,
+    format_preset: str = _WATCH_PRESET_OPT,
+    model: str = _WATCH_MODEL_OPT,
+    response_path: str = _WATCH_RPATH_OPT,
+    timeout: float = _WATCH_TIMEOUT_OPT,
+    proxy: str = _WATCH_PROXY_OPT,
+    drift_threshold: float = typer.Option(
+        0.15, "--drift-threshold", help="Behavioral drift alert threshold (0–1)."
+    ),
+    score_threshold: float = typer.Option(
+        10.0, "--score-threshold", help="Score-drop alert threshold (points)."
+    ),
+    slack_webhook: str | None = typer.Option(
+        None, "--slack-webhook", help="Slack webhook URL for alerts."
+    ),
+    fail_on_alert: bool = typer.Option(
+        False, "--fail-on-alert", help="Exit code 1 if an alert fires."
+    ),
+    skip_preflight: bool = _WATCH_SKIP_PF_OPT,
+) -> None:
+    """Run a single watch check and compare against the stored baseline."""
+    from crucible.core.watcher import CrucibleWatcher
+    from crucible.models import WatchConfig, WatchInterval
+
+    agent_target = _build_agent_target_for_watch(
+        target,
+        name,
+        method,
+        header,
+        body_template,
+        format_preset,
+        model,
+        response_path,
+        timeout,
+        proxy,
+    )
+    config = WatchConfig(
+        target=agent_target,
+        interval=WatchInterval.ONE_HOUR,
+        drift_threshold=drift_threshold,
+        score_threshold=score_threshold,
+        alert_slack_webhook=slack_webhook,
+        fail_on_alert=fail_on_alert,
+        skip_preflight=skip_preflight,
+    )
+    watcher = CrucibleWatcher(config)
+
+    async def _run() -> None:
+        try:
+            result = await watcher.run_one_check()
+            if result.alert_fired and fail_on_alert:
+                raise typer.Exit(code=1)
+        except RuntimeError as exc:
+            console.print(f"[red]✗ {exc}[/red]")
+            raise typer.Exit(code=2) from exc
+
+    anyio.run(_run)
+
+
+@watch_app.command("start")
+def watch_start(
+    target: str = _WATCH_TARGET_OPT,
+    name: str = _WATCH_NAME_OPT,
+    method: str = _WATCH_METHOD_OPT,
+    header: list[str] | None = _WATCH_HEADER_OPT,
+    body_template: str = _WATCH_BODY_OPT,
+    format_preset: str = _WATCH_PRESET_OPT,
+    model: str = _WATCH_MODEL_OPT,
+    response_path: str = _WATCH_RPATH_OPT,
+    timeout: float = _WATCH_TIMEOUT_OPT,
+    proxy: str = _WATCH_PROXY_OPT,
+    interval: str = typer.Option(
+        "1h", "--interval", help="Check interval: 5m|15m|1h|6h|12h|24h."
+    ),
+    drift_threshold: float = typer.Option(
+        0.15, "--drift-threshold", help="Behavioral drift alert threshold (0–1)."
+    ),
+    score_threshold: float = typer.Option(
+        10.0, "--score-threshold", help="Score-drop alert threshold (points)."
+    ),
+    slack_webhook: str | None = typer.Option(
+        None, "--slack-webhook", help="Slack webhook URL for alerts."
+    ),
+    fail_on_alert: bool = typer.Option(
+        False, "--fail-on-alert", help="Exit code 1 if an alert fires."
+    ),
+    skip_preflight: bool = _WATCH_SKIP_PF_OPT,
+) -> None:
+    """Start the watch daemon. Runs continuously until Ctrl+C."""
+    from crucible.core.watcher import CrucibleWatcher
+    from crucible.models import WatchConfig, WatchInterval
+
+    try:
+        watch_interval = WatchInterval(interval)
+    except ValueError as err:
+        console.print(
+            f"[red]Invalid interval: {interval}. "
+            f"Choose from: {', '.join(i.value for i in WatchInterval)}[/red]"
+        )
+        raise typer.Exit(code=1) from err
+
+    agent_target = _build_agent_target_for_watch(
+        target,
+        name,
+        method,
+        header,
+        body_template,
+        format_preset,
+        model,
+        response_path,
+        timeout,
+        proxy,
+    )
+    config = WatchConfig(
+        target=agent_target,
+        interval=watch_interval,
+        drift_threshold=drift_threshold,
+        score_threshold=score_threshold,
+        alert_slack_webhook=slack_webhook,
+        fail_on_alert=fail_on_alert,
+        skip_preflight=skip_preflight,
+    )
+    watcher = CrucibleWatcher(config)
+    anyio.run(watcher.start)
+
+
+@watch_app.command("status")
+def watch_status() -> None:
+    """Show the status of recent watch sessions by reading the watch log."""
+    import json as _json
+
+    from crucible.core.watch_store import WATCH_LOG
+
+    if not WATCH_LOG.exists():
+        console.print("[yellow]No watch log found at[/yellow] " + str(WATCH_LOG))
+        console.print("Run [bold]crucible watch start[/bold] to begin watching.")
+        return
+
+    entries = []
+    with WATCH_LOG.open(encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                with contextlib.suppress(_json.JSONDecodeError):
+                    entries.append(_json.loads(line))
+
+    if not entries:
+        console.print("[yellow]Watch log is empty.[/yellow]")
+        return
+
+    last = entries[-1]
+    total_checks = len(entries)
+    total_alerts = sum(1 for e in entries if e.get("alert_fired"))
+    last_check = last.get("checked_at", "unknown")[:19] + "Z"
+    last_score = last.get("current_score")
+    baseline_score = last.get("baseline_score")
+
+    console.print("\n[bold cyan]Crucible Watch Status[/bold cyan]")
+    console.print(f"  Log file       : [dim]{WATCH_LOG}[/dim]")
+    console.print(f"  Total checks   : {total_checks}")
+    console.print(
+        f"  Total alerts   : {'[red]' if total_alerts else ''}{total_alerts}{'[/red]' if total_alerts else ''}"
+    )
+    console.print(f"  Last check     : {last_check}")
+    if last_score is not None:
+        console.print(f"  Last score     : {last_score:.1f}")
+    if baseline_score is not None:
+        console.print(f"  Baseline score : {baseline_score:.1f}")
+
+    # Show last 5 entries
+    console.print("\n[bold]Recent checks:[/bold]")
+    for entry in entries[-5:]:
+        ts = entry.get("checked_at", "")[:19] + "Z"
+        score = entry.get("current_score", 0.0)
+        delta = entry.get("score_delta", 0.0)
+        fired = entry.get("alert_fired", False)
+        delta_str = f"{delta:+.1f}"
+        color = "red" if fired else ("yellow" if delta < 0 else "green")
+        alert_tag = " [red][ALERT][/red]" if fired else ""
+        console.print(
+            f"  {ts}  score={score:.1f} " f"([{color}]{delta_str}[/{color}]){alert_tag}"
+        )
+
+
+@watch_app.command("list-baselines")
+def watch_list_baselines() -> None:
+    """List all stored baselines."""
+    from crucible.core.watch_store import WatchStore
+
+    store = WatchStore()
+    baselines = store.list_baselines()
+
+    if not baselines:
+        console.print("[yellow]No baselines stored.[/yellow]")
+        console.print(
+            "Run [bold]crucible watch set-baseline --target <URL>[/bold] to create one."
+        )
+        return
+
+    console.print(f"\n[bold cyan]Stored Baselines ({len(baselines)})[/bold cyan]\n")
+    for bl in baselines:
+        grade = bl.scan_result.grade.value if bl.scan_result.grade else "N/A"
+        score = bl.scan_result.overall_score
+        console.print(
+            f"  [cyan]{bl.target_url}[/cyan]\n"
+            f"    Created : {bl.created_at[:19]}Z\n"
+            f"    Score   : {score:.1f}  Grade: {grade}\n"
+            f"    Version : {bl.version}\n"
+        )
+
+
+@watch_app.command("delete-baseline")
+def watch_delete_baseline(
+    target: str = _WATCH_TARGET_OPT,
+) -> None:
+    """Delete the stored baseline for a target."""
+    from crucible.core.watch_store import WatchStore
+
+    store = WatchStore()
+    deleted = store.delete_baseline(target)
+    if deleted:
+        console.print(f"[green]✓ Baseline deleted for {target}[/green]")
+    else:
+        console.print(f"[yellow]No baseline found for {target}[/yellow]")
+
+
 if __name__ == "__main__":
     app()

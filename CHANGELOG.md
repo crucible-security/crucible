@@ -5,7 +5,32 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-06-29
+
+### Added
+- **`crucible watch` daemon** — New sub-command for continuous behavioral drift monitoring.
+  - `crucible watch set-baseline` — Run a full scan and store the result as the reference baseline (stored at `~/.crucible/baselines/<sha256(url)[:16]>.json`).
+  - `crucible watch check` — Run a single on-demand check and compare against the baseline. Prints score delta and lists regressions. Exits code 1 if `--fail-on-alert` is set and an alert fires.
+  - `crucible watch start` — Start the daemon loop with a configurable interval (`5m`, `15m`, `1h`, `6h`, `12h`, `24h`). Runs until Ctrl+C.
+  - `crucible watch status` — Show a summary of the most recent watch session by reading `~/.crucible/watch_log.jsonl`.
+  - `crucible watch list-baselines` — List all stored baselines with target URL, score, grade, and version.
+  - `crucible watch delete-baseline` — Delete the stored baseline for a target URL.
+- **`WatchStore`** (`crucible/core/watch_store.py`) — Persistent baseline storage with `save_baseline()`, `load_baseline()`, `delete_baseline()`, and `list_baselines()` methods. Baselines named by `sha256(url)[:16]` to prevent collisions.
+- **`CrucibleWatcher`** (`crucible/core/watcher.py`) — The core daemon. Uses `asyncio.sleep()` loop (no external scheduler dependency). Integrates directly with `compute_diff()` from Phase 2.
+- **Alert system** — `WatchAlert` fires when `score_delta < -score_threshold` or `total_regressed > 0`. Severity: `CRITICAL` for drops ≥20pts, `WARNING` otherwise.
+- **Slack Block Kit alerts** — Rich actionable payloads with target, score delta, grade change, and top 5 regressions listed by attack ID.
+- **SIGINT/SIGTERM graceful shutdown** — On Ctrl+C: watcher completes the current scan cycle, prints a summary (`N checks, M alerts, final score`), then exits cleanly. No corrupt baseline or partial JSONL entry is left behind.
+- **Watch log** — `~/.crucible/watch_log.jsonl` append-only log of every check cycle. Each line is a valid `WatchCheckResult` JSON object.
+- **New models** — `WatchInterval`, `WatchConfig`, `WatchBaseline`, `WatchAlert`, `WatchCheckResult`, `WatchStatus` in `crucible/models.py`.
+- **10 new tests** in `tests/test_watcher.py` covering all critical paths.
+
+### Architecture notes
+- Behavioral drift engine (`adaptive_fingerprinter.py`) runs **in-memory only** — its `BehavioralFingerprint` output is stored inside `WatchBaseline.behavioral_profile` for future comparison.
+- The diff engine (`compute_diff`) compares `ScanResult` objects, not raw fingerprints. Watch uses this directly, making the baseline simply a stored `ScanResult`.
+- `--skip-preflight` is forwarded through `WatchConfig` and `run_scan()` to allow CI usage against endpoints that rate-limit the preflight probe.
+
 ## [0.5.7] - 2026-06-29
+
 
 ### Fixed
 - **KL-1: `--method GET` against POST-only endpoints now exits code 2 immediately** — Previously, running `crucible scan --method GET` against a POST-only LLM endpoint (such as Ollama's `/api/chat`) silently executed 300+ attacks that all returned HTTP 405, ultimately producing a misleading `Grade.INCOMPLETE` result with zero actionable findings. The new preflight check sends a single probe request before the main scan loop and detects the 405 immediately, printing a clear red error message and aborting with exit code 2 before any attack modules run.

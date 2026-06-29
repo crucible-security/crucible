@@ -24,7 +24,7 @@ class ATLASReporter:
             "## Atlas Framework",
             "This report maps Crucible findings to the "
             "[MITRE ATLAS](https://atlas.mitre.org) adversarial threat landscape framework "
-            "for Artificial-Intelligence Systems (v2.1.0).",
+            "for Artificial-Intelligence Systems (current as of 2026).",
             "",
             "## Triggered Techniques",
             "",

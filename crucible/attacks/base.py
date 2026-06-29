@@ -33,7 +33,7 @@ OWASP_AGENTIC_MAP: dict[AttackCategory, str] = {
     AttackCategory.JAILBREAK: "OWASP-AGENT-001: Prompt Injection",
 }
 
-# MITRE ATLAS v2.1.0 technique mapping by AttackCategory
+# MITRE ATLAS technique mapping (current as of 2026) by AttackCategory
 # Source: https://atlas.mitre.org
 ATLAS_TECHNIQUE_MAP: dict[AttackCategory, tuple[str, str]] = {
     # (technique_id, tactic_id)

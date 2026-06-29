@@ -93,21 +93,39 @@ crucible/
     prompt_injection.py # 50 PI attack vectors
     goal_hijacking.py   # 20 GH attack vectors
     jailbreaks.py       # 20 JB attack vectors
+    mcp_attacks.py      # 8 MCP attack vectors
+    hallucination.py    # 15 hallucination vectors
+    toxicity.py         # 20 toxicity vectors
   modules/
     base.py             # BaseModule ABC
     security.py         # Module registry
   core/
     runner.py           # Async scan runner (anyio)
     scorer.py           # Scoring + grading engine
+    statistics.py       # Bootstrap confidence calculation
+  poison/               # RAG & Memory poisoning test suite
+    session_store.py    # Poisoning session store
+    document_generator.py # 4 planting techniques
+  trace/                # MCP interception proxy
+    models.py           # Trace data models
+    policy.py           # YAML evaluation engine
+    audit_log.py        # Append-only JSONL log
+    proxy.py            # Async reverse proxy
   reporters/
     terminal.py         # Rich terminal output
     json_reporter.py    # JSON file export
+    sarif_reporter.py   # SARIF exporter
+    atlas_reporter.py   # MITRE ATLAS reporter
+    nist_reporter.py    # NIST AI RMF reporter
 tests/
   conftest.py           # Shared fixtures
   test_models.py        # Model validation tests
   test_scorer.py        # Scoring engine tests
   test_attacks.py       # Attack + module tests
   test_cli.py           # CLI integration tests
+  test_statistics.py    # Bootstrap test suite
+  test_trace_proxy.py   # Interception proxy test suite
+  test_poison.py        # Poisoning test suite
 ```
 
 ## Adding a New Attack

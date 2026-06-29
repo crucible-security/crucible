@@ -331,6 +331,18 @@ def scan(
         "--skip-preflight",
         help="Skip preflight endpoint check (useful for rate-limited or non-standard targets).",
     ),
+    confidence: bool = typer.Option(
+        False,
+        "--confidence",
+        help="Run each attack N times and compute bootstrap confidence intervals.",
+    ),
+    samples: int = typer.Option(
+        5,
+        "--samples",
+        min=1,
+        max=20,
+        help="Number of times each attack is run in --confidence mode (default: 5, max: 20).",
+    ),
 ) -> None:
     parsed_headers = _parse_headers(header)
 
@@ -511,6 +523,8 @@ def scan(
                     verbose,
                     mutate,
                     skip_preflight,
+                    confidence,
+                    samples,
                 )
             except _PreflightError as exc:
                 pf = exc.result
@@ -1822,5 +1836,770 @@ def watch_delete_baseline(
         console.print(f"[yellow]No baseline found for {target}[/yellow]")
 
 
+# =============================================================================
+# crucible trace — MCP tool-call interception proxy (v0.7.0)
+# =============================================================================
+
+trace_app = typer.Typer(
+    name="trace",
+    help="Intercept and audit MCP tool calls in transit.",
+    add_completion=False,
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+)
+app.add_typer(trace_app, name="trace")
+
+
+@trace_app.command("validate-policy")
+def trace_validate_policy(
+    policy: Path = typer.Option(
+        ...,
+        "--policy",
+        "-p",
+        help="Path to the policy YAML file to validate.",
+        exists=False,  # we validate existence ourselves for a friendlier error
+    ),
+) -> None:
+    """Validate a trace policy YAML file.
+
+    Exits 0 if the policy is valid, 1 if there are any errors.
+    Regex patterns are compiled at validation time so bad patterns are caught.
+    """
+    from crucible.trace.policy import PolicyError, load_policy
+
+    try:
+        loaded = load_policy(policy)
+        console.print(
+            f"[green]✓ Policy OK[/green] — {len(loaded.rules)} rule(s), "
+            f"default action: [bold]{loaded.default_action.value}[/bold]"
+        )
+        for rule in loaded.rules:
+            action_colour = {
+                "allow": "green",
+                "deny": "red",
+                "alert": "yellow",
+            }.get(rule.action.value, "white")
+            parts = [f"[{action_colour}]{rule.action.value.upper()}[/{action_colour}]"]
+            if rule.tool_name:
+                parts.append(f"tool={rule.tool_name!r}")
+            if rule.parameter_pattern:
+                parts.append(f"pattern={rule.parameter_pattern!r}")
+            console.print(f"  • {rule.name}: {' '.join(parts)}")
+    except PolicyError as exc:
+        console.print(f"[red]✗ Policy invalid:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+
+@trace_app.command("report")
+def trace_report(
+    log: Path = typer.Option(
+        Path("crucible_trace.jsonl"),
+        "--log",
+        "-l",
+        help="Path to the JSONL audit log file.",
+    ),
+) -> None:
+    """Display a formatted report of the trace audit log.
+
+    Reads the JSONL file and renders a Rich table:
+      Time | Tool | Caller IP | Action | Rule Matched | Latency (ms)
+
+    Exits 1 if the log file does not exist.
+    """
+    from rich.table import Table
+
+    from crucible.trace.audit_log import AuditLog
+    from crucible.trace.models import PolicyAction
+
+    if not log.exists():
+        console.print(f"[red]✗ Log file not found:[/red] {log}")
+        raise typer.Exit(code=1)
+
+    audit = AuditLog(log)
+    entries = audit.read_all()
+
+    if not entries:
+        console.print("[yellow]Log file is empty — no entries to display.[/yellow]")
+        return
+
+    table = Table(
+        title=f"Crucible Trace Report — {log}",
+        show_header=True,
+        header_style="bold cyan",
+        border_style="dim",
+    )
+    table.add_column("Time (UTC)", style="dim", min_width=19)
+    table.add_column("Tool", min_width=12)
+    table.add_column("Caller IP", min_width=12)
+    table.add_column("Action", min_width=7)
+    table.add_column("Rule Matched", min_width=16)
+    table.add_column("Latency (ms)", min_width=12, justify="right")
+
+    _action_style = {
+        PolicyAction.ALLOW: "green",
+        PolicyAction.DENY: "bold red",
+        PolicyAction.ALERT: "yellow",
+    }
+
+    total = len(entries)
+    tool_calls = sum(1 for e in entries if e.tool_name is not None)
+    denied = sum(1 for e in entries if e.policy_action == PolicyAction.DENY)
+    alerts = sum(1 for e in entries if e.policy_action == PolicyAction.ALERT)
+
+    for entry in entries:
+        ts = entry.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        tool = entry.tool_name or "[dim]—[/dim]"
+        action_style = _action_style.get(entry.policy_action, "white")
+        action_text = f"[{action_style}]{entry.policy_action.value.upper()}[/{action_style}]"
+        rule = entry.policy_rule_matched or "[dim]default[/dim]"
+        latency = (
+            f"{entry.upstream_latency_ms:.1f}"
+            if entry.upstream_latency_ms is not None
+            else "[dim]—[/dim]"
+        )
+        table.add_row(ts, tool, entry.caller_ip, action_text, rule, latency)
+
+    console.print(table)
+    console.print(
+        f"\n[bold]Summary:[/bold] {total} request(s) | "
+        f"{tool_calls} tool call(s) | "
+        f"[red]{denied} denied[/red] | "
+        f"[yellow]{alerts} alert(s)[/yellow]"
+    )
+
+
+@trace_app.command("start")
+def trace_start(
+    upstream: str = typer.Option(
+        ...,
+        "--upstream",
+        "-u",
+        help="URL of the upstream MCP server to proxy to (e.g. http://localhost:3000).",
+    ),
+    listen_port: int = typer.Option(
+        8080,
+        "--listen",
+        "-l",
+        help="TCP port to listen on.",
+    ),
+    listen_host: str = typer.Option(
+        "127.0.0.1",
+        "--host",
+        help="Interface to bind (use 0.0.0.0 for all interfaces).",
+    ),
+    policy: Path | None = typer.Option(
+        None,
+        "--policy",
+        "-p",
+        help="Path to the YAML policy file.  If omitted, all traffic is forwarded (allow-all mode).",
+    ),
+    log: Path = typer.Option(
+        Path("crucible_trace.jsonl"),
+        "--log",
+        help="Path to the JSONL audit log file (append-only).",
+    ),
+) -> None:
+    """Start the crucible trace proxy.
+
+    Listens for MCP JSON-RPC traffic on --listen, evaluates tools/call
+    requests against --policy, and writes every decision to --log.
+
+    \b
+    ⚠  Known limitation: v0.7.0 supports HTTP only.
+       For HTTPS upstream targets, point --upstream to the https:// URL;
+       configure your MCP client to use http://localhost:<port> as proxy.
+       Native TLS termination is planned for v0.8.0.
+
+    Press Ctrl+C to stop.  A summary is printed on exit.
+    """
+    from crucible.trace.audit_log import AuditLog
+    from crucible.trace.policy import PolicyError, load_policy
+    from crucible.trace.proxy import TraceProxy
+
+    # --- Load policy ---
+    loaded_policy = None
+    if policy is not None:
+        try:
+            loaded_policy = load_policy(policy)
+            console.print(
+                f"[green]✓ Policy loaded:[/green] {policy} "
+                f"({len(loaded_policy.rules)} rule(s))"
+            )
+        except PolicyError as exc:
+            console.print(f"[red]✗ Policy error:[/red] {exc}")
+            raise typer.Exit(code=1) from exc
+    else:
+        console.print(
+            "[yellow]⚠  No policy file specified — running in allow-all mode.[/yellow]"
+        )
+
+    # --- Startup banner ---
+    console.print(
+        f"\n[bold cyan]crucible trace[/bold cyan] v0.7.0 starting\n"
+        f"  [dim]upstream :[/dim] {upstream}\n"
+        f"  [dim]listen   :[/dim] http://{listen_host}:{listen_port}\n"
+        f"  [dim]log      :[/dim] {log}\n"
+        f"  [dim]policy   :[/dim] {policy or 'allow-all'}\n"
+    )
+    console.print("Press [bold]Ctrl+C[/bold] to stop.\n")
+
+    # --- Run proxy ---
+    audit_log = AuditLog(log)
+    proxy = TraceProxy(
+        upstream=upstream,
+        policy=loaded_policy,
+        audit_log=audit_log,
+        listen_host=listen_host,
+        listen_port=listen_port,
+    )
+
+    try:
+        anyio.run(proxy.serve, backend="asyncio")
+    except KeyboardInterrupt:
+        pass
+
+    counters = proxy.counters
+    console.print(
+        f"\n[bold]crucible trace stopped.[/bold]  "
+        f"{counters['total']} request(s) proxied | "
+        f"[red]{counters['denied']} denied[/red] | "
+        f"[yellow]{counters['alerts']} alert(s)[/yellow] | "
+        f"[green]{counters['allowed']} allowed[/green]"
+    )
+
+
+# =============================================================================
+# crucible poison-test — Memory and RAG poisoning evaluation (v0.8.0)
+# =============================================================================
+
+poison_app = typer.Typer(
+    name="poison-test",
+    help="Evaluate autonomous agents for memory and RAG poisoning vulnerabilities.",
+    add_completion=False,
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+)
+app.add_typer(poison_app, name="poison-test")
+
+
+@poison_app.command("plant")
+def poison_plant(
+    target: str = typer.Option(
+        ...,
+        "--target",
+        "-t",
+        help="Target URL of the agent system.",
+    ),
+    memory_type: str = typer.Option(
+        "rag",
+        "--memory-type",
+        "-m",
+        help="Target memory type: rag | episodic | semantic | unknown",
+    ),
+    topic: str = typer.Option(
+        ...,
+        "--topic",
+        help="The business topic/subject of the poisoning.",
+    ),
+    technique: int = typer.Option(
+        1,
+        "--technique",
+        help="The document generation technique (1 to 4).",
+    ),
+    trigger: str = typer.Option(
+        ...,
+        "--trigger",
+        help="The query/trigger that should activate the poison.",
+    ),
+    session_id: str | None = typer.Option(
+        None,
+        "--session-id",
+        help="Custom session ID (auto-generated if omitted).",
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Optional path to save the plant record JSON.",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Overwrite session record if session-id already exists.",
+    ),
+) -> None:
+    """Generate a poisoned document and plant/store it.
+
+    Creates a session record containing the generated document, unique
+    activation signal, and triggers, and registers it in the local session store.
+    """
+    import uuid
+    from datetime import datetime, timezone
+    from crucible.models import MemoryType, PoisonPlantRecord
+    from crucible.poison.document_generator import DocumentGenerator
+    from crucible.poison.session_store import PoisonSessionStore
+
+    # Validate memory type
+    try:
+        m_type = MemoryType(memory_type.lower())
+    except ValueError:
+        console.print(f"[red]✗ Invalid memory type: {memory_type}. Must be rag, episodic, semantic, or unknown.[/red]")
+        raise typer.Exit(code=1)
+
+    # Validate technique
+    if technique not in (1, 2, 3, 4):
+        console.print(f"[red]✗ Technique must be 1, 2, 3, or 4.[/red]")
+        raise typer.Exit(code=1)
+
+    resolved_session_id = session_id or str(uuid.uuid4())
+
+    store = PoisonSessionStore()
+    existing = store.load(resolved_session_id)
+    if existing is not None and not force:
+        console.print(
+            f"[red]✗ Session ID '{resolved_session_id}' already exists.[/red]\n"
+            f"Use [bold]--force[/bold] to overwrite this record."
+        )
+        raise typer.Exit(code=1)
+
+    # Generate document and signal
+    generator = DocumentGenerator()
+    document_text, activation_signal = generator.generate(technique, topic)
+
+    record = PoisonPlantRecord(
+        session_id=resolved_session_id,
+        memory_type=m_type,
+        topic=topic,
+        technique=technique,
+        trigger=trigger,
+        activation_signal=activation_signal,
+        document_text=document_text,
+        planted_at=datetime.now(timezone.utc).isoformat(),
+        target_url=target,
+    )
+
+    store.save(record)
+
+    console.print(f"[green]✓ Planted session [bold]{resolved_session_id}[/bold][/green]")
+    console.print(f"  • Memory Type : {m_type.value}")
+    console.print(f"  • Topic       : {topic}")
+    console.print(f"  • Signal      : [bold cyan]{activation_signal}[/bold cyan]")
+    console.print(f"  • Trigger     : {trigger}")
+
+    if output is not None:
+        try:
+            output.write_text(record.model_dump_json(indent=2), encoding="utf-8")
+            console.print(f"[green]✓ Plant record saved to {output}[/green]")
+        except Exception as exc:
+            console.print(f"[red]✗ Failed to write output file: {exc}[/red]")
+
+    # Print document snippet
+    console.print("\n[bold]Generated Document Text Snippet:[/bold]")
+    console.print(f"---")
+    console.print(record.document_text)
+    console.print(f"---")
+
+
+@poison_app.command("verify")
+def poison_verify(
+    session_id: str | None = typer.Option(
+        None,
+        "--session-id",
+        help="The session ID to verify from the store.",
+    ),
+    plant_record: Path | None = typer.Option(
+        None,
+        "--plant-record",
+        help="Path to a plant record JSON file to verify.",
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Path to save the test report JSON.",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Allow verification even if already marked VERIFIED_ACTIVE.",
+    ),
+) -> None:
+    """Verify if a planted poison has been activated.
+
+    Sends the trigger query to the target agent and checks for the presence of
+    the activation signal in the response.
+    """
+    import httpx
+    from datetime import datetime, timezone
+    from crucible.models import PoisonPlantRecord, PoisonStatus, PoisonTestResult
+    from crucible.poison.session_store import PoisonSessionStore
+
+    record: PoisonPlantRecord | None = None
+    store = PoisonSessionStore()
+
+    if plant_record is not None:
+        if not plant_record.exists():
+            console.print(f"[red]✗ Plant record file not found: {plant_record}[/red]")
+            raise typer.Exit(code=1)
+        try:
+            record = PoisonPlantRecord.model_validate_json(plant_record.read_text(encoding="utf-8"))
+        except Exception as exc:
+            console.print(f"[red]✗ Failed to parse plant record: {exc}[/red]")
+            raise typer.Exit(code=1)
+    elif session_id is not None:
+        record = store.load(session_id)
+        if record is None:
+            console.print(f"[red]✗ Session '{session_id}' not found in store.[/red]")
+            raise typer.Exit(code=1)
+    else:
+        console.print("[red]✗ Must specify either --session-id or --plant-record.[/red]")
+        raise typer.Exit(code=1)
+
+    # Check status
+    if record.status == PoisonStatus.VERIFIED_ACTIVE and not force:
+        console.print(
+            f"[yellow]⚠  Session '{record.session_id}' is already marked VERIFIED_ACTIVE.[/yellow]\n"
+            f"Use [bold]--force[/bold] to re-verify."
+        )
+        raise typer.Exit(code=0)
+
+    console.print(f"[cyan]Verifying session [bold]{record.session_id}[/bold]...[/cyan]")
+    console.print(f"  • Target URL: {record.target_url}")
+    console.print(f"  • Trigger   : {record.trigger}")
+    console.print(f"  • Signal    : {record.activation_signal}")
+
+    # Send trigger to agent target
+    # We use a POST request to standard Ollama /api/chat or OpenAI-compatible format
+    # Check if Ollama preset style can be built, otherwise default to generic POST
+    payload = {
+        "model": "llama3.2",
+        "messages": [{"role": "user", "content": record.trigger}],
+        "stream": False
+    }
+
+    headers = {"Content-Type": "application/json"}
+    agent_response = ""
+    error_msg = None
+    status = PoisonStatus.VERIFIED_INACTIVE
+
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.post(record.target_url, json=payload, headers=headers)
+        if resp.status_code == 200:
+            try:
+                # Try parsing Ollama chat format: message.content
+                body = resp.json()
+                agent_response = body.get("message", {}).get("content", "")
+                if not agent_response:
+                    # Try raw string or generic JSON
+                    agent_response = body.get("response", str(body))
+            except Exception:
+                agent_response = resp.text
+        else:
+            error_msg = f"Target returned status code {resp.status_code}"
+            status = PoisonStatus.VERIFICATION_ERROR
+    except Exception as exc:
+        error_msg = f"Failed to connect or communicate with target: {exc}"
+        status = PoisonStatus.VERIFICATION_ERROR
+
+    is_active = False
+    if error_msg is None:
+        if record.activation_signal in agent_response:
+            is_active = True
+            status = PoisonStatus.VERIFIED_ACTIVE
+        else:
+            status = PoisonStatus.VERIFIED_INACTIVE
+
+    # Update store if session exists in store
+    if store.load(record.session_id) is not None:
+        store.update_status(
+            session_id=record.session_id,
+            status=status,
+            verified_at=datetime.now(timezone.utc).isoformat(),
+            activation_response=agent_response if is_active else None,
+        )
+
+    # Print results
+    if status == PoisonStatus.VERIFIED_ACTIVE:
+        console.print(f"[bold green]✔ POISON ACTIVE[/bold green] — Activation signal [bold]{record.activation_signal}[/bold] found in response!")
+    elif status == PoisonStatus.VERIFIED_INACTIVE:
+        console.print(f"[bold yellow]✘ POISON INACTIVE[/bold yellow] — Activation signal not found.")
+    else:
+        console.print(f"[bold red]✗ VERIFICATION ERROR[/bold red] — {error_msg}")
+
+    test_result = PoisonTestResult(
+        session_id=record.session_id,
+        status=status,
+        verified_at=datetime.now(timezone.utc).isoformat(),
+        activation_signal=record.activation_signal,
+        trigger=record.trigger,
+        response_snippet=agent_response[:200] if agent_response else "",
+        is_active=is_active,
+        error_message=error_msg,
+    )
+
+    if output is not None:
+        try:
+            output.write_text(test_result.model_dump_json(indent=2), encoding="utf-8")
+            console.print(f"[green]✓ Test report saved to {output}[/green]")
+        except Exception as exc:
+            console.print(f"[red]✗ Failed to write report file: {exc}[/red]")
+
+
+@poison_app.command("rag")
+def poison_rag(
+    ingest_endpoint: str = typer.Option(
+        ...,
+        "--ingest-endpoint",
+        help="Endpoint where poison document should be POSTed/ingested.",
+    ),
+    query_endpoint: str = typer.Option(
+        ...,
+        "--query-endpoint",
+        help="Endpoint to query with the trigger phrase.",
+    ),
+    trigger: str = typer.Option(
+        ...,
+        "--trigger",
+        help="The query/trigger phrase.",
+    ),
+    topic: str = typer.Option(
+        ...,
+        "--topic",
+        help="The topic of the RAG document.",
+    ),
+    session_id: str | None = typer.Option(
+        None,
+        "--session-id",
+        help="Custom session ID.",
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Path to save the test report JSON.",
+    ),
+) -> None:
+    """Run an automated RAG plant-and-verify lifecycle.
+
+    Generates a document using Technique 4 (RAG-specific), ingests it into
+    the ingest endpoint, waits, queries the query endpoint, and returns status.
+    """
+    import uuid
+    import httpx
+    import time
+    from datetime import datetime, timezone
+    from crucible.models import MemoryType, PoisonPlantRecord, PoisonStatus, PoisonTestResult
+    from crucible.poison.document_generator import DocumentGenerator
+    from crucible.poison.session_store import PoisonSessionStore
+
+    resolved_session_id = session_id or str(uuid.uuid4())
+    store = PoisonSessionStore()
+
+    generator = DocumentGenerator()
+    document_text, activation_signal = generator.generate(4, topic)
+
+    record = PoisonPlantRecord(
+        session_id=resolved_session_id,
+        memory_type=MemoryType.RAG,
+        topic=topic,
+        technique=4,
+        trigger=trigger,
+        activation_signal=activation_signal,
+        document_text=document_text,
+        planted_at=datetime.now(timezone.utc).isoformat(),
+        target_url=query_endpoint,
+    )
+
+    # Ingest document
+    console.print(f"[cyan]Ingesting poisoned document into RAG database...[/cyan]")
+    console.print(f"  • Ingest URL: {ingest_endpoint}")
+
+    ingest_payload = {"document": document_text}
+    headers = {"Content-Type": "application/json"}
+    ingested_ok = False
+    ingest_error = ""
+
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.post(ingest_endpoint, json=ingest_payload, headers=headers)
+        if resp.status_code in (200, 201):
+            ingested_ok = True
+            console.print("[green]✓ Document ingested successfully.[/green]")
+        else:
+            ingest_error = f"Ingestion returned HTTP status code {resp.status_code}: {resp.text}"
+    except Exception as exc:
+        ingest_error = f"Ingestion connection failed: {exc}"
+
+    if not ingested_ok:
+        console.print(f"[red]✗ Ingestion failed: {ingest_error}[/red]")
+        # Save session as PLANTED (not verification error)
+        record.status = PoisonStatus.PLANTED
+        store.save(record)
+        raise typer.Exit(code=1)
+
+    # Save initial record
+    store.save(record)
+
+    # Wait for RAG indexing
+    console.print("Waiting 1 second for indexing...")
+    time.sleep(1.0)
+
+    # Query endpoint
+    console.print(f"[cyan]Querying RAG system to verify activation...[/cyan]")
+    console.print(f"  • Query URL: {query_endpoint}")
+    console.print(f"  • Trigger  : {trigger}")
+
+    query_payload = {"query": trigger}
+    query_response = ""
+    error_msg = None
+    status = PoisonStatus.VERIFIED_INACTIVE
+
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.post(query_endpoint, json=query_payload, headers=headers)
+        if resp.status_code == 200:
+            query_response = resp.text
+            # Try JSON extraction
+            try:
+                body = resp.json()
+                query_response = body.get("response", body.get("message", {}).get("content", resp.text))
+            except Exception:
+                pass
+        else:
+            error_msg = f"Query returned status code {resp.status_code}"
+            status = PoisonStatus.VERIFICATION_ERROR
+    except Exception as exc:
+        error_msg = f"Query connection failed: {exc}"
+        status = PoisonStatus.VERIFICATION_ERROR
+
+    is_active = False
+    if error_msg is None:
+        if activation_signal in query_response:
+            is_active = True
+            status = PoisonStatus.VERIFIED_ACTIVE
+        else:
+            status = PoisonStatus.VERIFIED_INACTIVE
+
+    store.update_status(
+        session_id=resolved_session_id,
+        status=status,
+        verified_at=datetime.now(timezone.utc).isoformat(),
+        activation_response=query_response if is_active else None,
+    )
+
+    if status == PoisonStatus.VERIFIED_ACTIVE:
+        console.print(f"[bold green]✔ POISON ACTIVE[/bold green] — Activation signal [bold]{activation_signal}[/bold] found in response!")
+    elif status == PoisonStatus.VERIFIED_INACTIVE:
+        console.print(f"[bold yellow]✘ POISON INACTIVE[/bold yellow] — Activation signal not found.")
+    else:
+        console.print(f"[bold red]✗ VERIFICATION ERROR[/bold red] — {error_msg}")
+
+    test_result = PoisonTestResult(
+        session_id=resolved_session_id,
+        status=status,
+        verified_at=datetime.now(timezone.utc).isoformat(),
+        activation_signal=activation_signal,
+        trigger=trigger,
+        response_snippet=query_response[:200] if query_response else "",
+        is_active=is_active,
+        error_message=error_msg,
+    )
+
+    if output is not None:
+        try:
+            output.write_text(test_result.model_dump_json(indent=2), encoding="utf-8")
+            console.print(f"[green]✓ Test report saved to {output}[/green]")
+        except Exception as exc:
+            console.print(f"[red]✗ Failed to write report file: {exc}[/red]")
+
+
+@poison_app.command("list")
+def poison_list() -> None:
+    """List all memory poisoning evaluation sessions in the store."""
+    from rich.table import Table
+    from crucible.poison.session_store import PoisonSessionStore
+
+    store = PoisonSessionStore()
+    records = store.list_all()
+
+    if not records:
+        console.print("[yellow]No memory poisoning sessions found in store.[/yellow]")
+        return
+
+    table = Table(
+        title="Planted Memory Poisoning Sessions",
+        show_header=True,
+        header_style="bold cyan",
+        border_style="dim",
+    )
+    table.add_column("Session ID", style="bold")
+    table.add_column("Type")
+    table.add_column("Topic")
+    table.add_column("Tech")
+    table.add_column("Signal", style="dim")
+    table.add_column("Status")
+    table.add_column("Planted At", style="dim")
+
+    for r in records:
+        status_colour = {
+            "planted": "white",
+            "verified_active": "green",
+            "verified_inactive": "yellow",
+            "verification_error": "red",
+            "expired": "dim",
+        }.get(r.status.value, "white")
+        status_text = f"[{status_colour}]{r.status.value.upper()}[/{status_colour}]"
+
+        table.add_row(
+            r.session_id,
+            r.memory_type.value,
+            r.topic,
+            str(r.technique),
+            r.activation_signal,
+            status_text,
+            r.planted_at[:16],
+        )
+
+    console.print(table)
+
+
+@poison_app.command("status")
+def poison_status(
+    session_id: str = typer.Option(
+        ...,
+        "--session-id",
+        "-s",
+        help="The session ID to display.",
+    ),
+) -> None:
+    """Display the detailed status of a single poisoning session."""
+    from crucible.poison.session_store import PoisonSessionStore
+
+    store = PoisonSessionStore()
+    record = store.load(session_id)
+
+    if record is None:
+        console.print(f"[red]✗ Session '{session_id}' not found in store.[/red]")
+        raise typer.Exit(code=1)
+
+    console.print(f"\n[bold cyan]Poison Session Status: {session_id}[/bold cyan]")
+    console.print(f"  • Status             : [bold]{record.status.value.upper()}[/bold]")
+    console.print(f"  • Memory Type        : {record.memory_type.value}")
+    console.print(f"  • Topic              : {record.topic}")
+    console.print(f"  • Technique          : {record.technique}")
+    console.print(f"  • Trigger            : {record.trigger}")
+    console.print(f"  • Activation Signal  : {record.activation_signal}")
+    console.print(f"  • Planted At         : {record.planted_at}")
+    console.print(f"  • Last Verified At   : {record.verified_at or 'Never'}")
+    console.print(f"  • Target URL         : {record.target_url}")
+    if record.activation_response:
+        console.print(f"\n[bold]Last Activation Response Output Snippet:[/bold]")
+        console.print(f"---")
+        console.print(record.activation_response[:500])
+        console.print(f"---")
+
+
 if __name__ == "__main__":
     app()
+

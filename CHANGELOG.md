@@ -5,6 +5,56 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-06-29
+
+### Added
+- **`crucible poison-test` suite** — Stateful memory and RAG poisoning evaluation tool for AI agents.
+  - `crucible poison-test plant` — Generates a poisoned document using one of four configurable techniques with a unique activation signal (8-char token) and registers it in the local session store.
+  - `crucible poison-test verify` — Sends the trigger query to the target agent and detects if the activation signal appears in the response.
+  - `crucible poison-test rag` — Runs an automated end-to-end plant-and-query lifecycle against independent ingest and query endpoints.
+  - `crucible poison-test list` — Renders a Rich table of all poisoning sessions with status, topic, and technique details.
+  - `crucible poison-test status` — Prints detailed status properties of a single poisoning session.
+- **`crucible/poison/` package** — Core modules for poisoning evaluation:
+  - `session_store.py` — Atomic session file storage manager (`PoisonSessionStore`) supporting loading, listing, deleting, status updates, and directory creation on Windows.
+  - `document_generator.py` — Implements 4 document poisoning techniques: Semantic Anchor Injection, Authority Impersonation with zero-width characters, Semantic Sleeper response template, and RAG-specific semantic index injection.
+- **Data Models** — Introduced `MemoryType`, `PoisonStatus`, `PoisonPlantRecord`, and `PoisonTestResult` Pydantic models.
+- **13 new tests** (`tests/test_poison.py`) verifying document generator output, signal uniqueness, store serialization, CLI commands, and verification checks.
+
+## [0.7.0] - 2026-06-29
+
+
+### Added
+- **`crucible trace` proxy** — New sub-command group for MCP tool-call interception and auditing.
+  - `crucible trace start` — Start an async HTTP reverse proxy that sits between an MCP client and server, evaluating every `tools/call` against a YAML policy.
+  - `crucible trace validate-policy` — Load and validate a policy YAML file (including regex compilation). Exits 0/1.
+  - `crucible trace report` — Render a Rich terminal table from a JSONL audit log with summary counts.
+- **`crucible/trace/` package** — New sub-package with four modules:
+  - `models.py` — `PolicyAction`, `PolicyRule`, `Policy`, `TraceEntry` Pydantic models.
+  - `policy.py` — YAML loader with strict validation (unknown keys → error, bad regex → `PolicyError` at load time). First-match-wins evaluation via `evaluate_policy()`.
+  - `audit_log.py` — Thread-safe, append-only JSONL writer (`AuditLog`). Every request (tool call or not) gets an entry.
+  - `proxy.py` — Async TCP server (`TraceProxy`) using `anyio` + `h11` + `httpx`. No new mandatory dependencies (all three are already transitive deps of `crucible`).
+- **Policy actions** — `allow` (forward silently), `deny` (return JSON-RPC error, never touch upstream), `alert` (forward + print console warning).
+- **JSON-RPC 200 OK for denials** — Denied calls return HTTP 200 with a JSON-RPC error body (`code: -32600`, `message: "blocked_by_policy"`). Note: deny actions return HTTP 200 with JSON-RPC error body (code -32600) rather than HTTP 403, for MCP client compatibility.
+- **Audit log schema** — Each JSONL entry records: `timestamp`, `request_id` (UUID4), `tool_name`, `parameters`, `policy_action`, `policy_rule_matched`, `upstream_status_code`, `upstream_latency_ms`, `request_size_bytes`, `caller_ip`.
+- **15 new tests** (`tests/test_trace_proxy.py`) covering policy loading, regex validation, evaluation logic, `is_tool_call()` detection, audit log round-trip, and full integration tests (deny + allow) against a mock MCP server.
+- **Mock MCP server fixture** (`tests/fixtures/mock_mcp_server.py`) — Minimal `http.server`-based stub using OS-assigned port (no hardcoded port), daemon thread, clean context-manager shutdown.
+
+### Known Limitations (v0.7.0)
+- HTTP only — TLS termination is planned for v0.8.0.
+- No Slack/webhook alerts in v1 (planned for v0.8.0).
+- Windows: `anyio` is run with `backend="asyncio"` explicitly (trio not supported on Windows).
+
+## [0.6.1] - 2026-06-29
+
+
+### Added
+- **Statistical Confidence Intervals (`--confidence`)** — New scan mode to run each attack multiple times (default 5, max 20) and calculate bootstrap confidence intervals.
+- **Pure Python Bootstrap CI** — Integrated a zero-dependency bootstrap CI implementation (`crucible/core/statistics.py`) that uses `random.Random(42)` for reproducibility, capping bootstrap samples at 1,000 for large scans (>100 trials) to ensure high performance.
+- **Extended Models** — Added `ConfidenceInterval` and `StatisticalFinding` models to `crucible/models.py`. Grouped module/scan results to populate `statistical_findings` lists.
+- **Terminal Statistical Table** — Rich terminal tables displaying `Bypass Rate`, `95% CI` bounds, and a significance flag (`✅ Yes` / `❌ No ⚠️`), with inconclusive warning messages.
+- **Performance Warnings Heuristic** — Logs time-to-run estimates before scan starts and runtime warnings if bootstrap CI calculation exceeds 5s.
+- **8 new tests** (`tests/test_statistics.py`) covering all CI logic, binomial bounds, significance, and CLI confidence scan outputs.
+
 ## [0.6.0] - 2026-06-29
 
 ### Added

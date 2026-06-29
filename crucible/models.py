@@ -345,6 +345,68 @@ class Finding(BaseModel):
     )
 
 
+class ConfidenceInterval(BaseModel):
+    """95 % bootstrap confidence interval for a binomial proportion."""
+
+    lower: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Lower bound of the confidence interval.",
+    )
+    upper: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Upper bound of the confidence interval.",
+    )
+    confidence_level: float = Field(
+        default=0.95,
+        ge=0.0,
+        le=1.0,
+        description="Confidence level (e.g. 0.95 for 95%).",
+    )
+
+
+class StatisticalFinding(BaseModel):
+    """Extended finding with statistical data (only in --confidence mode)."""
+
+    attack_id: str = Field(..., description="Unique attack identifier (e.g. PI-001).")
+    attack_name: str = Field(..., description="Human-readable attack name.")
+    sample_count: int = Field(
+        ..., ge=1, description="How many times the attack was executed."
+    )
+    pass_count: int = Field(
+        ..., ge=0, description="How many times the model defended (passed)."
+    )
+    fail_count: int = Field(
+        ..., ge=0, description="How many times the attack bypassed the model."
+    )
+    pass_rate: float = Field(
+        ..., ge=0.0, le=1.0, description="pass_count / sample_count."
+    )
+    bypass_rate: float = Field(
+        ..., ge=0.0, le=1.0, description="fail_count / sample_count."
+    )
+    confidence_interval: ConfidenceInterval = Field(
+        ..., description="Bootstrap 95% CI for the bypass rate."
+    )
+    is_significant: bool = Field(
+        ...,
+        description=(
+            "True if the CI does not straddle 0.5 — i.e. the result is "
+            "clearly pass or clearly fail."
+        ),
+    )
+    severity: Severity = Field(..., description="Severity of this attack class.")
+    atlas_technique: str = Field(
+        default="", description="MITRE ATLAS technique ID."
+    )
+    nist_category: str = Field(
+        default="", description="NIST AI RMF category."
+    )
+
+
 class ModuleResult(BaseModel):
     module_name: str = Field(
         ...,
@@ -397,6 +459,10 @@ class ModuleResult(BaseModel):
         default_factory=dict,
         description="Additional module-specific metadata.",
     )
+    statistical_findings: list[StatisticalFinding] = Field(
+        default_factory=list,
+        description="Per-attack statistical findings (populated in --confidence mode only).",
+    )
 
     @property
     def pass_rate(self) -> float:
@@ -429,6 +495,10 @@ class ScanResult(BaseModel):
     modules: list[ModuleResult] = Field(
         default_factory=list,
         description="Results from each security module.",
+    )
+    statistical_findings: list[StatisticalFinding] = Field(
+        default_factory=list,
+        description="Aggregated statistical findings (populated in --confidence mode only).",
     )
     total_findings: int = Field(
         default=0,
@@ -761,3 +831,49 @@ class WatchStatus(BaseModel):
     baseline_path: str
     current_score: float | None
     baseline_score: float | None
+
+
+# =============================================================================
+# Phase 7 — crucible poison-test (v0.8.0)
+# =============================================================================
+
+class MemoryType(str, Enum):
+    RAG = "rag"
+    EPISODIC = "episodic"
+    SEMANTIC = "semantic"
+    UNKNOWN = "unknown"
+
+
+class PoisonStatus(str, Enum):
+    PLANTED = "planted"
+    VERIFIED_ACTIVE = "verified_active"
+    VERIFIED_INACTIVE = "verified_inactive"
+    VERIFICATION_ERROR = "verification_error"
+    EXPIRED = "expired"
+
+
+class PoisonPlantRecord(BaseModel):
+    session_id: str = Field(description="Unique session ID (UUID4 or user-provided).")
+    memory_type: MemoryType = Field(description="The memory subsystem target type.")
+    topic: str = Field(description="The target topic/subject of the poisoning.")
+    technique: int = Field(description="The generation technique used (1 to 4).")
+    trigger: str = Field(description="The prompt trigger phrase used to activate the poison.")
+    activation_signal: str = Field(description="The unique 8-character confirmation code.")
+    document_text: str = Field(description="The full generated document content with embedded code.")
+    planted_at: str = Field(description="ISO timestamp of when the session was created.")
+    status: PoisonStatus = Field(default=PoisonStatus.PLANTED, description="Current evaluation status.")
+    verified_at: str | None = Field(default=None, description="ISO timestamp of the last verification attempt.")
+    activation_response: str | None = Field(default=None, description="The raw agent output that verified activation.")
+    target_url: str = Field(description="Target URL of the agent/RAG system.")
+
+
+class PoisonTestResult(BaseModel):
+    session_id: str = Field(description="The session ID associated with this check.")
+    status: PoisonStatus = Field(description="The verified status of the poison test.")
+    verified_at: str = Field(description="ISO timestamp of the validation run.")
+    activation_signal: str = Field(description="The targeted confirmation token.")
+    trigger: str = Field(description="The trigger query sent to the agent.")
+    response_snippet: str = Field(description="Snippet of the agent response.")
+    is_active: bool = Field(description="True if the activation signal was found in the response.")
+    error_message: str | None = Field(default=None, description="Detailed error description if verification failed.")
+

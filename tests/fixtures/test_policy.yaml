@@ -1,0 +1,14 @@
+default_action: allow
+rules:
+  - name: block-bash
+    tool_name: bash
+    action: deny
+  - name: block-dangerous-rm
+    parameter_pattern: "rm\\s+-rf"
+    action: deny
+  - name: alert-execute-code
+    tool_name: execute_code
+    action: alert
+  - name: allow-read-file
+    tool_name: read_file
+    action: allow

@@ -73,6 +73,8 @@ async def run_module_with_progress(
     verbose: bool,
     verbose_console: Console,
     mutate: bool = False,
+    confidence: bool = False,
+    samples: int = 5,
 ) -> None:
     progress.update(
         task_id, description=f"Running [bold cyan]{module.name}[/bold cyan]"
@@ -102,7 +104,12 @@ async def run_module_with_progress(
 
     try:
         result = await module.run(
-            target, client, on_finding=on_finding, mutate_enabled=mutate
+            target,
+            client,
+            on_finding=on_finding,
+            mutate_enabled=mutate,
+            confidence=confidence,
+            samples=samples,
         )
     finally:
         with _results_lock:
@@ -232,6 +239,8 @@ async def run_scan(
     verbose: bool = False,
     mutate: bool = False,
     skip_preflight: bool = False,
+    confidence: bool = False,
+    samples: int = 5,
 ) -> ScanResult:
     if modules is None:
         modules = get_all_modules()
@@ -271,7 +280,33 @@ async def run_scan(
             max_keepalive_connections=concurrency,
         )
         with progress_cm as progress:
-            task_id = progress.add_task("Starting scan...", total=total_attacks)
+            task_id = progress.add_task("Starting scan...", total=total_attacks * (samples if confidence else 1))
+
+            # ── Confidence-mode warning ────────────────────────────────────────
+            if confidence:
+                warn_con = (
+                    progress.console
+                    if hasattr(progress, "console")
+                    else Console(file=sys.stderr)
+                )
+                est_normal_s = max(1.0, (total_attacks * 0.5) / concurrency)
+                est_conf_s = est_normal_s * samples
+                normal_str = (
+                    f"{est_normal_s / 60:.1f}m"
+                    if est_normal_s >= 60
+                    else f"{est_normal_s:.0f}s"
+                )
+                conf_str = (
+                    f"{est_conf_s / 60:.1f}m"
+                    if est_conf_s >= 60
+                    else f"{est_conf_s:.0f}s"
+                )
+                warn_con.print(
+                    f"[yellow]\u26a0 Confidence mode enabled: each attack runs {samples}x.\n"
+                    f" Estimated scan time: ~{conf_str} (vs ~{normal_str} single-shot).\n"
+                    f" Press Ctrl+C to abort.[/yellow]"
+                )
+            # ──────────────────────────────────────────────────────────────────
 
             # ── Preflight ─────────────────────────────────────────────────────
             preflight_client = httpx.AsyncClient(
@@ -317,6 +352,8 @@ async def run_scan(
                         verbose,
                         verbose_console,
                         mutate,
+                        confidence,
+                        samples,
                     )
 
             progress.update(task_id, description="[green]Scan complete[/green]")
@@ -331,6 +368,13 @@ async def run_scan(
     scan.modules = module_results
     scan.completed_at = datetime.now(timezone.utc)
     scan.duration_seconds = round(time.monotonic() - start, 3)
+
+    # Aggregate statistical findings from all modules into ScanResult
+    if confidence:
+        all_stat: list = []
+        for mr in module_results:
+            all_stat.extend(mr.statistical_findings)
+        scan.statistical_findings = all_stat
 
     finalize_scan_result(scan)
 

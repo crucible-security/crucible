@@ -140,6 +140,12 @@ class TerminalReporter(BaseReporter):
         self.console.print()
 
     def _render_findings_table(self, result: ScanResult) -> None:
+        # ── Confidence-mode: render per-module statistical tables ─────────────
+        if result.statistical_findings:
+            self._render_confidence_tables(result)
+            return
+
+        # ── Standard mode ─────────────────────────────────────────────────────
         failed = [
             f
             for m in result.modules
@@ -180,6 +186,52 @@ class TerminalReporter(BaseReporter):
 
         self.console.print(table)
         self.console.print()
+
+    def _render_confidence_tables(self, result: ScanResult) -> None:
+        """Render per-module confidence interval tables."""
+        SIGS = {"yes": "✅ Yes", "no": "❌ No ⚠️"}
+
+        for mod in result.modules:
+            if not mod.statistical_findings:
+                continue
+
+            table = Table(
+                title=f"{mod.module_name} — Confidence Results",
+                title_style="bold cyan",
+                border_style="cyan",
+                show_lines=True,
+            )
+            table.add_column("Attack ID", style="cyan", width=28)
+            table.add_column("Bypass Rate", justify="right", width=14)
+            table.add_column("95% CI", justify="center", width=18)
+            table.add_column("Significant", justify="center", width=12)
+
+            inconclusive = 0
+            for sf in mod.statistical_findings:
+                sev_color = SEVERITY_COLORS.get(sf.severity, "white")
+                rate_str = (
+                    f"{sf.bypass_rate * 100:.0f}%"
+                    f"  ({sf.fail_count}/{sf.sample_count})"
+                )
+                ci = sf.confidence_interval
+                ci_str = f"[{ci.lower:.2f}, {ci.upper:.2f}]"
+                sig_str = SIGS["yes"] if sf.is_significant else SIGS["no"]
+                if not sf.is_significant:
+                    inconclusive += 1
+                table.add_row(
+                    f"[{sev_color}]{escape(sf.attack_id)}[/{sev_color}]",
+                    rate_str,
+                    ci_str,
+                    sig_str,
+                )
+
+            self.console.print(table)
+            if inconclusive:
+                self.console.print(
+                    f"[yellow]⚠ {inconclusive} finding(s) inconclusive "
+                    f"— run with --samples 10 for higher confidence[/yellow]"
+                )
+            self.console.print()
 
     def _render_summary(self, result: ScanResult) -> None:
         panels: list[Any] = [

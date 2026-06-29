@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from crucible.models import ScanResult
+    from pathlib import Path
+
+    from crucible.models import Finding, ScanResult
 
 _FUNCTION_DESCRIPTIONS = {
     "GOVERN": "Policies, processes, roles, and responsibilities for AI risk management.",
@@ -35,7 +36,7 @@ class NISTReporter:
         ]
 
         failed = result.get_failed_findings()
-        by_function: dict[str, list] = defaultdict(list)
+        by_function: dict[str, list[Finding]] = defaultdict(list)
         for f in failed:
             fn = f.nist_function or "UNMAPPED"
             by_function[fn].append(f)

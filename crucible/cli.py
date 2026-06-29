@@ -817,7 +817,7 @@ def compliance_report(
         nist_out = parent / f"{stem}_nist{suffix}"
         NISTReporter().write(scan_result, nist_out)
 
-        console.print(f"[green]All compliance reports generated:[/green]")
+        console.print("[green]All compliance reports generated:[/green]")
         console.print(f"  EU AI Act : {eu_out}")
         console.print(f"  MITRE ATLAS: {atlas_out}")
         console.print(f"  NIST AI RMF: {nist_out}")

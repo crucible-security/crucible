@@ -91,9 +91,9 @@ Join the waitlist for our upcoming cloud platform: [crucible-cloud.vercel.app](h
 | 2 | Prompt Injection | `prompt_injection` | Covered (50 attacks) |
 | 3 | Tool Misuse | -- | Planned |
 | 4 | Identity Abuse | -- | Planned |
-| 5 | Memory Poisoning | -- | Planned |
-| 6 | Data Exfiltration | `prompt_injection` | Partial (via PI-005, PI-006) |
-| 7 | Scope Violation | -- | Planned |
+| 5 | Memory Poisoning | `memory_poisoning` / `poison-test` | Covered (8 attacks, v0.8.0) |
+| 6 | Data Exfiltration | `prompt_injection` / exfiltration | Covered (v0.8.0) |
+| 7 | Scope Violation | `trace` proxy | Covered (v0.7.0) |
 | 8 | Cascading Failure | -- | Planned |
 | 9 | Supply Chain / Overreliance | `hallucination` | Covered (15 attacks) |
 | 10 | Rogue Agent | -- | Planned |
@@ -208,6 +208,30 @@ crucible mcp-scan --server http://localhost:3000 \
 
 # Re-render a saved report
 crucible report report.json
+
+# Run scan with bootstrap statistical confidence intervals (calculate 95% CI with 10 runs per attack)
+crucible scan --target URL --confidence --confidence-runs 10
+
+# Validate a trace policy YAML file
+crucible trace validate-policy policy.yaml
+
+# Start the MCP interception & auditing trace proxy between client and upstream server
+crucible trace start --port 8000 --upstream-url http://localhost:8001 --policy policy.yaml --audit-log audit.jsonl
+
+# Render a summary report from a trace audit log file
+crucible trace report audit.jsonl
+
+# Plant a poisoned document using Semantic Anchor injection (Technique 1)
+crucible poison-test plant --topic "company secrets" --technique 1 --output secret.txt
+
+# Run end-to-end automated plant-and-query RAG poisoning lifecycle
+crucible poison-test rag --ingest-url http://api/ingest --query-url http://api/query --topic "finances"
+
+# List active poisoning evaluation sessions
+crucible poison-test list
+
+# Check the status of a specific poisoning session
+crucible poison-test status <session-id>
 ```
 
 ## CI/CD Integration
@@ -257,6 +281,7 @@ crucible/
     research_engine.py         # Autonomous research orchestrator (v0.4)
     patcher.py                 # Auto-remediation engine (v0.4)
     canary.py                  # Active deception canaries (v0.4)
+    statistics.py              # Zero-dependency bootstrap confidence engine (v0.6.1)
   reporters/
     base.py                    # BaseReporter ABC
     terminal.py                # Rich terminal renderer
@@ -266,6 +291,16 @@ crucible/
     compliance_reporter.py     # Compliance Markdown/JSON reporter (v0.3)
     huntr_reporter.py          # Bug bounty submission reporter (v0.4)
     sarif_reporter.py          # Export results to SARIF 2.1.0 (v0.5)
+    atlas_reporter.py          # MITRE ATLAS compliance mapper (v0.6)
+    nist_reporter.py           # NIST AI RMF compliance mapper (v0.6)
+  poison/                      # Stateful memory & RAG poisoning package (v0.8.0)
+    session_store.py           # Atomic JSON poisoning session store
+    document_generator.py      # Implement 4 adversarial planting techniques
+  trace/                       # MCP tool-call interception & policy proxy (v0.7.0)
+    models.py                  # Pydantic trace models
+    policy.py                  # YAML rule-based evaluation engine
+    audit_log.py               # Append-only thread-safe JSONL logger
+    proxy.py                   # Async TCP reverse proxy using anyio & h11
 ```
 
 ## Community

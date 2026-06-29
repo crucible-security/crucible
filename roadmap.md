@@ -29,6 +29,36 @@
 - [x] Compliance Reporter — structured Markdown/JSON regulatory reports
 - [x] 192 passing tests, 85%+ coverage, strict mypy throughout
 
+## v0.4.0 ✅ Released June 2026
+- [x] Deep Research Engine — autonomous multi-step threat research
+- [x] Multi-Agent Contagion — test cascading compromises in agent networks
+- [x] Dynamic Attack Generator — generate targeted test vectors at runtime
+- [x] Active Deception Canaries — decoy files and credentials for agent trapping
+
+## v0.5.0 ✅ Released June 2026
+- [x] Hallucination & Overreliance Detection — 15 attacks targeting agent reliability
+- [x] Toxicity & Content Safety Auditing — 20 safety evaluation vectors
+- [x] SARIF 2.1.0 Export — integrate results directly into GitHub Code Scanning
+- [x] Preflight Endpoint validation & HTTP 503 retry mechanics
+
+## v0.6.0 / v0.6.1 ✅ Released June 2026
+- [x] Statistical Confidence Intervals (`--confidence` scan mode)
+- [x] Pure Python Bootstrap CI with Binomial Significance flag bounds
+- [x] 8 new tests for Bootstrap & significance CLI reporting
+- [x] Crucible Watch Daemon — watch log/store alerting
+
+## v0.7.0 ✅ Released June 2026
+- [x] `crucible trace` proxy — MCP tool-call interception & auditing proxy
+- [x] Strict YAML policy checking (`allow`, `deny`, `alert`) with regex matching
+- [x] JSON-RPC HTTP 200 blocked_by_policy responses for client compatibility
+- [x] 15 new tests & Mock MCP Server fixture for integration verification
+
+## v0.8.0 ✅ Released June 2026
+- [x] `crucible poison-test` suite — RAG & stateful memory poisoning evaluator
+- [x] 4 advanced document poisoning techniques (Semantic Anchor, zero-width Impersonation, Semantic Sleeper templates, RAG Semantic Index injection)
+- [x] CLI commands to plant, verify, run automated end-to-end RAG lifecycles, list, and inspect poisoning sessions
+- [x] 13 new tests for poisoning serialization, generator output, and CLI verification
+
 ## v1.0.0 — Target: 2027
 - [ ] Crucible Cloud hosted dashboard with team accounts
 - [ ] CI/CD webhooks and Slack/PagerDuty integrations

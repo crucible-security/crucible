@@ -1,7 +1,8 @@
-from fastapi import FastAPI
-from crewai import Agent, Task, Crew
 import unittest
 from unittest.mock import patch
+
+from crewai import Agent, Crew, Task
+from fastapi import FastAPI
 
 app = FastAPI()
 

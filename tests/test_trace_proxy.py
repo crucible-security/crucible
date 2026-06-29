@@ -57,6 +57,17 @@ def _free_port() -> int:
         return int(s.getsockname()[1])
 
 
+def _wait_for_port(port: int, timeout: float = 5.0) -> bool:
+    start_time = time.monotonic()
+    while time.monotonic() - start_time < timeout:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.1):
+                return True
+        except (socket.error, ConnectionRefusedError):
+            time.sleep(0.05)
+    return False
+
+
 # ---------------------------------------------------------------------------
 
 
@@ -91,8 +102,11 @@ class _ProxyThread:
 
         self._thread = threading.Thread(target=_run, daemon=True)
         self._thread.start()
-        # Give the server time to bind
-        time.sleep(0.4)
+        # Wait for the server to bind
+        if not _wait_for_port(self._proxy.listen_port):
+            raise RuntimeError(
+                f"Proxy failed to start on port {self._proxy.listen_port}"
+            )
 
     def stop(self) -> None:
         self._stop_event.set()

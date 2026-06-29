@@ -17,6 +17,18 @@ import socket
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
+import time
+
+
+def _wait_for_port(port: int, timeout: float = 5.0) -> bool:
+    start_time = time.monotonic()
+    while time.monotonic() - start_time < timeout:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.1):
+                return True
+        except (socket.error, ConnectionRefusedError):
+            time.sleep(0.05)
+    return False
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -109,12 +121,8 @@ class MockMCPServer:
     """
 
     def __init__(self) -> None:
-        # Pick a free port
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(("127.0.0.1", 0))
-            self.port: int = s.getsockname()[1]
-
-        self._server = HTTPServer(("127.0.0.1", self.port), _Handler)
+        self._server = HTTPServer(("127.0.0.1", 0), _Handler)
+        self.port: int = self._server.server_address[1]
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
 
     @property
@@ -123,6 +131,8 @@ class MockMCPServer:
 
     def __enter__(self) -> MockMCPServer:
         self._thread.start()
+        if not _wait_for_port(self.port):
+            raise RuntimeError(f"MockMCPServer failed to start on port {self.port}")
         return self
 
     def __exit__(self, *_: Any) -> None:

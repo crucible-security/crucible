@@ -752,9 +752,19 @@ def compliance_report(
         ..., "--results", "-r", help="Path to scan results JSON."
     ),
     standard: str = typer.Option("eu-ai-act-2024", "--standard", "-s"),
+    framework: str = typer.Option(
+        "eu",
+        "--framework",
+        "-f",
+        help="Compliance framework: eu | atlas | nist | all",
+    ),
     output: Path = typer.Option(Path("compliance.md"), "--output", "-o"),
 ) -> None:
-    """Generate a compliance report (e.g. EU AI Act) from scan results."""
+    """Generate a compliance report from scan results.
+
+    Supports: EU AI Act (--framework eu), MITRE ATLAS (--framework atlas),
+    NIST AI RMF (--framework nist), or all three (--framework all).
+    """
     try:
         import json
 
@@ -764,14 +774,57 @@ def compliance_report(
         console.print(f"[red]Failed to load results: {e}[/red]")
         raise typer.Exit(code=1) from e
 
-    engine = ComplianceEngine(scan_result)
-    report = engine.generate_report()
+    framework = framework.lower().strip()
 
-    reporter = ComplianceReporter()
-    reporter.write(report, output)
-    console.print(
-        f"[green]Compliance report ({standard}) generated at {output}[/green]"
-    )
+    if framework in ("eu", "eu-ai-act", "eu-ai-act-2024"):
+        engine = ComplianceEngine(scan_result)
+        report = engine.generate_report()
+        reporter = ComplianceReporter()
+        reporter.write(report, output)
+        console.print(f"[green]EU AI Act compliance report generated at {output}[/green]")
+
+    elif framework == "atlas":
+        from crucible.reporters.atlas_reporter import ATLASReporter
+        reporter_atlas = ATLASReporter()
+        reporter_atlas.write(scan_result, output)
+        console.print(f"[green]MITRE ATLAS report generated at {output}[/green]")
+
+    elif framework == "nist":
+        from crucible.reporters.nist_reporter import NISTReporter
+        reporter_nist = NISTReporter()
+        reporter_nist.write(scan_result, output)
+        console.print(f"[green]NIST AI RMF report generated at {output}[/green]")
+
+    elif framework == "all":
+        from crucible.reporters.atlas_reporter import ATLASReporter
+        from crucible.reporters.nist_reporter import NISTReporter
+
+        stem = output.stem
+        suffix = output.suffix or ".md"
+        parent = output.parent
+
+        # EU AI Act
+        eu_out = parent / f"{stem}_eu{suffix}"
+        engine = ComplianceEngine(scan_result)
+        report = engine.generate_report()
+        ComplianceReporter().write(report, eu_out)
+
+        # ATLAS
+        atlas_out = parent / f"{stem}_atlas{suffix}"
+        ATLASReporter().write(scan_result, atlas_out)
+
+        # NIST
+        nist_out = parent / f"{stem}_nist{suffix}"
+        NISTReporter().write(scan_result, nist_out)
+
+        console.print(f"[green]All compliance reports generated:[/green]")
+        console.print(f"  EU AI Act : {eu_out}")
+        console.print(f"  MITRE ATLAS: {atlas_out}")
+        console.print(f"  NIST AI RMF: {nist_out}")
+
+    else:
+        console.print(f"[red]Unknown framework: {framework!r}. Use: eu | atlas | nist | all[/red]")
+        raise typer.Exit(code=1)
 
 
 @app.command()

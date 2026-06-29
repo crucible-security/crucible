@@ -85,6 +85,9 @@ tr:hover td { background: #263348; }
   padding: 1.25rem; text-align: center; font-weight: 600;
 }
 .owasp-ref { font-size: 0.75rem; color: #60a5fa; }
+.atlas-badge { font-size: 0.7rem; color: #f472b6; text-decoration: none; }
+.atlas-badge:hover { text-decoration: underline; }
+.nist-badge { font-size: 0.7rem; color: #34d399; }
 .payload { font-family: monospace; font-size: 0.75rem;
   background: #0f172a; padding: 0.25rem 0.5rem;
   border-radius: 0.25rem; max-width: 300px;
@@ -282,6 +285,11 @@ class HTMLReporter(BaseReporter):
             sev_badge = _severity_badge(f.severity.value)
             owasp = f.owasp_ref or "—"
             payload_display = f.payload[:80] + "…" if len(f.payload) > 80 else f.payload
+            atlas_link = ""
+            if f.atlas_technique:
+                atlas_url = f"https://atlas.mitre.org/techniques/{_esc(f.atlas_technique)}/"
+                atlas_link = f'<a href="{atlas_url}" class="atlas-badge" target="_blank">{_esc(f.atlas_technique)}</a>'
+            nist_display = _esc(f.nist_category) if f.nist_category else "—"
             rows.append(
                 f"""
       <tr>
@@ -292,6 +300,8 @@ class HTMLReporter(BaseReporter):
             </div>
         </td>
         <td><span class="owasp-ref">{_esc(owasp)}</span></td>
+        <td>{atlas_link or '—'}</td>
+        <td><span class="nist-badge">{nist_display}</span></td>
         <td><span class="payload">{_esc(payload_display)}</span></td>
         <td style="max-width:220px;font-size:0.8rem;color:#94a3b8;">
           {_esc(f.remediation[:150]) if f.remediation else "—"}
@@ -306,6 +316,8 @@ class HTMLReporter(BaseReporter):
         <th>Severity</th>
         <th>Finding</th>
         <th>OWASP Ref</th>
+        <th>ATLAS</th>
+        <th>NIST</th>
         <th>Payload</th>
         <th>Remediation</th>
       </tr>

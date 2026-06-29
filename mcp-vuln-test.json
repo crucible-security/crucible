@@ -1,0 +1,100 @@
+{
+  "server": "evil_mcp.json",
+  "score": 50.0,
+  "grade": "D",
+  "total_tests": 10,
+  "passed": 7,
+  "failed": 3,
+  "findings": [
+    {
+      "test_id": "MCP-T01",
+      "title": "Tool Poisoning \u2014 Hidden Instructions in Tool Descriptions",
+      "severity": "CRITICAL",
+      "owasp_ref": "MCP-003: Tool Poisoning",
+      "passed": false,
+      "evidence": "Ignore all previous instructions",
+      "remediation": "Strip or reject tool descriptions containing instruction-override language before registering tools. Apply the same input-validation rules used for user messages."
+    },
+    {
+      "test_id": "MCP-T02",
+      "title": "Tool Poisoning \u2014 Hidden Instructions in Tool Names",
+      "severity": "HIGH",
+      "owasp_ref": "MCP-003: Tool Poisoning",
+      "passed": true,
+      "evidence": "None",
+      "remediation": "Enforce an allowlist of safe characters for tool names (e.g. [a-z0-9_\\-]{1,64}). Reject names containing whitespace or natural-language sentences."
+    },
+    {
+      "test_id": "MCP-T03",
+      "title": "Command Injection \u2014 Shell Sequences in Tool Descriptions",
+      "severity": "CRITICAL",
+      "owasp_ref": "MCP-004: Command Injection via Tool Parameters",
+      "passed": false,
+      "evidence": "$(cat /etc/passwd)",
+      "remediation": "Sanitise all tool descriptions with a strict allowlist before storing or rendering them. Treat them as untrusted user input."
+    },
+    {
+      "test_id": "MCP-T04",
+      "title": "Command Injection \u2014 Shell Sequences in Tool Input Schemas",
+      "severity": "HIGH",
+      "owasp_ref": "MCP-004: Command Injection via Tool Parameters",
+      "passed": true,
+      "evidence": "None",
+      "remediation": "Audit inputSchema default values. Never include executable strings as defaults. Validate schema definitions against a JSON Schema allowlist before publishing."
+    },
+    {
+      "test_id": "MCP-T05",
+      "title": "Excessive OAuth Scope \u2014 Wildcard File / DB Permissions",
+      "severity": "HIGH",
+      "owasp_ref": "MCP-002: Excessive Permissions & OAuth Scope Abuse",
+      "passed": true,
+      "evidence": "None",
+      "remediation": "Replace wildcard scopes with the narrowest scopes needed. For example, replace 'files:*' with 'files:read' if the tool only reads files. Document scope justifications in the manifest."
+    },
+    {
+      "test_id": "MCP-T06",
+      "title": "Excessive OAuth Scope \u2014 Admin / Full-Access Permissions",
+      "severity": "CRITICAL",
+      "owasp_ref": "MCP-002: Excessive Permissions & OAuth Scope Abuse",
+      "passed": true,
+      "evidence": "None",
+      "remediation": "Never request admin:* or equivalent scopes from an MCP server. Use role-based scopes with explicit resource constraints. Require explicit user consent for any elevated scope."
+    },
+    {
+      "test_id": "MCP-T07",
+      "title": "Excessive Agency \u2014 Dangerous Tool Names Detected",
+      "severity": "HIGH",
+      "owasp_ref": "MCP-001: Prompt / Tool Injection",
+      "passed": true,
+      "evidence": "None",
+      "remediation": "Replace generic execution tools with purpose-scoped alternatives (e.g. 'run_sql_query' instead of 'exec'). Apply tool-call allow lists and require human-in-the-loop confirmation for sensitive ops."
+    },
+    {
+      "test_id": "MCP-T08",
+      "title": "Sensitive Data Exposure \u2014 Credentials Referenced in Tool Descriptions",
+      "severity": "HIGH",
+      "owasp_ref": "MCP-005: Sensitive Data Exposure through Tools",
+      "passed": false,
+      "evidence": "password, secretkey",
+      "remediation": "Remove credential references from tool descriptions. Use opaque parameter names (e.g. 'credential_id') that reference secrets stored in a vault, never inline values."
+    },
+    {
+      "test_id": "MCP-T09",
+      "title": "Command Injection Risk \u2014 Unrestricted Tool Parameter Schemas",
+      "severity": "MEDIUM",
+      "owasp_ref": "MCP-004: Command Injection via Tool Parameters",
+      "passed": true,
+      "evidence": "None",
+      "remediation": "Add explicit 'type', 'enum', 'pattern', or 'format' constraints to every tool parameter schema. Use the most restrictive constraint applicable (enum > pattern > type)."
+    },
+    {
+      "test_id": "MCP-T10",
+      "title": "Tool Poisoning Risk \u2014 Tools Registered Without Descriptions",
+      "severity": "LOW",
+      "owasp_ref": "MCP-003: Tool Poisoning",
+      "passed": true,
+      "evidence": "None",
+      "remediation": "Every registered tool must have a clear, concise description that states exactly what it does and what inputs it expects. Reject tools/list responses that omit descriptions."
+    }
+  ]
+}

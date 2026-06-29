@@ -5,6 +5,20 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2026-06-29
+
+### Added
+- **MITRE ATLAS v2.1.0 Mapping** — Every attack category now maps to a MITRE ATLAS technique ID and tactic ID via `ATLAS_TECHNIQUE_MAP` in `crucible/attacks/base.py`. All 12 `AttackCategory` values are mapped. Individual attacks can override with `atlas_technique`, `atlas_tactic`, `atlas_url` class attributes.
+- **NIST AI RMF 1.0 Mapping** — Every attack category maps to a NIST AI RMF function (GOVERN/MAP/MEASURE/MANAGE) and category via `NIST_MAP` in `crucible/attacks/base.py`. All 12 `AttackCategory` values are mapped.
+- **MITRE ATLAS fields on `Finding`** — `atlas_technique` and `atlas_tactic` fields added to the `Finding` Pydantic model. Populated automatically from the parent attack's category mapping when a finding is created.
+- **NIST AI RMF fields on `Finding`** — `nist_function` and `nist_category` fields added to the `Finding` Pydantic model.
+- **SARIF 2.1.0 — ATLAS + NIST properties** — `atlas_technique`, `atlas_tactic`, `nist_function`, `nist_category` added to both `rules[].properties` and `results[].properties` in SARIF output.
+- **HTML report — ATLAS + NIST columns** — ATLAS Technique (clickable link to atlas.mitre.org) and NIST Category columns added to the findings table.
+- **`crucible/reporters/atlas_reporter.py`** — New `ATLASReporter` class generating Markdown/HTML MITRE ATLAS coverage reports.
+- **`crucible/reporters/nist_reporter.py`** — New `NISTReporter` class generating Markdown/HTML NIST AI RMF coverage reports.
+- **`crucible compliance-report --framework atlas|nist|all`** — Extended the `compliance-report` CLI command with a `--framework` option. Supports: `eu` (EU AI Act, default), `atlas` (MITRE ATLAS), `nist` (NIST AI RMF), `all` (generates all three reports with `_eu`, `_atlas`, `_nist` suffixes).
+- **11 new tests** in `tests/test_atlas_mapping.py` covering mapping completeness, format validation, Finding model fields, reporter output, and SARIF properties.
+
 ## [0.5.4] - 2026-06-21
 
 ### Fixed

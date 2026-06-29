@@ -33,6 +33,90 @@ OWASP_AGENTIC_MAP: dict[AttackCategory, str] = {
     AttackCategory.JAILBREAK: "OWASP-AGENT-001: Prompt Injection",
 }
 
+# MITRE ATLAS v2.1.0 technique mapping by AttackCategory
+# Source: https://atlas.mitre.org
+ATLAS_TECHNIQUE_MAP: dict[AttackCategory, tuple[str, str]] = {
+    # (technique_id, tactic_id)
+    AttackCategory.PROMPT_INJECTION: ("AML.T0051", "AML.TA0002"),
+    AttackCategory.INSECURE_OUTPUT: ("AML.T0043", "AML.TA0002"),
+    AttackCategory.TRAINING_DATA_POISONING: ("AML.T0020", "AML.TA0002"),
+    AttackCategory.DENIAL_OF_SERVICE: ("AML.T0029", "AML.TA0004"),
+    AttackCategory.SUPPLY_CHAIN: ("AML.T0010", "AML.TA0002"),
+    AttackCategory.SENSITIVE_DISCLOSURE: ("AML.T0037", "AML.TA0009"),
+    AttackCategory.INSECURE_PLUGIN: ("AML.T0054", "AML.TA0002"),
+    AttackCategory.EXCESSIVE_AGENCY: ("AML.T0048", "AML.TA0004"),
+    AttackCategory.OVERRELIANCE: ("AML.T0048", "AML.TA0004"),
+    AttackCategory.MODEL_THEFT: ("AML.T0040", "AML.TA0003"),
+    AttackCategory.GOAL_HIJACKING: ("AML.T0048", "AML.TA0004"),
+    AttackCategory.JAILBREAK: ("AML.T0051", "AML.TA0002"),
+}
+
+# NIST AI RMF 1.0 mapping by AttackCategory
+# Source: https://airc.nist.gov/RMF
+NIST_MAP: dict[AttackCategory, tuple[str, str, str]] = {
+    # (function, category, subcategory)
+    AttackCategory.PROMPT_INJECTION: (
+        "MEASURE",
+        "MEASURE 2.5",
+        "AI system output is evaluated for accuracy, completeness, and trustworthiness.",
+    ),
+    AttackCategory.INSECURE_OUTPUT: (
+        "MEASURE",
+        "MEASURE 2.7",
+        "AI risk measurement is conducted regularly and results are documented.",
+    ),
+    AttackCategory.TRAINING_DATA_POISONING: (
+        "MAP",
+        "MAP 1.5",
+        "Organizational risk tolerance is assessed and documented.",
+    ),
+    AttackCategory.DENIAL_OF_SERVICE: (
+        "MANAGE",
+        "MANAGE 2.2",
+        "Mechanisms are in place to respond to AI-related risks.",
+    ),
+    AttackCategory.SUPPLY_CHAIN: (
+        "MANAGE",
+        "MANAGE 2.4",
+        "Residual risks are treated according to organizational risk tolerance.",
+    ),
+    AttackCategory.SENSITIVE_DISCLOSURE: (
+        "MANAGE",
+        "MANAGE 2.2",
+        "Mechanisms are in place to respond to AI-related risks.",
+    ),
+    AttackCategory.INSECURE_PLUGIN: (
+        "MANAGE",
+        "MANAGE 2.4",
+        "Residual risks are treated according to organizational risk tolerance.",
+    ),
+    AttackCategory.EXCESSIVE_AGENCY: (
+        "MANAGE",
+        "MANAGE 2.2",
+        "Mechanisms are in place to respond to AI-related risks.",
+    ),
+    AttackCategory.OVERRELIANCE: (
+        "MEASURE",
+        "MEASURE 2.5",
+        "AI system output is evaluated for accuracy, completeness, and trustworthiness.",
+    ),
+    AttackCategory.MODEL_THEFT: (
+        "MANAGE",
+        "MANAGE 2.4",
+        "Residual risks are treated according to organizational risk tolerance.",
+    ),
+    AttackCategory.GOAL_HIJACKING: (
+        "MANAGE",
+        "MANAGE 2.2",
+        "Mechanisms are in place to respond to AI-related risks.",
+    ),
+    AttackCategory.JAILBREAK: (
+        "GOVERN",
+        "GOVERN 1.1",
+        "Policies and procedures for trustworthy AI are established and communicated.",
+    ),
+}
+
 
 class _HttpRetryableError(Exception):
     """Exception raised when an HTTP 5xx or 429 response is received and should be retried."""
@@ -50,6 +134,14 @@ class BaseAttack(ABC):
     remediation: str = ""
     references: list[str] = []
     owasp_ref: str = ""
+    # Optional per-attack ATLAS overrides (inherit from category map if empty)
+    atlas_technique: str = ""
+    atlas_tactic: str = ""
+    atlas_url: str = ""
+    # Optional per-attack NIST overrides
+    nist_function: str = ""
+    nist_category: str = ""
+    nist_subcategory: str = ""
 
     @abstractmethod
     def get_payloads(self) -> list[str]: ...
@@ -61,6 +153,28 @@ class BaseAttack(ABC):
         if self.owasp_ref:
             return self.owasp_ref
         return OWASP_AGENTIC_MAP.get(self.category, "")
+
+    def _resolve_atlas(self) -> tuple[str, str, str]:
+        """Return (technique_id, tactic_id, url) from category map or instance overrides."""
+        technique = getattr(self, "atlas_technique", "") or ""
+        tactic = getattr(self, "atlas_tactic", "") or ""
+        if not technique:
+            pair = ATLAS_TECHNIQUE_MAP.get(self.category, ("", ""))
+            technique, tactic = pair
+        url = getattr(self, "atlas_url", "") or ""
+        if technique and not url:
+            url = f"https://atlas.mitre.org/techniques/{technique}/"
+        return technique, tactic, url
+
+    def _resolve_nist(self) -> tuple[str, str, str]:
+        """Return (function, category, subcategory) from category map or instance overrides."""
+        fn = getattr(self, "nist_function", "") or ""
+        cat = getattr(self, "nist_category", "") or ""
+        sub = getattr(self, "nist_subcategory", "") or ""
+        if not fn:
+            triple = NIST_MAP.get(self.category, ("", "", ""))
+            fn, cat, sub = triple
+        return fn, cat, sub
 
     def evaluate_response(self, payload: str, response_text: str) -> bool:
         response_lower = response_text.lower()
@@ -223,6 +337,8 @@ class BaseAttack(ABC):
                 passed = None
                 execution_error = True
 
+        atlas_technique, atlas_tactic, _atlas_url = self._resolve_atlas()
+        nist_function, nist_category, _nist_sub = self._resolve_nist()
         return Finding(
             attack_name=self.name,
             category=self.category,
@@ -236,6 +352,10 @@ class BaseAttack(ABC):
             remediation=self.remediation,
             references=self.references,
             owasp_ref=self._resolve_owasp_ref(),
+            atlas_technique=atlas_technique,
+            atlas_tactic=atlas_tactic,
+            nist_function=nist_function,
+            nist_category=nist_category,
         )
 
     def __repr__(self) -> str:

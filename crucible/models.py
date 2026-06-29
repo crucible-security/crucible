@@ -323,6 +323,22 @@ class Finding(BaseModel):
             "See docs/owasp_mapping.md for full mapping."
         ),
     )
+    atlas_technique: str = Field(
+        default="",
+        description="MITRE ATLAS technique ID (e.g. AML.T0051).",
+    )
+    atlas_tactic: str = Field(
+        default="",
+        description="MITRE ATLAS tactic ID (e.g. AML.TA0002).",
+    )
+    nist_function: str = Field(
+        default="",
+        description="NIST AI RMF function (GOVERN/MAP/MEASURE/MANAGE).",
+    )
+    nist_category: str = Field(
+        default="",
+        description="NIST AI RMF category (e.g. MEASURE 2.5).",
+    )
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="When this finding was generated.",

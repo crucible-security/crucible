@@ -15,9 +15,9 @@ from __future__ import annotations
 import json
 import socket
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
-import time
 
 
 def _wait_for_port(port: int, timeout: float = 5.0) -> bool:
@@ -26,7 +26,7 @@ def _wait_for_port(port: int, timeout: float = 5.0) -> bool:
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=0.1):
                 return True
-        except (socket.error, ConnectionRefusedError):
+        except (OSError, ConnectionRefusedError):
             time.sleep(0.05)
     return False
 

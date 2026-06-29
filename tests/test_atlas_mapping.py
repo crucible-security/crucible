@@ -2,11 +2,8 @@ from __future__ import annotations
 
 import re
 
-import pytest
-
 from crucible.attacks.base import ATLAS_TECHNIQUE_MAP, NIST_MAP, BaseAttack
 from crucible.models import AttackCategory, Finding, Severity
-
 
 # ---------------------------------------------------------------------------
 # Helper: minimal concrete BaseAttack subclass for testing
@@ -69,7 +66,7 @@ def test_nist_map_covers_all_categories() -> None:
 def test_atlas_technique_id_format() -> None:
     """All atlas_technique values must match AML.TXXXX or AML.TXXXX.YYY format."""
     pattern = re.compile(r"^AML\.T\d{4}(\.\d{3})?$")
-    for cat, (technique, tactic) in ATLAS_TECHNIQUE_MAP.items():
+    for cat, (technique, _tactic) in ATLAS_TECHNIQUE_MAP.items():
         assert pattern.match(technique), (
             f"Invalid ATLAS technique format for {cat}: {technique!r}"
         )
@@ -82,7 +79,7 @@ def test_atlas_technique_id_format() -> None:
 def test_atlas_tactic_id_format() -> None:
     """All atlas_tactic values must match AML.TAXXXX format."""
     pattern = re.compile(r"^AML\.TA\d{4}$")
-    for cat, (technique, tactic) in ATLAS_TECHNIQUE_MAP.items():
+    for cat, (_technique, tactic) in ATLAS_TECHNIQUE_MAP.items():
         assert pattern.match(tactic), (
             f"Invalid ATLAS tactic format for {cat}: {tactic!r}"
         )
@@ -95,7 +92,7 @@ def test_atlas_tactic_id_format() -> None:
 def test_nist_function_values_valid() -> None:
     """All nist_function values must be one of GOVERN, MAP, MEASURE, MANAGE."""
     valid = {"GOVERN", "MAP", "MEASURE", "MANAGE"}
-    for cat, (fn, cat_str, sub) in NIST_MAP.items():
+    for cat, (fn, _cat_str, _sub) in NIST_MAP.items():
         assert fn in valid, f"Invalid NIST function for {cat}: {fn!r}"
 
 
@@ -141,7 +138,7 @@ def test_resolve_nist_returns_populated_values() -> None:
                 return ["x"]
 
         attack = _TempAttack()
-        fn, cat_str, sub = attack._resolve_nist()
+        fn, cat_str, _sub = attack._resolve_nist()
         assert fn, f"Empty nist_function for category {cat}"
         assert cat_str, f"Empty nist_category for category {cat}"
 
@@ -173,11 +170,12 @@ def test_finding_has_atlas_nist_fields() -> None:
 # Test 9: ATLASReporter generates non-empty markdown
 # ---------------------------------------------------------------------------
 
-def test_atlas_reporter_generates_markdown(tmp_path: pytest.TempdirFactory) -> None:
+def test_atlas_reporter_generates_markdown() -> None:
     """ATLASReporter.to_markdown() must produce a non-empty string with key headers."""
-    from crucible.reporters.atlas_reporter import ATLASReporter
-    from crucible.models import AgentTarget, ScanResult, Grade, ScanStatus
     from pydantic import HttpUrl
+
+    from crucible.models import AgentTarget, Grade, ScanResult, ScanStatus
+    from crucible.reporters.atlas_reporter import ATLASReporter
 
     target = AgentTarget(
         name="Test Agent",
@@ -202,9 +200,10 @@ def test_atlas_reporter_generates_markdown(tmp_path: pytest.TempdirFactory) -> N
 
 def test_nist_reporter_generates_markdown() -> None:
     """NISTReporter.to_markdown() must produce a non-empty string with key headers."""
-    from crucible.reporters.nist_reporter import NISTReporter
-    from crucible.models import AgentTarget, ScanResult, Grade, ScanStatus
     from pydantic import HttpUrl
+
+    from crucible.models import AgentTarget, Grade, ScanResult, ScanStatus
+    from crucible.reporters.nist_reporter import NISTReporter
 
     target = AgentTarget(
         name="Test Agent",
@@ -231,9 +230,20 @@ def test_nist_reporter_generates_markdown() -> None:
 def test_sarif_output_contains_atlas_nist() -> None:
     """SARIF reporter must include atlas_technique and nist_function in properties."""
     import json
-    from crucible.reporters.sarif_reporter import SARIFReporter
-    from crucible.models import AgentTarget, ScanResult, ModuleResult, Finding, Grade, ScanStatus, AttackCategory, Severity
+
     from pydantic import HttpUrl
+
+    from crucible.models import (
+        AgentTarget,
+        AttackCategory,
+        Finding,
+        Grade,
+        ModuleResult,
+        ScanResult,
+        ScanStatus,
+        Severity,
+    )
+    from crucible.reporters.sarif_reporter import SARIFReporter
 
     target = AgentTarget(
         name="Test Agent",

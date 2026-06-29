@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from pydantic import HttpUrl
 
@@ -9,7 +8,6 @@ from crucible.core.differ import compute_diff
 from crucible.models import (
     AgentTarget,
     AttackCategory,
-    DiffResult,
     Finding,
     FindingStatus,
     Grade,
@@ -22,8 +20,10 @@ from crucible.reporters.diff_reporter import DiffReporter
 
 
 def _create_mock_scan(
-    score: float, grade: Grade, findings: list[Finding], modules: list[str] = ["prompt_injection"]
+    score: float, grade: Grade, findings: list[Finding], modules: list[str] | None = None
 ) -> ScanResult:
+    if modules is None:
+        modules = ["prompt_injection"]
     target = AgentTarget(
         name="test-agent",
         url=HttpUrl("https://example.com/api/chat"),
@@ -229,11 +229,11 @@ def test_diff_terminal_output_format() -> None:
 
     reporter = DiffReporter()
     terminal_out = reporter.to_terminal(diff_res)
-    
+
     # Strip ANSI escape codes
     import re
     clean_out = re.sub(r'\x1b\[[0-9;]*[mK]', '', terminal_out)
-    
+
     assert "FIXED      (1 attacks now passing)" in clean_out
     assert "REGRESSED  (0 attacks now failing)" in clean_out
     assert "NEW        (0 new attack findings)" in clean_out

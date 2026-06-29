@@ -82,6 +82,9 @@ Join the waitlist for our upcoming cloud platform: [crucible-cloud.vercel.app](h
 | Multi-Agent Contagion | orchestration | ✅ Live (v0.4) | Agentic #2, #3 |
 | **Hallucination Detection** | **15** | **✅ Live (v0.5)** | **LLM09 / Agentic #9** |
 | **Toxicity & Content Safety**| **20** | **✅ Live (v0.5)** | **LLM01, LLM06** |
+| **Statistical Confidence** | **--confidence** | **✅ Live (v0.6)** | **Bootstrap & binomial bounds** |
+| **MCP Trace Proxy** | **traffic proxy**| **✅ Live (v0.7)** | **Agentic #3 / Tool Misuse** |
+| **Memory & RAG Poisoning** | **poison-test** | **✅ Live (v0.8)** | **Agentic #5 / Poisoning** |
 
 ## OWASP Agentic Top 10 Coverage
 

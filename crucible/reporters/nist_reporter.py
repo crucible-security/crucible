@@ -55,7 +55,9 @@ class NISTReporter:
                 lines.append("| NIST Category | Finding | Severity |")
                 lines.append("|---|---|---|")
                 for f in findings_in_fn:
-                    lines.append(f"| {f.nist_category} | {f.title} | {f.severity.value.upper()} |")
+                    lines.append(
+                        f"| {f.nist_category} | {f.title} | {f.severity.value.upper()} |"
+                    )
                 lines.append("")
 
         lines += [

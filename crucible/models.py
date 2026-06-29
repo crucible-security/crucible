@@ -607,10 +607,10 @@ class ComplianceReport(BaseModel):
 
 
 class FindingStatus(str, Enum):
-    FIXED = "fixed"           # was failing in scan_a, passing in scan_b
-    REGRESSED = "regressed"   # was passing in scan_a, failing in scan_b
-    NEW = "new"               # not present in scan_a, failing in scan_b
-    RESOLVED = "resolved"     # not present in scan_a, passing in scan_b
+    FIXED = "fixed"  # was failing in scan_a, passing in scan_b
+    REGRESSED = "regressed"  # was passing in scan_a, failing in scan_b
+    NEW = "new"  # not present in scan_a, failing in scan_b
+    RESOLVED = "resolved"  # not present in scan_a, passing in scan_b
     UNCHANGED_FAIL = "unchanged_fail"  # failing in both
     UNCHANGED_PASS = "unchanged_pass"  # passing in both
     EXECUTION_ERROR = "execution_error"  # errored in one or both
@@ -621,8 +621,8 @@ class FindingDiff(BaseModel):
     attack_name: str
     status: FindingStatus
     severity: Severity
-    scan_a_passed: bool | None = None   # None if not present
-    scan_b_passed: bool | None = None   # None if not present
+    scan_a_passed: bool | None = None  # None if not present
+    scan_b_passed: bool | None = None  # None if not present
     atlas_technique: str = ""
     nist_category: str = ""
     module: str = ""
@@ -658,3 +658,12 @@ class DiffResult(BaseModel):
     modules: list[ModuleDiff]
     generated_at: str
     warning: str | None = None
+
+
+class PreflightResult(BaseModel):
+    reachable: bool
+    method_accepted: bool
+    looks_like_llm_endpoint: bool
+    status_code: int
+    warnings: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)

@@ -75,13 +75,25 @@ def compute_diff(scan_a: ScanResult, scan_b: ScanResult) -> DiffResult:
 
             # Aggregate state for Scan A
             state_a_exists = len(findings_a) > 0
-            state_a_error = any(getattr(f, "execution_error", False) for f in findings_a)
-            scan_a_passed = None if state_a_error or not state_a_exists else all(f.passed is True for f in findings_a)
+            state_a_error = any(
+                getattr(f, "execution_error", False) for f in findings_a
+            )
+            scan_a_passed = (
+                None
+                if state_a_error or not state_a_exists
+                else all(f.passed is True for f in findings_a)
+            )
 
             # Aggregate state for Scan B
             state_b_exists = len(findings_b) > 0
-            state_b_error = any(getattr(f, "execution_error", False) for f in findings_b)
-            scan_b_passed = None if state_b_error or not state_b_exists else all(f.passed is True for f in findings_b)
+            state_b_error = any(
+                getattr(f, "execution_error", False) for f in findings_b
+            )
+            scan_b_passed = (
+                None
+                if state_b_error or not state_b_exists
+                else all(f.passed is True for f in findings_b)
+            )
 
             # Status assignment rules
             if state_a_error or state_b_error:

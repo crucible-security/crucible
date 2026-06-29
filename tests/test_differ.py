@@ -20,7 +20,10 @@ from crucible.reporters.diff_reporter import DiffReporter
 
 
 def _create_mock_scan(
-    score: float, grade: Grade, findings: list[Finding], modules: list[str] | None = None
+    score: float,
+    grade: Grade,
+    findings: list[Finding],
+    modules: list[str] | None = None,
 ) -> ScanResult:
     if modules is None:
         modules = ["prompt_injection"]
@@ -232,7 +235,8 @@ def test_diff_terminal_output_format() -> None:
 
     # Strip ANSI escape codes
     import re
-    clean_out = re.sub(r'\x1b\[[0-9;]*[mK]', '', terminal_out)
+
+    clean_out = re.sub(r"\x1b\[[0-9;]*[mK]", "", terminal_out)
 
     assert "FIXED      (1 attacks now passing)" in clean_out
     assert "REGRESSED  (0 attacks now failing)" in clean_out

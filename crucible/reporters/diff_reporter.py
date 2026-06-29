@@ -120,9 +120,7 @@ class DiffReporter:
                 if self.module_filter and mod.module_name != self.module_filter:
                     continue
 
-                filtered_findings = [
-                    f for f in mod.findings if self._should_include(f)
-                ]
+                filtered_findings = [f for f in mod.findings if self._should_include(f)]
                 if not filtered_findings and not self.show_unchanged:
                     continue
 
@@ -166,7 +164,9 @@ class DiffReporter:
                 if f.status == FindingStatus.REGRESSED
             ]
             if regressions:
-                capture_console.print("[bold]ATLAS TECHNIQUES TRIGGERED IN REGRESSION:[/bold]")
+                capture_console.print(
+                    "[bold]ATLAS TECHNIQUES TRIGGERED IN REGRESSION:[/bold]"
+                )
                 atlas_counts: dict[str, int] = {}
                 for r in regressions:
                     if r.atlas_technique:
@@ -219,7 +219,9 @@ class DiffReporter:
     def to_markdown(self, result: DiffResult) -> str:
         # Grade trend indicator
         trend = "→"
-        if result.grade_b > result.grade_a:  # Note: Grade Enum ordering is A < B < C < D < F
+        if (
+            result.grade_b > result.grade_a
+        ):  # Note: Grade Enum ordering is A < B < C < D < F
             trend = "↓"  # Worsened
         elif result.grade_b < result.grade_a:
             trend = "↑"  # Improved
@@ -254,19 +256,25 @@ class DiffReporter:
         if fixed_findings:
             lines.append(f"### ✅ Fixed ({len(fixed_findings)})")
             for f in fixed_findings:
-                lines.append(f"- {f.attack_id} {f.attack_name} ({f.severity.value.upper()})")
+                lines.append(
+                    f"- {f.attack_id} {f.attack_name} ({f.severity.value.upper()})"
+                )
             lines.append("")
 
         if regressed_findings:
             lines.append(f"### 🔴 Regressed ({len(regressed_findings)}) ⚠️")
             for f in regressed_findings:
-                lines.append(f"- {f.attack_id} {f.attack_name} ({f.severity.value.upper()})")
+                lines.append(
+                    f"- {f.attack_id} {f.attack_name} ({f.severity.value.upper()})"
+                )
             lines.append("")
 
         if new_findings:
             lines.append(f"### 🆕 New Findings ({len(new_findings)})")
             for f in new_findings:
-                lines.append(f"- {f.attack_id} {f.attack_name} ({f.severity.value.upper()})")
+                lines.append(
+                    f"- {f.attack_id} {f.attack_name} ({f.severity.value.upper()})"
+                )
             lines.append("")
 
         return "\n".join(lines)
@@ -323,7 +331,11 @@ class DiffReporter:
             </tr>"""
                 )
 
-        table_body = "".join(rows) if rows else "<tr><td colspan='7' style='text-align:center;'>No matching findings to display</td></tr>"
+        table_body = (
+            "".join(rows)
+            if rows
+            else "<tr><td colspan='7' style='text-align:center;'>No matching findings to display</td></tr>"
+        )
 
         return f"""<!DOCTYPE html>
 <html lang="en">

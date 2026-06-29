@@ -781,16 +781,20 @@ def compliance_report(
         report = engine.generate_report()
         reporter = ComplianceReporter()
         reporter.write(report, output)
-        console.print(f"[green]EU AI Act compliance report generated at {output}[/green]")
+        console.print(
+            f"[green]EU AI Act compliance report generated at {output}[/green]"
+        )
 
     elif framework == "atlas":
         from crucible.reporters.atlas_reporter import ATLASReporter
+
         reporter_atlas = ATLASReporter()
         reporter_atlas.write(scan_result, output)
         console.print(f"[green]MITRE ATLAS report generated at {output}[/green]")
 
     elif framework == "nist":
         from crucible.reporters.nist_reporter import NISTReporter
+
         reporter_nist = NISTReporter()
         reporter_nist.write(scan_result, output)
         console.print(f"[green]NIST AI RMF report generated at {output}[/green]")
@@ -823,7 +827,9 @@ def compliance_report(
         console.print(f"  NIST AI RMF: {nist_out}")
 
     else:
-        console.print(f"[red]Unknown framework: {framework!r}. Use: eu | atlas | nist | all[/red]")
+        console.print(
+            f"[red]Unknown framework: {framework!r}. Use: eu | atlas | nist | all[/red]"
+        )
         raise typer.Exit(code=1)
 
 
@@ -831,11 +837,29 @@ def compliance_report(
 def diff(
     scan_a: Path = typer.Argument(..., help="Path to baseline scan results JSON."),
     scan_b: Path = typer.Argument(..., help="Path to current scan results JSON."),
-    output: Path | None = typer.Option(None, "--output", "-o", help="Save diff report to file."),
-    format: str = typer.Option("terminal", "--format", "-f", help="Diff report format: terminal | json | html | markdown"),
-    show_unchanged: bool = typer.Option(False, "--show-unchanged", help="Include UNCHANGED_PASS findings (default: hidden)."),
-    module: str | None = typer.Option(None, "--module", "-m", help="Filter diff to a specific module."),
-    severity: str | None = typer.Option(None, "--severity", "-s", help="Filter diff by severity: CRITICAL | HIGH | MEDIUM | LOW"),
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="Save diff report to file."
+    ),
+    format: str = typer.Option(
+        "terminal",
+        "--format",
+        "-f",
+        help="Diff report format: terminal | json | html | markdown",
+    ),
+    show_unchanged: bool = typer.Option(
+        False,
+        "--show-unchanged",
+        help="Include UNCHANGED_PASS findings (default: hidden).",
+    ),
+    module: str | None = typer.Option(
+        None, "--module", "-m", help="Filter diff to a specific module."
+    ),
+    severity: str | None = typer.Option(
+        None,
+        "--severity",
+        "-s",
+        help="Filter diff by severity: CRITICAL | HIGH | MEDIUM | LOW",
+    ),
 ) -> None:
     """Compare two scan results and show the difference in security posture (Fixed, Regressed, New)."""
     try:
@@ -857,15 +881,19 @@ def diff(
         try:
             min_sev = Severity(severity.lower().strip())
         except ValueError:
-            console.print(f"[red]Invalid severity: {severity}. Use: CRITICAL | HIGH | MEDIUM | LOW[/red]")
+            console.print(
+                f"[red]Invalid severity: {severity}. Use: CRITICAL | HIGH | MEDIUM | LOW[/red]"
+            )
             raise typer.Exit(code=1) from None
 
     from crucible.core.differ import compute_diff
+
     diff_res = compute_diff(result_a, result_b)
     diff_res.scan_a_path = str(scan_a)
     diff_res.scan_b_path = str(scan_b)
 
     from crucible.reporters.diff_reporter import DiffReporter
+
     reporter = DiffReporter(
         show_unchanged=show_unchanged,
         module_filter=module,
@@ -890,7 +918,9 @@ def diff(
         elif format == "html":
             console.print(reporter.to_html(diff_res))
         else:
-            console.print(f"[red]Unknown format: {format}. Use: terminal | json | html | markdown[/red]")
+            console.print(
+                f"[red]Unknown format: {format}. Use: terminal | json | html | markdown[/red]"
+            )
             raise typer.Exit(code=1)
 
 

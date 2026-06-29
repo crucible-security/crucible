@@ -9,6 +9,7 @@ from crucible.models import AttackCategory, Finding, Severity
 # Helper: minimal concrete BaseAttack subclass for testing
 # ---------------------------------------------------------------------------
 
+
 class _DummyAttack(BaseAttack):
     name = "TEST-001"
     title = "Test Attack"
@@ -43,6 +44,7 @@ class _DummyExfil(BaseAttack):
 # Test 1: ATLAS_TECHNIQUE_MAP covers all AttackCategory values
 # ---------------------------------------------------------------------------
 
+
 def test_atlas_map_covers_all_categories() -> None:
     """Every AttackCategory value must have an entry in ATLAS_TECHNIQUE_MAP."""
     for cat in AttackCategory:
@@ -52,6 +54,7 @@ def test_atlas_map_covers_all_categories() -> None:
 # ---------------------------------------------------------------------------
 # Test 2: NIST_MAP covers all AttackCategory values
 # ---------------------------------------------------------------------------
+
 
 def test_nist_map_covers_all_categories() -> None:
     """Every AttackCategory value must have an entry in NIST_MAP."""
@@ -63,31 +66,34 @@ def test_nist_map_covers_all_categories() -> None:
 # Test 3: All ATLAS technique IDs match AML.TXXXX format
 # ---------------------------------------------------------------------------
 
+
 def test_atlas_technique_id_format() -> None:
     """All atlas_technique values must match AML.TXXXX or AML.TXXXX.YYY format."""
     pattern = re.compile(r"^AML\.T\d{4}(\.\d{3})?$")
     for cat, (technique, _tactic) in ATLAS_TECHNIQUE_MAP.items():
-        assert pattern.match(technique), (
-            f"Invalid ATLAS technique format for {cat}: {technique!r}"
-        )
+        assert pattern.match(
+            technique
+        ), f"Invalid ATLAS technique format for {cat}: {technique!r}"
 
 
 # ---------------------------------------------------------------------------
 # Test 4: All ATLAS tactic IDs match AML.TAXXXX format
 # ---------------------------------------------------------------------------
 
+
 def test_atlas_tactic_id_format() -> None:
     """All atlas_tactic values must match AML.TAXXXX format."""
     pattern = re.compile(r"^AML\.TA\d{4}$")
     for cat, (_technique, tactic) in ATLAS_TECHNIQUE_MAP.items():
-        assert pattern.match(tactic), (
-            f"Invalid ATLAS tactic format for {cat}: {tactic!r}"
-        )
+        assert pattern.match(
+            tactic
+        ), f"Invalid ATLAS tactic format for {cat}: {tactic!r}"
 
 
 # ---------------------------------------------------------------------------
 # Test 5: NIST function values are valid
 # ---------------------------------------------------------------------------
+
 
 def test_nist_function_values_valid() -> None:
     """All nist_function values must be one of GOVERN, MAP, MEASURE, MANAGE."""
@@ -99,6 +105,7 @@ def test_nist_function_values_valid() -> None:
 # ---------------------------------------------------------------------------
 # Test 6: _resolve_atlas returns non-empty values for all categories
 # ---------------------------------------------------------------------------
+
 
 def test_resolve_atlas_returns_populated_values() -> None:
     """_resolve_atlas() must return non-empty technique and tactic."""
@@ -117,12 +124,15 @@ def test_resolve_atlas_returns_populated_values() -> None:
         technique, tactic, url = attack._resolve_atlas()
         assert technique, f"Empty atlas_technique for category {cat}"
         assert tactic, f"Empty atlas_tactic for category {cat}"
-        assert url.startswith("https://atlas.mitre.org"), f"Bad atlas URL for {cat}: {url}"
+        assert url.startswith(
+            "https://atlas.mitre.org"
+        ), f"Bad atlas URL for {cat}: {url}"
 
 
 # ---------------------------------------------------------------------------
 # Test 7: _resolve_nist returns non-empty values for all categories
 # ---------------------------------------------------------------------------
+
 
 def test_resolve_nist_returns_populated_values() -> None:
     """_resolve_nist() must return non-empty function and category."""
@@ -147,6 +157,7 @@ def test_resolve_nist_returns_populated_values() -> None:
 # Test 8: Finding model has atlas/nist fields
 # ---------------------------------------------------------------------------
 
+
 def test_finding_has_atlas_nist_fields() -> None:
     """Finding model must have atlas_technique, atlas_tactic, nist_function, nist_category."""
     f = Finding(
@@ -169,6 +180,7 @@ def test_finding_has_atlas_nist_fields() -> None:
 # ---------------------------------------------------------------------------
 # Test 9: ATLASReporter generates non-empty markdown
 # ---------------------------------------------------------------------------
+
 
 def test_atlas_reporter_generates_markdown() -> None:
     """ATLASReporter.to_markdown() must produce a non-empty string with key headers."""
@@ -198,6 +210,7 @@ def test_atlas_reporter_generates_markdown() -> None:
 # Test 10: NISTReporter generates non-empty markdown
 # ---------------------------------------------------------------------------
 
+
 def test_nist_reporter_generates_markdown() -> None:
     """NISTReporter.to_markdown() must produce a non-empty string with key headers."""
     from pydantic import HttpUrl
@@ -226,6 +239,7 @@ def test_nist_reporter_generates_markdown() -> None:
 # ---------------------------------------------------------------------------
 # Test 11: SARIF output contains atlas/nist properties
 # ---------------------------------------------------------------------------
+
 
 def test_sarif_output_contains_atlas_nist() -> None:
     """SARIF reporter must include atlas_technique and nist_function in properties."""

@@ -6,6 +6,7 @@ from crucible.models import (
     FindingStatus,
     ModuleDiff,
     ModuleResult,
+    PreflightResult,
     ScanResult,
 )
 
@@ -17,6 +18,7 @@ __all__: list[str] = [
     "FindingStatus",
     "ModuleDiff",
     "ModuleResult",
+    "PreflightResult",
     "ScanResult",
 ]
 

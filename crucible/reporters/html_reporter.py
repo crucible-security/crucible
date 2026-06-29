@@ -287,7 +287,9 @@ class HTMLReporter(BaseReporter):
             payload_display = f.payload[:80] + "…" if len(f.payload) > 80 else f.payload
             atlas_link = ""
             if f.atlas_technique:
-                atlas_url = f"https://atlas.mitre.org/techniques/{_esc(f.atlas_technique)}/"
+                atlas_url = (
+                    f"https://atlas.mitre.org/techniques/{_esc(f.atlas_technique)}/"
+                )
                 atlas_link = f'<a href="{atlas_url}" class="atlas-badge" target="_blank">{_esc(f.atlas_technique)}</a>'
             nist_display = _esc(f.nist_category) if f.nist_category else "—"
             rows.append(

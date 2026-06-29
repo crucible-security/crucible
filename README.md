@@ -316,12 +316,17 @@ Join our [Discord](https://discord.gg/m7wAxEv3) or email
 crucible.sec@gmail.com
 
 **Does `--method GET` work for scanning AI agents?**  
-Only use `--method GET` if your target agent genuinely accepts `GET` requests with
-a body. If your endpoint expects `POST` (as most AI agent APIs do), the server will
-return a `405 Method Not Allowed` error. As of v0.5.4, non-2xx responses (including 405)
-are treated as execution errors (`passed=None`, `execution_error=True`) and are not scored as 
-refusals. This will result in an incomplete scan verdict (`Grade.INCOMPLETE`) rather than 
-a false clean report.
+As of **v0.5.7**, Crucible automatically detects method mismatches before the scan starts. If you specify `--method GET` against a POST-only endpoint (as most LLM APIs are), the new **preflight check** sends a single probe request and aborts immediately with **exit code 2** and a clear error message — before any attack modules run:
+
+```
+✗ Preflight failed: Target returned 405 Method Not Allowed.
+  You specified --method GET but this endpoint requires POST.
+  Re-run without --method GET or use --skip-preflight to bypass this check.
+```
+
+This replaces the old behaviour (KL-1) where the scan would silently execute 300+ attacks that all returned 405, ultimately producing a misleading `Grade.INCOMPLETE` result.
+
+To scan a target that genuinely accepts `GET` requests with a body, pass `--method GET` normally — the preflight check will pass if the server returns anything other than 405. To bypass the preflight check entirely (e.g. for rate-limited endpoints), use `--skip-preflight`.
 
 **What happens if the target server returns HTTP 503 during a scan?**  
 As of v0.5.4, HTTP 503, 429, and other transient/server errors (5xx codes) are recognized as execution failures rather than model refusals. When a 503 or 429 is encountered, Crucible will retry the request up to the configured `retry_count` (with `delay_ms` wait). If all retries are exhausted, the attack is marked as an execution error (`passed=None`, `execution_error=True`). 

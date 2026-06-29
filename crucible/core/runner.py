@@ -21,7 +21,14 @@ from rich.progress import (
 )
 
 from crucible.core.scorer import finalize_scan_result
-from crucible.models import AgentTarget, Finding, ModuleResult, ScanResult, ScanStatus
+from crucible.models import (
+    AgentTarget,
+    Finding,
+    ModuleResult,
+    PreflightResult,
+    ScanResult,
+    ScanStatus,
+)
 from crucible.modules.security import get_all_modules
 
 if TYPE_CHECKING:
@@ -103,6 +110,118 @@ async def run_module_with_progress(
         progress.advance(task_id, advance=_module_payload_count(module))
 
 
+class _PreflightError(Exception):
+    """Raised inside run_scan() when preflight_check fails fatally."""
+
+    def __init__(self, result: PreflightResult) -> None:
+        self.result = result
+        super().__init__(result.errors[0] if result.errors else "Preflight failed")
+
+
+async def preflight_check(
+    target: AgentTarget,
+    client: httpx.AsyncClient,
+) -> PreflightResult:
+    """Send one minimal probe request to validate the target before scanning.
+
+    Checks:
+    1. Is the target reachable?
+    2. Does it accept the configured HTTP method (405 = NO)?
+    3. Does the response look like an LLM endpoint (JSON with message/content)?
+
+    Returns a :class:`PreflightResult` describing the outcome.  The caller is
+    responsible for deciding whether to abort the scan.
+    """
+    warnings: list[str] = []
+    errors: list[str] = []
+
+    # Build a minimal probe body using the target's body_template.
+    probe_body = target.body_template.replace("{payload}", "Hello")
+
+    try:
+        response = await client.request(
+            method=target.method,
+            url=str(target.url),
+            content=probe_body.encode(),
+            headers={"Content-Type": "application/json", **target.headers},
+        )
+    except httpx.ConnectError as exc:
+        errors.append(f"Connection error: {exc}")
+        return PreflightResult(
+            reachable=False,
+            method_accepted=False,
+            looks_like_llm_endpoint=False,
+            status_code=0,
+            warnings=warnings,
+            errors=errors,
+        )
+    except Exception as exc:
+        errors.append(f"Unexpected error during preflight: {exc}")
+        return PreflightResult(
+            reachable=False,
+            method_accepted=False,
+            looks_like_llm_endpoint=False,
+            status_code=0,
+            warnings=warnings,
+            errors=errors,
+        )
+
+    status_code = response.status_code
+
+    # 405 → method not accepted
+    if status_code == 405:
+        errors.append(
+            f"Target returned 405 Method Not Allowed. "
+            f"You specified --method {target.method} but this endpoint requires POST. "
+            f"Re-run without --method {target.method} or use "
+            f"--skip-preflight to bypass this check."
+        )
+        return PreflightResult(
+            reachable=True,
+            method_accepted=False,
+            looks_like_llm_endpoint=False,
+            status_code=status_code,
+            warnings=warnings,
+            errors=errors,
+        )
+
+    # Detect non-LLM responses: parse JSON and look for typical LLM response keys.
+    looks_like_llm = False
+    try:
+        body = response.json()
+        llm_keys = {
+            "message",
+            "choices",
+            "content",
+            "response",
+            "output",
+            "result",
+            "text",
+            "generated_text",
+        }
+        if isinstance(body, dict) and (
+            llm_keys.intersection(body.keys()) or "message" in str(body).lower()
+        ):
+            looks_like_llm = True
+    except Exception:
+        pass
+
+    if not looks_like_llm:
+        warnings.append(
+            "Target does not appear to return an LLM response format. "
+            "Scan results may be unreliable."
+        )
+
+    return PreflightResult(
+        reachable=True,
+        method_accepted=True,
+        looks_like_llm_endpoint=looks_like_llm,
+        status_code=status_code,
+        warnings=warnings,
+        errors=errors,
+    )
+
+
 async def run_scan(
     target: AgentTarget,
     modules: list[BaseModule] | None = None,
@@ -112,6 +231,7 @@ async def run_scan(
     format: str = "table",
     verbose: bool = False,
     mutate: bool = False,
+    skip_preflight: bool = False,
 ) -> ScanResult:
     if modules is None:
         modules = get_all_modules()
@@ -153,6 +273,29 @@ async def run_scan(
         with progress_cm as progress:
             task_id = progress.add_task("Starting scan...", total=total_attacks)
 
+            # ── Preflight ─────────────────────────────────────────────────────
+            preflight_client = httpx.AsyncClient(
+                limits=limits,
+                timeout=timeout,
+                follow_redirects=True,
+                proxy=target.proxy or None,
+            )
+            if not skip_preflight:
+                async with preflight_client as pfc:
+                    pf = await preflight_check(target, pfc)
+                if not pf.reachable or not pf.method_accepted:
+                    raise _PreflightError(pf)
+                if not pf.looks_like_llm_endpoint and pf.warnings:
+                    warn_console = (
+                        progress.console
+                        if hasattr(progress, "console")
+                        else Console(file=sys.stderr)
+                    )
+                    warn_console.print(
+                        f"[yellow]\u26a0 Preflight warning: {pf.warnings[0]}[/yellow]"
+                    )
+            # ─────────────────────────────────────────────────────────────────
+
             async with (
                 httpx.AsyncClient(
                     limits=limits,
@@ -180,6 +323,8 @@ async def run_scan(
 
         scan.status = ScanStatus.COMPLETED
 
+    except _PreflightError:
+        raise
     except Exception:
         scan.status = ScanStatus.FAILED
 

@@ -30,6 +30,7 @@ class TestRunner:
             timeout=30.0,
             quiet=False,
             verbose=False,
+            skip_preflight=True,
         )
 
         assert result.status == ScanStatus.COMPLETED
@@ -53,6 +54,7 @@ class TestRunner:
             timeout=30.0,
             quiet=False,
             verbose=False,
+            skip_preflight=True,
         )
 
         assert result.status == ScanStatus.FAILED
@@ -70,7 +72,7 @@ class TestRunner:
         )
 
         result = await run_scan(
-            target, concurrency=10, timeout=1.0, quiet=False, verbose=False
+            target, concurrency=10, timeout=1.0, quiet=False, verbose=False, skip_preflight=True
         )
 
         assert result.status == ScanStatus.COMPLETED
@@ -97,6 +99,7 @@ class TestRunner:
             concurrency=5,
             timeout=30.0,
             verbose=False,
+            skip_preflight=True,
         )
 
         captured = capsys.readouterr()
@@ -125,6 +128,7 @@ class TestRunner:
             timeout=30.0,
             quiet=False,
             verbose=False,
+            skip_preflight=True,
         )
 
         captured = capsys.readouterr()

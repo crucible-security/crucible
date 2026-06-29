@@ -326,6 +326,11 @@ def scan(
         "--allow-incomplete",
         help="Allow the scan to exit with code 0 even if the grade is INCOMPLETE.",
     ),
+    skip_preflight: bool = typer.Option(
+        False,
+        "--skip-preflight",
+        help="Skip preflight endpoint check (useful for rate-limited or non-standard targets).",
+    ),
 ) -> None:
     parsed_headers = _parse_headers(header)
 
@@ -492,17 +497,29 @@ def scan(
                 except Exception as e:
                     console.print(f"[yellow]Failed to load profile: {e}[/yellow]")
 
-            result = anyio.run(
-                run_scan,
-                agent_target,
-                modules,
-                concurrency,
-                resolved_timeout,
-                quiet,
-                format,
-                verbose,
-                mutate,
-            )
+            from crucible.core.runner import _PreflightError
+
+            try:
+                result = anyio.run(
+                    run_scan,
+                    agent_target,
+                    modules,
+                    concurrency,
+                    resolved_timeout,
+                    quiet,
+                    format,
+                    verbose,
+                    mutate,
+                    skip_preflight,
+                )
+            except _PreflightError as exc:
+                pf = exc.result
+                msg = pf.errors[0] if pf.errors else "Preflight check failed."
+                console.print(f"[bold red]\u2717 Preflight failed: {msg}[/bold red]")
+                console.print(
+                    "[dim]Tip: Use --skip-preflight to bypass this check.[/dim]"
+                )
+                raise typer.Exit(code=2) from exc
 
         if cache:
             scan_cache.set(cache_key, result, ttl_hours=cache_ttl)

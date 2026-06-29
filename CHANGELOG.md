@@ -5,6 +5,18 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7] - 2026-06-29
+
+### Fixed
+- **KL-1: `--method GET` against POST-only endpoints now exits code 2 immediately** — Previously, running `crucible scan --method GET` against a POST-only LLM endpoint (such as Ollama's `/api/chat`) silently executed 300+ attacks that all returned HTTP 405, ultimately producing a misleading `Grade.INCOMPLETE` result with zero actionable findings. The new preflight check sends a single probe request before the main scan loop and detects the 405 immediately, printing a clear red error message and aborting with exit code 2 before any attack modules run.
+
+### Added
+- **`preflight_check()`** — New async function in `crucible/core/runner.py` that validates three things before each scan: (1) target reachability, (2) HTTP method acceptance (405 → hard fail), (3) LLM-like response format (non-JSON → warning only, scan continues).
+- **`PreflightResult` model** — New Pydantic model in `crucible/models.py` with fields `reachable`, `method_accepted`, `looks_like_llm_endpoint`, `status_code`, `warnings`, `errors`.
+- **`--skip-preflight` CLI flag** — `crucible scan --skip-preflight` bypasses the preflight check entirely, useful for rate-limited endpoints or non-standard targets where the preflight request itself would be costly.
+- **`skip_preflight` parameter on `run_scan()`** — Public API change; callers can set `skip_preflight=True` to bypass programmatically.
+- **5 new tests** in `tests/test_preflight.py` covering 405 rejection, non-LLM warning, clean pass, skip-preflight bypass, and CLI exit-code-2 behaviour.
+
 ## [0.5.6] - 2026-06-29
 
 ### Added

@@ -2,12 +2,14 @@
 
 ## Architecture Overview
 
-Crucible is organized into four layers:
+Crucible is organized into six layers:
 CLI Layer       crucible/cli.py          — Typer command interface
-Attack Layer    crucible/attacks/        — 90+ adversarial payloads
+Attack Layer    crucible/attacks/        — 140+ adversarial payloads
 Module Layer    crucible/modules/        — Attack orchestration
 Reporter Layer  crucible/reporters/      — Output formatting
-Core Layer      crucible/core/           — Runner and scorer
+Core Layer      crucible/core/           — Runner, statistics, scorer
+Poison Layer    crucible/poison/         — RAG & Memory poisoning test suite
+Trace Layer     crucible/trace/          — MCP intercept & audit proxy
 
 ### Attack Vectors vs Impacts — Important Distinction
 
@@ -98,32 +100,49 @@ All four must pass before submitting a PR.
 
 ## Project Structure
 crucible/
-__init__.py
-cli.py              — Entry point (Typer)
-models.py           — Pydantic data models
-attacks/
-base.py           — BaseAttack ABC
-prompt_injection.py  — 50 vectors
-goal_hijacking.py    — 20 vectors
-jailbreaks.py        — 20 vectors
-mcp_attacks.py       — 8 vectors
-modules/
-base.py           — BaseModule ABC
-security.py       — Module orchestration
-core/
-runner.py         — Async parallel execution
-scorer.py         — CVSS-style scoring
-reporters/
-base.py           — BaseReporter ABC
-terminal.py       — Rich terminal output
-json_reporter.py  — JSON export
+  __init__.py
+  cli.py              — Entry point (Typer)
+  models.py           — Pydantic data models
+  attacks/
+    base.py           — BaseAttack ABC
+    prompt_injection.py  — 50 vectors
+    goal_hijacking.py    — 20 vectors
+    jailbreaks.py        — 20 vectors
+    mcp_attacks.py       — 8 vectors
+    hallucination.py     — 15 vectors
+    toxicity.py          — 20 vectors
+  modules/
+    base.py           — BaseModule ABC
+    security.py       — Module orchestration
+  core/
+    runner.py         — Async parallel execution
+    scorer.py         — CVSS-style scoring
+    statistics.py     — Bootstrap statistical confidence intervals
+  poison/             — Stateful memory & RAG poisoning package
+    session_store.py  — Atomic JSON poisoning session store
+    document_generator.py — Implement 4 adversarial planting techniques
+  trace/              — MCP tool-call interception & policy proxy
+    models.py         — Pydantic trace models
+    policy.py         — YAML rule-based evaluation engine
+    audit_log.py      — Append-only thread-safe JSONL logger
+    proxy.py          — Async TCP reverse proxy using anyio & h11
+  reporters/
+    base.py           — BaseReporter ABC
+    terminal.py       — Rich terminal output
+    json_reporter.py  — JSON export
+    sarif_reporter.py — Export results to SARIF 2.1.0
+    atlas_reporter.py — MITRE ATLAS compliance report
+    nist_reporter.py  — NIST AI RMF compliance report
 tests/
-conftest.py
-test_models.py
-test_attacks.py
-test_scorer.py
-test_cli.py
-test_runner.py
+  conftest.py
+  test_models.py
+  test_attacks.py
+  test_scorer.py
+  test_cli.py
+  test_runner.py
+  test_statistics.py  — Test bootstrap CI calculation
+  test_trace_proxy.py — Test MCP policy evaluation and intercept proxy
+  test_poison.py      — Test RAG & memory poisoning planter and verification
 
 ## Questions?
 

@@ -37,6 +37,9 @@
 | **Hallucination testing** | ✅ Native module | ✅ | ❌ |
 | **Toxicity / Policy violations** | ✅ Native module | ✅ | ✅ Via scorers |
 | **Multi-turn conversation attacks** | ✅ Dedicated engine (v0.3) | ❌ Single-turn by default | ✅ Native strength |
+| **Statistical significance testing** | ✅ Yes (Bootstrap CI, v0.6) | ❌ | ❌ |
+| **MCP intercept proxy** | ✅ Yes (`trace` proxy, v0.7) | ❌ | ❌ |
+| **Memory / RAG poisoning suite**| ✅ Yes (stateful `poison-test`, v0.8) | ⚠️ Limited | ❌ |
 
 ---
 

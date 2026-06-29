@@ -161,6 +161,8 @@ default severity rating.
 | `jailbreaks` | Prompt Injection (safety constraint bypass) | Safety Bypass | OWASP-AGENT-001, OWASP-AGENT-006 | CRITICAL |
 | `mcp_security` | MCP Trust Boundary Violation | Privilege Escalation | OWASP-AGENT-004, OWASP-AGENT-007 | HIGH |
 | `tool_injection` | Tool Injection (parameter, chain, selection, authorization) | Tool Misuse, Privilege Escalation | OWASP-AGENT-004 | CRITICAL / HIGH |
+| `trace` proxy | MCP Tool call interception & rule enforcement | Scope Violation, Tool Misuse | OWASP-AGENT-004, OWASP-AGENT-007 | HIGH |
+| `poison-test` | Memory / RAG stateful poisoning | Goal Hijacking, Malicious Execution | OWASP-AGENT-001, OWASP-AGENT-003 | HIGH |
 
 > **Reading this table:**
 > - *Attack Vector* = how the malicious input is delivered to the agent
@@ -179,10 +181,10 @@ The table below maps the full OWASP Agentic AI Top 10 to Crucible's current cove
 | ASI01 | Prompt Injection | `prompt_injection` | ✅ Live (50 attacks) |
 | ASI02 | Sensitive Data Exposure / Exfiltration | `prompt_injection` (PI-005, PI-006) | ✅ Partial |
 | ASI03 | Goal Hijacking | `goal_hijacking` | ✅ Live (20 attacks) |
-| ASI04 | Privilege Escalation | `mcp_security`, `tool_injection` (20 attacks), `prompt_injection` (role escalation) | ✅ Live |
-| ASI05 | Unexpected Code Execution | `jailbreaks` (code execution escapes) | ✅ Partial |
+| ASI04 | Privilege Escalation | `mcp_security`, `tool_injection` (20 attacks), `prompt_injection` (role escalation), `trace` proxy | ✅ Live |
+| ASI05 | Unexpected Code Execution | `jailbreaks` (code execution escapes), `poison-test` (malicious payload execution) | ✅ Live |
 | ASI06 | Safety Guardrail Bypass | `jailbreaks` | ✅ Live (20 attacks) |
-| ASI07 | Supply Chain / MCP Compromise | `mcp_security` | ✅ Live (8 attacks) |
+| ASI07 | Supply Chain / MCP Compromise | `mcp_security` (8 attacks), `trace` proxy | ✅ Live |
 | ASI08 | Cascading Failures | Malformed output resilience tests | 🔜 Roadmap |
 | ASI09 | Human-Agent Trust Exploitation | `jailbreaks` (social engineering probes) | ✅ Partial |
 | ASI10 | Rogue / Misaligned Agents | Full suite combined | ✅ Partial |
@@ -267,6 +269,35 @@ Fires 20 payloads testing tool injection and misuse vulnerabilities:
 - **Tool Selection Manipulation**: Coercing the agent to skip standard retrieval and invoke privileged or diagnostic endpoints instead.
 - **Tool Chain Poisoning**: Delivering injected instruction structures inside simulated tool output strings to hijack the agent.
 - **Unauthorized Tool Invocation**: Enforcing enumeration or bypass logic to query/trigger hidden or restricted developer tools.
+
+---
+
+### `trace` proxy
+
+**Primary OWASP Risk:** ASI07 — Supply Chain / MCP Compromise
+**Secondary impacts tested:** ASI04 (Privilege Escalation / Scope Violation)
+**Underlying attack vector:** Interception Proxy Rule enforcement
+**Default severity:** HIGH
+
+Provides traffic monitoring and rule enforcement for the Model Context Protocol (MCP):
+- **Rule-based Enforcement**: Intercepts `tools/call` JSON-RPC requests and validates parameters/methods against regex patterns in a policy file.
+- **Policy Actions**: Executes `allow`, `deny`, or `alert` actions. Denials return a standard JSON-RPC HTTP 200 error code `-32600` (`blocked_by_policy`) for client compatibility.
+- **Audit Logging**: Writes thread-safe append-only logs (`AuditLog`) capturing inputs, latency, IPs, upstream statuses, and matching rules.
+
+---
+
+### `poison-test` module
+
+**Primary OWASP Risk:** ASI01 — Prompt Injection (Indirect RAG/Memory Variant)
+**Secondary impacts tested:** ASI03 (Goal Hijacking), ASI05 (Unexpected Code Execution)
+**Underlying attack vector:** Data Poisoning (stateful planting)
+**Default severity:** HIGH
+
+Evaluates agent vulnerability to persistent/stateful poisoning across RAG indexes or memory buffers:
+- **Semantic Anchor Injection**: Blends instructions into target contexts to redirect future queries.
+- **Authority Impersonation**: Uses zero-width spaces or special character sequences to spoof administrative prompts or trust boundaries.
+- **Semantic Sleeper templates**: Plants latent instruction triggers that activate only when specific keywords or contexts are encountered.
+- **Automated Verification**: Plants structured activation tokens (8-character unique signatures) and programmatically queries the target agent to verify whether the payload successfully executes.
 
 ---
 

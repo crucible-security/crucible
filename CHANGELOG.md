@@ -5,6 +5,13 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.3] - 2026-06-30
+
+### Fixed
+- **Mypy type-checking** — Resolved Union public key type attribute error (`union-attr` on `public_numbers()`) in `tests/test_tls_listener.py` by adding explicit RSAPublicKey assertions.
+- **CI Test Suite Flakiness** — Increased connection timeout in `_wait_for_tls_port` from `0.2` to `2.0` seconds to prevent connection timeouts on slow or busy GitHub Actions VM runners.
+- **Version output** — Dynamically print the package version in `crucible trace start` CLI using the `__version__` variable.
+
 ## [0.8.2] - 2026-06-30
 
 ### Added

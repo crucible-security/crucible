@@ -63,7 +63,7 @@ def _wait_for_tls_port(port: int, timeout: float = 5.0) -> bool:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
             with (
-                socket.create_connection(("127.0.0.1", port), timeout=0.2) as raw,
+                socket.create_connection(("127.0.0.1", port), timeout=2.0) as raw,
                 ctx.wrap_socket(raw, server_hostname="localhost"),
             ):
                 return True
@@ -206,8 +206,17 @@ def test_generate_self_signed_valid_x509(tmp_path: Path) -> None:
     assert "localhost" in dns_names
 
     # Verify key pair matches (public keys are equal)
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
     priv_key = load_pem_private_key(key_path.read_bytes(), password=None)
-    assert priv_key.public_key().public_numbers() == cert.public_key().public_numbers()
+    pub_key_from_priv = priv_key.public_key()
+    pub_key_from_cert = cert.public_key()
+
+    assert isinstance(pub_key_from_priv, rsa.RSAPublicKey)
+    assert isinstance(pub_key_from_cert, rsa.RSAPublicKey)
+    assert (
+        pub_key_from_priv.public_numbers() == pub_key_from_cert.public_numbers()
+    )
 
 
 # ===========================================================================

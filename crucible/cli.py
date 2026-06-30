@@ -2032,7 +2032,7 @@ def trace_start(
     requests against --policy, and writes every decision to --log.
 
     \b
-    TLS (v0.8.2):
+    TLS (v0.8.x):
       --tls --tls-cert cert.pem --tls-key key.pem   load an existing cert
       --tls --tls-self-signed                        auto-generate a dev cert
 
@@ -2094,7 +2094,7 @@ def trace_start(
         )
     )
     console.print(
-        f"\n[bold cyan]crucible trace[/bold cyan] v0.8.2 starting\n"
+        f"\n[bold cyan]crucible trace[/bold cyan] v{__version__} starting\n"
         f"  [dim]upstream :[/dim] {upstream}\n"
         f"  [dim]listen   :[/dim] {scheme}://{listen_host}:{listen_port}\n"
         f"  [dim]TLS      :[/dim] {tls_label}\n"

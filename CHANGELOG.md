@@ -5,6 +5,16 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.2] - 2026-06-30
+
+### Added
+- **TLS Listener for `crucible trace` proxy** — Native TLS termination for the agent → proxy hop (first hop) using anyio's `TLSListener`.
+  - `--tls` / `--no-tls` flag to enable TLS.
+  - `--tls-cert` and `--tls-key` flags to specify paths to existing PEM certificate/key files.
+  - `--tls-self-signed` flag to auto-generate a development RSA 2048 key + self-signed x509 certificate on startup.
+  - `--tls-handshake-timeout` flag to configure the TLS handshake timeout (default 30 seconds).
+- **10 new tests** (`tests/test_tls_listener.py`) covering self-signed generation, SSL context construction, TLS allowance/denial over HTTPS, plain HTTP regression guard, handshake timeout configurability, and invalid handshake resilience.
+
 ## [0.8.0] - 2026-06-29
 
 ### Added

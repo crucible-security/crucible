@@ -2000,6 +2000,31 @@ def trace_start(
         "--log",
         help="Path to the JSONL audit log file (append-only).",
     ),
+    tls: bool = typer.Option(
+        False,
+        "--tls/--no-tls",
+        help="Enable TLS on the listening socket (agent \u2192 proxy hop).",
+    ),
+    tls_cert: Path | None = typer.Option(
+        None,
+        "--tls-cert",
+        help="Path to a PEM certificate file.  Required when --tls is set unless --tls-self-signed is used.",
+    ),
+    tls_key: Path | None = typer.Option(
+        None,
+        "--tls-key",
+        help="Path to a PEM private key file.  Required when --tls is set unless --tls-self-signed is used.",
+    ),
+    tls_self_signed: bool = typer.Option(
+        False,
+        "--tls-self-signed",
+        help="Auto-generate a self-signed RSA 2048 certificate for development/testing.  Implies --tls.",
+    ),
+    tls_handshake_timeout: float = typer.Option(
+        30.0,
+        "--tls-handshake-timeout",
+        help="Seconds to wait for the TLS handshake before dropping the connection (default: 30).",
+    ),
 ) -> None:
     """Start the crucible trace proxy.
 
@@ -2007,16 +2032,38 @@ def trace_start(
     requests against --policy, and writes every decision to --log.
 
     \b
-    ⚠  Known limitation: v0.7.0 supports HTTP only.
-       For HTTPS upstream targets, point --upstream to the https:// URL;
-       configure your MCP client to use http://localhost:<port> as proxy.
-       Native TLS termination is planned for v0.8.0.
+    TLS (v0.8.2):
+      --tls --tls-cert cert.pem --tls-key key.pem   load an existing cert
+      --tls --tls-self-signed                        auto-generate a dev cert
 
     Press Ctrl+C to stop.  A summary is printed on exit.
     """
+    import tempfile
+
     from crucible.trace.audit_log import AuditLog
     from crucible.trace.policy import PolicyError, load_policy
     from crucible.trace.proxy import TraceProxy
+
+    # --- Resolve TLS settings ---
+    _tls_active = tls or tls_self_signed
+    _tls_cert: Path | None = tls_cert
+    _tls_key: Path | None = tls_key
+
+    if _tls_active:
+        if tls_self_signed:
+            from crucible.trace.tls_utils import generate_self_signed
+
+            _tmp_tls_dir = Path(tempfile.mkdtemp(prefix="crucible_tls_"))
+            _tls_cert, _tls_key = generate_self_signed(_tmp_tls_dir)
+            console.print(
+                f"[green]\u2713 Self-signed cert generated:[/green] {_tls_cert}"
+            )
+        elif _tls_cert is None or _tls_key is None:
+            console.print(
+                "[red]\u2717 TLS error:[/red] --tls requires either "
+                "--tls-cert + --tls-key, or --tls-self-signed."
+            )
+            raise typer.Exit(code=1)
 
     # --- Load policy ---
     loaded_policy = None
@@ -2036,10 +2083,21 @@ def trace_start(
         )
 
     # --- Startup banner ---
+    scheme = "https" if _tls_active else "http"
+    tls_label = (
+        "[green]\u2713 TLS enabled (self-signed)[/green]"
+        if tls_self_signed
+        else (
+            "[green]\u2713 TLS enabled[/green]"
+            if _tls_active
+            else "[dim]plain HTTP[/dim]"
+        )
+    )
     console.print(
-        f"\n[bold cyan]crucible trace[/bold cyan] v0.7.0 starting\n"
+        f"\n[bold cyan]crucible trace[/bold cyan] v0.8.2 starting\n"
         f"  [dim]upstream :[/dim] {upstream}\n"
-        f"  [dim]listen   :[/dim] http://{listen_host}:{listen_port}\n"
+        f"  [dim]listen   :[/dim] {scheme}://{listen_host}:{listen_port}\n"
+        f"  [dim]TLS      :[/dim] {tls_label}\n"
         f"  [dim]log      :[/dim] {log}\n"
         f"  [dim]policy   :[/dim] {policy or 'allow-all'}\n"
     )
@@ -2053,6 +2111,9 @@ def trace_start(
         audit_log=audit_log,
         listen_host=listen_host,
         listen_port=listen_port,
+        tls_cert=_tls_cert,
+        tls_key=_tls_key,
+        tls_handshake_timeout=tls_handshake_timeout,
     )
 
     with contextlib.suppress(KeyboardInterrupt):

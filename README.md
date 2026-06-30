@@ -218,8 +218,14 @@ crucible scan --target URL --confidence --confidence-runs 10
 # Validate a trace policy YAML file
 crucible trace validate-policy policy.yaml
 
-# Start the MCP interception & auditing trace proxy between client and upstream server
-crucible trace start --port 8000 --upstream-url http://localhost:8001 --policy policy.yaml --audit-log audit.jsonl
+# Start the MCP interception & auditing trace proxy (plain HTTP)
+crucible trace start --listen 8080 --upstream http://localhost:8001 --policy policy.yaml --log audit.jsonl
+
+# Start the proxy with native TLS termination (auto-generated self-signed dev certificate)
+crucible trace start --listen 9443 --upstream http://localhost:8001 --policy policy.yaml --tls-self-signed
+
+# Start the proxy with native TLS termination (using custom certificate/key files)
+crucible trace start --listen 9443 --upstream http://localhost:8001 --policy policy.yaml --tls --tls-cert cert.pem --tls-key key.pem
 
 # Render a summary report from a trace audit log file
 crucible trace report audit.jsonl

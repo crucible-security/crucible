@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
+import datetime  # noqa: TC003
 import re
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import BaseModel, Field
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 
 class PolicyAction(str, Enum):
@@ -67,7 +65,7 @@ class Policy(BaseModel):
 class TraceEntry(BaseModel):
     """One row in the JSONL audit log."""
 
-    timestamp: datetime = Field(description="UTC time of the request.")
+    timestamp: datetime.datetime = Field(description="UTC time of the request.")
     request_id: str = Field(description="UUID4 unique to this request.")
     tool_name: str | None = Field(
         default=None,
@@ -92,3 +90,6 @@ class TraceEntry(BaseModel):
     )
     request_size_bytes: int = Field(description="Size of the incoming request body.")
     caller_ip: str = Field(description="IP address of the MCP client.")
+
+
+TraceEntry.model_rebuild()

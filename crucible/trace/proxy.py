@@ -20,6 +20,22 @@ Why HTTP 200 for denied calls?
 # JSON-RPC spec requires 200 OK even for application-level errors.
 # Returning 403 would break MCP clients that only handle 200 responses.
 
+TLS support (v0.8.2)
+---------------------
+When *tls_cert* and *tls_key* are provided to :class:`TraceProxy`, the TCP
+listener is wrapped with ``anyio.streams.tls.TLSListener`` to terminate TLS on
+the first hop (agent → proxy).  The proxy → upstream connection remains plain
+HTTP unless the upstream URL itself uses HTTPS.
+
+When **no** TLS parameters are supplied the code path is 100% identical to
+pre-v0.8.2 — the plain-HTTP branch is never touched.
+
+  * ``standard_compatible=True`` (default): performs the RFC-compliant TLS
+    closing handshake and forcefully closes the socket on handshake errors so
+    plain-HTTP clients connecting to a TLS port receive a clean RST, not a hang.
+  * ``handshake_timeout`` is configurable (CLI flag ``--tls-handshake-timeout``,
+    default 30 s) — no magic numbers in security-critical paths.
+
 Windows note
 ------------
 anyio.run() is called with ``backend="asyncio"`` everywhere, which is the
@@ -37,11 +53,15 @@ import anyio
 import anyio.abc
 import h11
 import httpx
+from anyio.streams.tls import TLSListener
 
 from crucible.trace.models import Policy, PolicyAction, TraceEntry
 from crucible.trace.policy import evaluate_policy
 
 if TYPE_CHECKING:
+    import ssl
+    from pathlib import Path
+
     from crucible.trace.audit_log import AuditLog
 
 
@@ -97,11 +117,19 @@ class TraceProxy:
     """Async HTTP reverse proxy with policy enforcement and audit logging.
 
     Args:
-        upstream:     Base URL of the upstream MCP server (e.g. ``http://localhost:3000``).
-        policy:       Loaded :class:`Policy` to evaluate; ``None`` means allow-all.
-        audit_log:    :class:`AuditLog` instance to append entries to.
-        listen_host:  Interface to bind (default ``127.0.0.1``).
-        listen_port:  TCP port to listen on (default ``8080``).
+        upstream:              Base URL of the upstream MCP server (e.g.
+                               ``http://localhost:3000``).
+        policy:                Loaded :class:`Policy` to evaluate; ``None``
+                               means allow-all.
+        audit_log:             :class:`AuditLog` instance to append entries to.
+        listen_host:           Interface to bind (default ``127.0.0.1``).
+        listen_port:           TCP port to listen on (default ``8080``).
+        tls_cert:              Path to a PEM certificate file.  When provided
+                               together with *tls_key*, TLS is enabled on the
+                               listening socket.
+        tls_key:               Path to a PEM private key file matching *tls_cert*.
+        tls_handshake_timeout: Seconds to wait for the TLS handshake before
+                               aborting the connection (default ``30``).
     """
 
     def __init__(
@@ -111,12 +139,18 @@ class TraceProxy:
         audit_log: AuditLog,
         listen_host: str = "127.0.0.1",
         listen_port: int = 8080,
+        tls_cert: Path | None = None,
+        tls_key: Path | None = None,
+        tls_handshake_timeout: float = 30.0,
     ) -> None:
         self.upstream = upstream.rstrip("/")
         self.policy = policy
         self.audit_log = audit_log
         self.listen_host = listen_host
         self.listen_port = listen_port
+        self.tls_cert = tls_cert
+        self.tls_key = tls_key
+        self.tls_handshake_timeout = tls_handshake_timeout
         # Counters updated under anyio — single-threaded so no lock needed
         self._total = 0
         self._denied = 0
@@ -330,11 +364,32 @@ class TraceProxy:
     # ------------------------------------------------------------------
 
     async def serve(self) -> None:
-        """Start the anyio TCP listener.  Blocks until cancelled (Ctrl+C)."""
-        listener = await anyio.create_tcp_listener(
+        """Start the anyio TCP listener.  Blocks until cancelled (Ctrl+C).
+
+        When *tls_cert* and *tls_key* were supplied at construction time, wraps
+        the raw TCP listener with :class:`anyio.streams.tls.TLSListener` so
+        that TLS is terminated on the first hop.  The plain-HTTP code path is
+        100% unchanged when no TLS parameters are provided.
+        """
+        tcp_listener = await anyio.create_tcp_listener(
             local_host=self.listen_host,
             local_port=self.listen_port,
         )
+
+        # --- TLS wrapping (additive, plain-HTTP path unchanged) ---
+        if self.tls_cert is not None and self.tls_key is not None:
+            from crucible.trace.tls_utils import build_ssl_context
+
+            ssl_ctx: ssl.SSLContext = build_ssl_context(self.tls_cert, self.tls_key)
+            listener: anyio.abc.Listener[anyio.abc.ByteStream] = TLSListener(
+                listener=tcp_listener,
+                ssl_context=ssl_ctx,
+                standard_compatible=True,
+                handshake_timeout=self.tls_handshake_timeout,
+            )
+        else:
+            listener = tcp_listener
+
         async with listener, anyio.create_task_group() as tg:
 
             async def _serve_one(stream: anyio.abc.ByteStream) -> None:

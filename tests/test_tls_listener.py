@@ -214,9 +214,7 @@ def test_generate_self_signed_valid_x509(tmp_path: Path) -> None:
 
     assert isinstance(pub_key_from_priv, rsa.RSAPublicKey)
     assert isinstance(pub_key_from_cert, rsa.RSAPublicKey)
-    assert (
-        pub_key_from_priv.public_numbers() == pub_key_from_cert.public_numbers()
-    )
+    assert pub_key_from_priv.public_numbers() == pub_key_from_cert.public_numbers()
 
 
 # ===========================================================================

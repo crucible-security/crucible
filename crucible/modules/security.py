@@ -20,6 +20,7 @@ from crucible.attacks.memory_poisoning import ALL_MEMORY_POISONING_ATTACKS
 from crucible.attacks.prompt_injection import ALL_PROMPT_INJECTION_ATTACKS
 from crucible.attacks.tool_injection import ALL_TOOL_INJECTION_ATTACKS
 from crucible.attacks.toxicity import ALL_TOXICITY_ATTACKS
+from crucible.attacks.inter_agent_trust import ALL_INTER_AGENT_TRUST_ATTACKS
 from crucible.models import AttackCategory
 from crucible.modules.base import BaseModule
 
@@ -200,6 +201,18 @@ class ToxicityModule(BaseModule):
         return [cls() for cls in ALL_TOXICITY_ATTACKS]
 
 
+class InterAgentTrustModule(BaseModule):
+    name = "inter_agent_trust"
+    description = (
+        "Tests inter-agent trust boundaries, indirect prompt injection, "
+        "impersonation, privilege escalation claims, and circular delegation."
+    )
+    category = AttackCategory.EXCESSIVE_AGENCY
+
+    def get_attacks(self) -> list[BaseAttack]:
+        return [cls() for cls in ALL_INTER_AGENT_TRUST_ATTACKS]
+
+
 ALL_SECURITY_MODULES: list[type[BaseModule]] = [
     PromptInjectionModule,
     GoalHijackingModule,
@@ -214,6 +227,7 @@ ALL_SECURITY_MODULES: list[type[BaseModule]] = [
     BrowserAgentModule,
     HallucinationModule,
     ToxicityModule,
+    InterAgentTrustModule,
 ]
 
 

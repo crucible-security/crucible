@@ -360,6 +360,7 @@ class TestSecurityModules:
             "browser_agent",
             "hallucination",
             "toxicity",
+            "inter_agent_trust",
         }
 
     @respx.mock

@@ -164,6 +164,7 @@ default severity rating.
 | `trace` proxy | MCP Tool call interception & rule enforcement | Scope Violation, Tool Misuse | OWASP-AGENT-004, OWASP-AGENT-007 | HIGH |
 | `trace` + **identity layer** | Named agent identity enforcement, rate limits, allowlists | Excessive Agency, Privilege Escalation | OWASP-AGENT-004 | HIGH / CRITICAL |
 | `poison-test` | Memory / RAG stateful poisoning | Goal Hijacking, Malicious Execution | OWASP-AGENT-001, OWASP-AGENT-003 | HIGH |
+| `inter_agent_trust` | Prompt Injection (A2A / trust boundary) | Excessive Agency, Privilege Escalation | OWASP-AGENT-004, OWASP-AGENT-007 | HIGH |
 
 > **Reading this table:**
 > - *Attack Vector* = how the malicious input is delivered to the agent
@@ -185,7 +186,7 @@ The table below maps the full OWASP Agentic AI Top 10 to Crucible's current cove
 | ASI04 | Privilege Escalation | `mcp_security`, `tool_injection` (20 attacks), `prompt_injection` (role escalation), `trace` proxy + **identity layer** (v0.9.0) | ✅ Live |
 | ASI05 | Unexpected Code Execution | `jailbreaks` (code execution escapes), `poison-test` (malicious payload execution) | ✅ Live |
 | ASI06 | Safety Guardrail Bypass | `jailbreaks` | ✅ Live (20 attacks) |
-| ASI07 | Supply Chain / MCP Compromise | `mcp_security` (8 attacks), `trace` proxy | ✅ Live |
+| ASI07 | Supply Chain / MCP Compromise | `mcp_security` (8 attacks), `inter_agent_trust` (15 attacks), `trace` proxy | ✅ Live |
 | ASI08 | Cascading Failures | Malformed output resilience tests | 🔜 Roadmap |
 | ASI09 | Human-Agent Trust Exploitation | `jailbreaks` (social engineering probes) | ✅ Partial |
 | ASI10 | Rogue / Misaligned Agents | Full suite combined | ✅ Partial |

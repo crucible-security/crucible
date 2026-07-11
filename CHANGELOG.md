@@ -5,6 +5,22 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2026-07-11
+
+### Added — Phase 12: Inter-Agent Trust Testing (ASI07)
+
+- **Inter-Agent Trust Attack Module (`crucible/attacks/inter_agent_trust.py`)**:
+  - Implemented 15 distinct trust boundary and communication attack classes (`IAC-001` through `IAC-015`).
+  - Added mappings for MITRE ATLAS technique (`AML.T0054` - Indirect Prompt Injection), NIST function (`MANAGE`), and OWASP ref (`ASI07`).
+- **Inter-Agent Trust Security Module (`crucible/modules/security.py`)**:
+  - Registered `InterAgentTrustModule` and added to default scanning module list.
+- **Documentation (`docs/owasp_mapping.md`)**:
+  - Documented inter-agent trust communication (A2A) vectors and exfiltration paths under OWASP Top 10 ASI07 mapping rules.
+- **Tests**:
+  - Added 7 unit/integration tests in `tests/test_inter_agent_trust.py`.
+  - Updated existing runner and attack registry test suites to account for the new module.
+  - Total test suite: **431 passed, 0 failed**.
+
 ## [0.10.0] - 2026-07-11
 
 ### Added — Phase 11: Web Dashboard MVP

@@ -5,6 +5,25 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-07-11
+
+### Added — Phase 10: Dynamic Payload Generation
+
+- **Dynamic Attack Generation Hooks (`crucible/attacks/base.py`)**:
+  - `generate_dynamic_payloads()` — queries an external generator LLM (Ollama, OpenAI, LM Studio, etc.) at scan time to create novel, structurally diverse attack variants.
+  - Automatically handles preset formatting, JSON array parsing, markdown code-block cleaning, and duplicates filtering.
+  - Graceful fallback: connection or parsing errors print warnings to stderr but do not abort the scan.
+- **Finding Source Tagging (`crucible/models.py`)**:
+  - Added `payload_source` (`static` or `dynamic`) and `payload_index` fields to `Finding` model to track payload lineage in scans.
+- **CLI Options & Warnings (`crucible/cli.py`)**:
+  - Extended `crucible scan` with `--dynamic-payloads`, `--generator-endpoint`, `--generator-model`, `--generator-format-preset`, `--dynamic-count`, and `--dynamic-seed`.
+  - Added terminal warnings to alert users about increased scan time and dynamic generation settings.
+- **Scan Progress Adjustments (`crucible/core/runner.py`)**:
+  - Updated `_module_payload_count()` and progress bar tracking to correctly account for dynamic counts.
+- **Tests**:
+  - Added 8 unit/integration tests in `tests/test_dynamic_payloads.py` verifying template rendering, parameter compliance, graceful failures, and static-first ordering.
+  - Total test suite: **417 passed, 0 failed** (409 baseline + 8 new).
+
 ## [0.9.0] - 2026-07-11
 
 ### Added — Phase 9: Identity & Privilege Layer (ASI04)

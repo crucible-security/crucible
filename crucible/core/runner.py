@@ -59,8 +59,13 @@ def _noop_progress() -> Iterator[_NoopProgress]:
     yield _NoopProgress()
 
 
-def _module_payload_count(module: BaseModule) -> int:
-    return sum(len(attack.get_payloads()) for attack in module.get_attacks())
+def _module_payload_count(
+    module: BaseModule, dynamic_payloads: bool = False, dynamic_count: int = 0
+) -> int:
+    static_count = sum(len(attack.get_payloads()) for attack in module.get_attacks())
+    if dynamic_payloads:
+        return static_count + (len(module.get_attacks()) * dynamic_count)
+    return static_count
 
 
 async def run_module_with_progress(
@@ -75,6 +80,12 @@ async def run_module_with_progress(
     mutate: bool = False,
     confidence: bool = False,
     samples: int = 5,
+    dynamic_payloads: bool = False,
+    generator_endpoint: str | None = None,
+    generator_model: str | None = None,
+    generator_format_preset: str | None = None,
+    dynamic_count: int = 10,
+    dynamic_seed: int | None = None,
 ) -> None:
     progress.update(
         task_id, description=f"Running [bold cyan]{module.name}[/bold cyan]"
@@ -110,11 +121,22 @@ async def run_module_with_progress(
             mutate_enabled=mutate,
             confidence=confidence,
             samples=samples,
+            dynamic_payloads=dynamic_payloads,
+            generator_endpoint=generator_endpoint,
+            generator_model=generator_model,
+            generator_format_preset=generator_format_preset,
+            dynamic_count=dynamic_count,
+            dynamic_seed=dynamic_seed,
         )
     finally:
         with _results_lock:
             module_results.append(result)
-        progress.advance(task_id, advance=_module_payload_count(module))
+        progress.advance(
+            task_id,
+            advance=_module_payload_count(
+                module, dynamic_payloads, dynamic_count
+            ),
+        )
 
 
 class _PreflightError(Exception):
@@ -241,6 +263,12 @@ async def run_scan(
     skip_preflight: bool = False,
     confidence: bool = False,
     samples: int = 5,
+    dynamic_payloads: bool = False,
+    generator_endpoint: str | None = None,
+    generator_model: str | None = None,
+    generator_format_preset: str | None = None,
+    dynamic_count: int = 10,
+    dynamic_seed: int | None = None,
 ) -> ScanResult:
     if modules is None:
         modules = get_all_modules()
@@ -254,7 +282,10 @@ async def run_scan(
     module_results: list[ModuleResult] = []
     start = time.monotonic()
 
-    total_attacks = sum(_module_payload_count(m) for m in modules)
+    total_attacks = sum(
+        _module_payload_count(m, dynamic_payloads, dynamic_count)
+        for m in modules
+    )
     progress_target = sys.stderr if format in ["json", "html"] else sys.stdout
     progress_console = Console(file=progress_target)
     verbose_console = Console(file=sys.stderr)
@@ -304,7 +335,7 @@ async def run_scan(
                     else f"{est_conf_s:.0f}s"
                 )
                 warn_con.print(
-                    f"[yellow]\u26a0 Confidence mode enabled: each attack runs {samples}x.\n"
+                    f"[yellow]⚠ Confidence mode enabled: each attack runs {samples}x.\n"
                     f" Estimated scan time: ~{conf_str} (vs ~{normal_str} single-shot).\n"
                     f" Press Ctrl+C to abort.[/yellow]"
                 )
@@ -329,7 +360,7 @@ async def run_scan(
                         else Console(file=sys.stderr)
                     )
                     warn_console.print(
-                        f"[yellow]\u26a0 Preflight warning: {pf.warnings[0]}[/yellow]"
+                        f"[yellow]⚠ Preflight warning: {pf.warnings[0]}[/yellow]"
                     )
             # ─────────────────────────────────────────────────────────────────
 
@@ -356,6 +387,12 @@ async def run_scan(
                         mutate,
                         confidence,
                         samples,
+                        dynamic_payloads,
+                        generator_endpoint,
+                        generator_model,
+                        generator_format_preset,
+                        dynamic_count,
+                        dynamic_seed,
                     )
 
             progress.update(task_id, description="[green]Scan complete[/green]")

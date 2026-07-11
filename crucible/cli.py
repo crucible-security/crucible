@@ -343,6 +343,36 @@ def scan(
         max=20,
         help="Number of times each attack is run in --confidence mode (default: 5, max: 20).",
     ),
+    dynamic_payloads: bool = typer.Option(
+        False,
+        "--dynamic-payloads",
+        help="Generate novel attack variants dynamically using an LLM.",
+    ),
+    generator_endpoint: str | None = typer.Option(
+        None,
+        "--generator-endpoint",
+        help="HTTP endpoint of the generator LLM (e.g. http://localhost:11434).",
+    ),
+    generator_model: str | None = typer.Option(
+        None,
+        "--generator-model",
+        help="Model name for the generator LLM.",
+    ),
+    generator_format_preset: str | None = typer.Option(
+        None,
+        "--generator-format-preset",
+        help="Body format preset for the generator (e.g. ollama, openai).",
+    ),
+    dynamic_count: int = typer.Option(
+        10,
+        "--dynamic-count",
+        help="Number of dynamic payloads to generate per attack.",
+    ),
+    dynamic_seed: int | None = typer.Option(
+        None,
+        "--dynamic-seed",
+        help="Random seed for deterministic dynamic generation.",
+    ),
 ) -> None:
     parsed_headers = _parse_headers(header)
 
@@ -509,6 +539,14 @@ def scan(
                 except Exception as e:
                     console.print(f"[yellow]Failed to load profile: {e}[/yellow]")
 
+            if dynamic_payloads:
+                if format not in ["json", "html"] and not quiet:
+                    console.print(
+                        f"[yellow]⚠ Dynamic payload generation enabled: generating {dynamic_count} novel\n"
+                        f" variants per module using {generator_model or 'generator'}. This will increase scan time.\n"
+                        f" Static payloads run first for deterministic baseline coverage.[/yellow]\n"
+                    )
+
             from crucible.core.runner import _PreflightError
 
             try:
@@ -525,6 +563,12 @@ def scan(
                     skip_preflight,
                     confidence,
                     samples,
+                    dynamic_payloads,
+                    generator_endpoint,
+                    generator_model,
+                    generator_format_preset,
+                    dynamic_count,
+                    dynamic_seed,
                 )
             except _PreflightError as exc:
                 pf = exc.result

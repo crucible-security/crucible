@@ -343,6 +343,14 @@ class Finding(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc),
         description="When this finding was generated.",
     )
+    payload_source: str = Field(
+        default="static",
+        description="Source of the payload: static or dynamic.",
+    )
+    payload_index: int = Field(
+        default=0,
+        description="Index of the payload within its source.",
+    )
 
 
 class ConfidenceInterval(BaseModel):

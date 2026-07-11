@@ -36,6 +36,12 @@ class BaseModule(ABC):
         mutate_enabled: bool = False,
         confidence: bool = False,
         samples: int = 5,
+        dynamic_payloads: bool = False,
+        generator_endpoint: str | None = None,
+        generator_model: str | None = None,
+        generator_format_preset: str | None = None,
+        dynamic_count: int = 10,
+        dynamic_seed: int | None = None,
     ) -> ModuleResult:
         attacks = self.get_attacks()
         all_findings: list[Finding] = []
@@ -45,7 +51,16 @@ class BaseModule(ABC):
         for attack in attacks:
             for _ in range(repeats):
                 findings = await attack.execute(
-                    target, client, on_finding=on_finding, mutate_enabled=mutate_enabled
+                    target,
+                    client,
+                    on_finding=on_finding,
+                    mutate_enabled=mutate_enabled,
+                    dynamic_payloads=dynamic_payloads,
+                    generator_endpoint=generator_endpoint,
+                    generator_model=generator_model,
+                    generator_format_preset=generator_format_preset,
+                    dynamic_count=dynamic_count,
+                    dynamic_seed=dynamic_seed,
                 )
                 all_findings.extend(findings)
 

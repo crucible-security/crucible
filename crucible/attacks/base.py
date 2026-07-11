@@ -239,24 +239,201 @@ class BaseAttack(ABC):
         client: httpx.AsyncClient,
         on_finding: Callable[[Finding], None] | None = None,
         mutate_enabled: bool = False,
+        dynamic_payloads: bool = False,
+        generator_endpoint: str | None = None,
+        generator_model: str | None = None,
+        generator_format_preset: str | None = None,
+        dynamic_count: int = 10,
+        dynamic_seed: int | None = None,
     ) -> list[Finding]:
         findings: list[Finding] = []
         mutation_engine = MutationEngine(mutate_enabled=mutate_enabled)
 
-        for raw_payload in self.get_payloads():
+        # 1. Static payloads
+        static_payloads = self.get_payloads()
+        for idx, raw_payload in enumerate(static_payloads):
             payload = mutation_engine.mutate(raw_payload)
-            finding = await self._send_payload(target, client, payload)
+            finding = await self._send_payload(
+                target,
+                client,
+                payload,
+                payload_source="static",
+                payload_index=idx,
+            )
             if on_finding:
                 on_finding(finding)
             findings.append(finding)
 
+        # 2. Dynamic payloads
+        if dynamic_payloads and generator_endpoint and generator_format_preset:
+            try:
+                dyn_payloads = await self.generate_dynamic_payloads(
+                    generator_endpoint=generator_endpoint,
+                    generator_model=generator_model or "",
+                    generator_format_preset=generator_format_preset,
+                    count=dynamic_count,
+                    seed=dynamic_seed,
+                    client=client,
+                )
+                # Deduplicate and ensure no duplicates with static payloads
+                seen_static = set(static_payloads)
+                filtered_dyn = []
+                for p in dyn_payloads:
+                    if p not in seen_static and p not in filtered_dyn:
+                        filtered_dyn.append(p)
+
+                for idx, raw_payload in enumerate(filtered_dyn):
+                    payload = mutation_engine.mutate(raw_payload)
+                    finding = await self._send_payload(
+                        target,
+                        client,
+                        payload,
+                        payload_source="dynamic",
+                        payload_index=idx,
+                    )
+                    if on_finding:
+                        on_finding(finding)
+                    findings.append(finding)
+            except Exception as e:
+                import sys
+                print(
+                    f"[crucible scan] WARNING: dynamic payload generation failed for {self.name}: {e}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+
         return findings
+
+    async def generate_dynamic_payloads(
+        self,
+        generator_endpoint: str,
+        generator_model: str,
+        generator_format_preset: str,
+        count: int = 10,
+        seed: int | None = None,
+        client: httpx.AsyncClient | None = None,
+    ) -> list[str]:
+        import json
+        import sys
+        from crucible.models import PROVIDER_PRESETS, AgentTarget
+        from crucible.core.response_extractor import extract_response
+        from crucible.attacks.generator_prompt import (
+            GENERATOR_SYSTEM_PROMPT,
+            GENERATOR_USER_TEMPLATE,
+        )
+
+        examples_list = self.get_payloads()
+        examples = "\n".join(f"- {p}" for p in examples_list[:3])
+        owasp_ref = self._resolve_owasp_ref()
+        tech, tactic, _url = self._resolve_atlas()
+        atlas_info = f"{tech} ({tactic})" if tech else "None"
+
+        user_prompt = GENERATOR_USER_TEMPLATE.format(
+            category=self.category.value,
+            owasp_ref=owasp_ref,
+            atlas_technique=atlas_info,
+            examples=examples,
+            count=count,
+        )
+
+        combined_prompt = f"{GENERATOR_SYSTEM_PROMPT}\n\n{user_prompt}"
+
+        # Resolve body template, response path, headers and url
+        preset = PROVIDER_PRESETS.get(generator_format_preset)
+        if preset:
+            body_template = preset.body_template
+            if "{model}" in body_template:
+                body_template = body_template.replace("{model}", generator_model or "")
+            response_path = preset.response_path
+            headers = dict(preset.extra_headers or {})
+            url = generator_endpoint
+            if preset.url_suffix and not url.rstrip("/").endswith(preset.url_suffix.rstrip("/")):
+                url = url.rstrip("/") + preset.url_suffix
+        else:
+            body_template = '{"message": "{payload}"}'
+            response_path = ""
+            headers = {}
+            url = generator_endpoint
+
+        # Build request body using AgentTarget helper
+        temp_target = AgentTarget(
+            name="generator",
+            url=url,
+            body_template=body_template,
+            response_path=response_path,
+            headers=headers,
+        )
+        body = temp_target.build_payload_body(combined_prompt)
+
+        req_headers = {
+            "Content-Type": "application/json",
+            **headers,
+        }
+
+        # Inject seed if applicable
+        try:
+            body_data = json.loads(body)
+            if seed is not None:
+                if "ollama" in generator_format_preset:
+                    body_data["options"] = {"seed": seed}
+                elif generator_format_preset in ["openai", "lmstudio"]:
+                    body_data["seed"] = seed
+            body = json.dumps(body_data)
+        except Exception:
+            pass
+
+        # Make the request
+        close_client = False
+        if client is None:
+            client = httpx.AsyncClient()
+            close_client = True
+
+        try:
+            response = await client.request(
+                method="POST",
+                url=str(url),
+                content=body.encode("utf-8"),
+                headers=req_headers,
+                timeout=60.0,
+            )
+            response.raise_for_status()
+            raw_text = response.text
+            response_text = extract_response(raw_text, response_path)
+
+            # Clean markdown code blocks
+            text = response_text.strip()
+            if text.startswith("```"):
+                lines = text.splitlines()
+                if lines[0].startswith("```"):
+                    lines = lines[1:]
+                if lines and lines[-1].startswith("```"):
+                    lines = lines[:-1]
+                text = "\n".join(lines).strip()
+            if text.lower().startswith("json"):
+                text = text[4:].strip()
+
+            payloads = json.loads(text)
+            if isinstance(payloads, list):
+                return [str(p) for p in payloads if p]
+        except Exception as e:
+            print(
+                f"[crucible scan] WARNING: dynamic generation request failed: {e}",
+                file=sys.stderr,
+                flush=True,
+            )
+        finally:
+            if close_client:
+                await client.aclose()
+
+        return []
 
     async def _send_payload(
         self,
         target: AgentTarget,
         client: httpx.AsyncClient,
         payload: str,
+        payload_source: str = "static",
+        payload_index: int = 0,
     ) -> Finding:
         response_text = ""
         passed: bool | None = True
@@ -356,6 +533,8 @@ class BaseAttack(ABC):
             atlas_tactic=atlas_tactic,
             nist_function=nist_function,
             nist_category=nist_category,
+            payload_source=payload_source,
+            payload_index=payload_index,
         )
 
     def __repr__(self) -> str:

@@ -63,6 +63,43 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from crucible.trace.audit_log import AuditLog
+    from crucible.trace.identity_store import IdentityStore
+
+
+_AGENT_ID_HEADER = "x-crucible-agent-id"
+_WARN_UNKNOWN_AGENT: bool = True  # warn once per process start
+
+
+def extract_agent_id(raw_headers: dict[str, str], body_dict: dict[str, Any] | None) -> str:
+    """Extract the calling agent's identity from the request.
+
+    Resolution order:
+      1. HTTP header ``X-Crucible-Agent-Id``
+      2. JSON body field ``agent_id``
+      3. Fallback: ``'unknown'``
+
+    The fallback triggers a one-time WARNING on the first call so operators
+    know to set the header for identity-aware policy enforcement.
+    """
+    global _WARN_UNKNOWN_AGENT
+
+    # 1. Header (lowercased by _forward's header loop)
+    if _AGENT_ID_HEADER in raw_headers:
+        return raw_headers[_AGENT_ID_HEADER].strip()
+
+    # 2. Body field
+    if body_dict and isinstance(body_dict.get("agent_id"), str):
+        return body_dict["agent_id"].strip()
+
+    # 3. Fallback with one-time warning
+    if _WARN_UNKNOWN_AGENT:
+        _WARN_UNKNOWN_AGENT = False
+        print(
+            "[crucible trace] WARNING — No agent_id found in request. "
+            "Set X-Crucible-Agent-Id header for identity-aware policy enforcement.",
+            flush=True,
+        )
+    return "unknown"
 
 
 def is_tool_call(body: dict[str, Any]) -> tuple[bool, str | None]:
@@ -142,6 +179,7 @@ class TraceProxy:
         tls_cert: Path | None = None,
         tls_key: Path | None = None,
         tls_handshake_timeout: float = 30.0,
+        identity_store: IdentityStore | None = None,
     ) -> None:
         self.upstream = upstream.rstrip("/")
         self.policy = policy
@@ -151,6 +189,7 @@ class TraceProxy:
         self.tls_cert = tls_cert
         self.tls_key = tls_key
         self.tls_handshake_timeout = tls_handshake_timeout
+        self.identity_store = identity_store
         # Counters updated under anyio — single-threaded so no lock needed
         self._total = 0
         self._denied = 0
@@ -203,8 +242,9 @@ class TraceProxy:
         request_id = str(uuid.uuid4())
         request_size = len(raw)
 
-        # --- Parse HTTP to extract body ---
+        # --- Parse HTTP to extract body and headers ---
         body_bytes = self._extract_body(raw)
+        raw_headers = self._extract_headers(raw)
         body_dict: dict[str, Any] | None = None
         rpc_id: Any = None
 
@@ -214,6 +254,12 @@ class TraceProxy:
                 rpc_id = body_dict.get("id")
         except (json.JSONDecodeError, ValueError):
             body_dict = None
+
+        # --- Phase 9: extract agent identity ---
+        agent_id = extract_agent_id(raw_headers, body_dict)
+        session_marker: str | None = (
+            body_dict.get("session_marker") if isinstance(body_dict, dict) else None
+        )
 
         # --- Detect tool call ---
         tool_call = False
@@ -226,12 +272,40 @@ class TraceProxy:
                 raw_args = body_dict.get("params", {}).get("arguments")
                 arguments = raw_args if isinstance(raw_args, dict) else None
 
-        # --- Evaluate policy ---
+        # --- Phase 9: identity limit checks (before per-request policy) ---
         action = PolicyAction.ALLOW
         rule_matched: str | None = None
+        identity_violation: str | None = None
 
-        if tool_call and self.policy is not None:
-            action, rule_matched = evaluate_policy(self.policy, tool_name, arguments)
+        if tool_call and self.policy is not None and self.identity_store is not None:
+            identity = self.policy.agents.get(agent_id)
+            if identity is not None:
+                # Check approaching-limit warnings
+                for warn in self.identity_store.approaching_limit_warnings(
+                    agent_id, identity, session_marker
+                ):
+                    print(f"[crucible trace] {warn}", flush=True)
+
+                # Hard limit check — returns a violation description or None
+                identity_violation = self.identity_store.check_limits(
+                    agent_id, identity, session_marker
+                )
+                if identity_violation:
+                    action = PolicyAction.DENY
+                    rule_matched = "identity_limit"
+
+        # --- Evaluate per-request policy (skip if already denied by identity) ---
+        if action != PolicyAction.DENY and tool_call and self.policy is not None:
+            agent_allowed_tools: list[str] | None = None
+            if agent_id != "unknown" and agent_id in self.policy.agents:
+                agent_allowed_tools = self.policy.agents[agent_id].allowed_tools
+            action, rule_matched = evaluate_policy(
+                self.policy,
+                tool_name,
+                arguments,
+                agent_id=agent_id,
+                agent_allowed_tools=agent_allowed_tools,
+            )
         elif not tool_call:
             action = PolicyAction.ALLOW  # non-tool traffic always forwarded
 
@@ -242,7 +316,8 @@ class TraceProxy:
 
         if action == PolicyAction.DENY:
             self._denied += 1
-            response_bytes = _build_deny_response(rpc_id, tool_name, rule_matched)
+            deny_reason = identity_violation or rule_matched
+            response_bytes = _build_deny_response(rpc_id, tool_name, deny_reason)
             upstream_status = None
             upstream_latency = None
         else:
@@ -268,8 +343,27 @@ class TraceProxy:
             upstream_latency_ms=upstream_latency,
             request_size_bytes=request_size,
             caller_ip=caller_ip,
+            agent_id=agent_id,
         )
         self.audit_log.append(entry)
+
+        # --- Phase 9: record call to identity store (background, non-blocking) ---
+        if tool_call and self.identity_store is not None:
+            from crucible.models import IdentityCallRecord
+
+            record = IdentityCallRecord(
+                timestamp=entry.timestamp.isoformat(),
+                agent_id=agent_id,
+                tool_name=tool_name or "unknown",
+                parameters=arguments,
+                policy_action=action,
+                request_id=request_id,
+                session_marker=session_marker,
+            )
+            # Fire-and-forget: schedule as a background task.
+            # Failures inside record_call are swallowed by IdentityStore.
+            async with anyio.create_task_group() as tg:
+                tg.start_soon(self.identity_store.record_call, record)
 
         return response_bytes, upstream_status or 200
 
@@ -285,6 +379,25 @@ class TraceProxy:
             if isinstance(event, h11.Data):
                 body_parts.append(event.data)
         return b"".join(body_parts)
+
+    def _extract_headers(self, raw: bytes) -> dict[str, str]:
+        """Extract HTTP request headers as a lowercase-keyed dict.
+
+        Used by :func:`extract_agent_id` to read ``X-Crucible-Agent-Id``.
+        Returns an empty dict if h11 cannot parse the request.
+        """
+        conn = h11.Connection(h11.SERVER)
+        conn.receive_data(raw)
+        while True:
+            event = conn.next_event()
+            if event is h11.NEED_DATA:
+                return {}
+            if isinstance(event, h11.Request):
+                return {
+                    name.decode("latin-1").lower(): value.decode("latin-1")
+                    for name, value in event.headers
+                }
+        return {}
 
     async def _forward(self, raw: bytes) -> tuple[bytes, int, float]:
         """Forward raw HTTP bytes to upstream; return (response_bytes, status, latency_ms)."""

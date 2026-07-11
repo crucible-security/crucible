@@ -2694,5 +2694,359 @@ def poison_status(
         console.print("---")
 
 
+
+
 if __name__ == "__main__":
     app()
+
+
+# ---------------------------------------------------------------------------
+# Step 9.7 — crucible identity subapp
+# ---------------------------------------------------------------------------
+
+identity_app = typer.Typer(
+    name="identity",
+    help="Audit, baseline, and compare named AI agent behaviour over time.",
+    add_completion=False,
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+)
+app.add_typer(identity_app, name="identity")
+
+
+@identity_app.command("audit")
+def identity_audit(
+    agent_id: str = typer.Argument(..., help="Agent ID to audit."),
+    hours: int = typer.Option(24, "--hours", "-h", help="Analysis window in hours."),
+    policy: str = typer.Option(
+        None,
+        "--policy",
+        "-p",
+        help="Path to policy.yaml (v2) for allowlist comparison.",
+    ),
+    log_dir: str = typer.Option(
+        None,
+        "--log-dir",
+        help="Override the identity-log directory (default: ~/.crucible/identity-logs).",
+    ),
+) -> None:
+    """Analyse a named agent's tool-call behaviour and report anomalies.
+
+    Reads the agent's behavioral log and produces a rich risk summary including:
+    call counts, tool distribution, allowlist violations, rate-limit status,
+    and a 0.0–1.0 risk score.
+    """
+    from pathlib import Path as _Path
+
+    from rich.panel import Panel
+    from rich.table import Table
+
+    from crucible.trace.identity_store import IdentityStore
+
+    store = IdentityStore(log_dir=_Path(log_dir) if log_dir else None)
+
+    # Optionally load identity definition from v2 policy
+    identity_obj = None
+    if policy:
+        try:
+            from crucible.trace.policy import load_policy as _lp
+
+            loaded = _lp(_Path(policy))
+            identity_obj = loaded.agents.get(agent_id)
+            if identity_obj is None:
+                console.print(
+                    f"[yellow]⚠  Agent '{agent_id}' not found in policy — "
+                    "running audit without allowlist comparison.[/yellow]"
+                )
+        except Exception as exc:
+            console.print(f"[red]Failed to load policy: {exc}[/red]")
+            raise typer.Exit(1) from exc
+
+    summary = store.generate_summary(agent_id, hours=hours, identity=identity_obj)
+
+    if summary.total_calls == 0:
+        console.print(
+            f"[yellow]No calls recorded for agent '{agent_id}' "
+            f"in the last {hours}h.[/yellow]\n"
+            "Use [bold]crucible trace[/bold] with [bold]--identity-log[/bold] "
+            "enabled to start recording."
+        )
+        raise typer.Exit(0)
+
+    # Risk badge
+    risk_pct = summary.risk_score * 100
+    if summary.risk_score >= 0.7:
+        risk_badge = f"[bold red]{risk_pct:.1f}% HIGH[/bold red]"
+    elif summary.risk_score >= 0.4:
+        risk_badge = f"[bold yellow]{risk_pct:.1f}% MEDIUM[/bold yellow]"
+    else:
+        risk_badge = f"[bold green]{risk_pct:.1f}% LOW[/bold green]"
+
+    console.print(
+        Panel.fit(
+            f"[bold cyan]crucible identity audit[/bold cyan] — Agent: [bold]{agent_id}[/bold]\n"
+            f"Window: {summary.window_start[:19]}Z → {summary.window_end[:19]}Z ({hours}h)\n"
+            f"Risk Score: {risk_badge}",
+            border_style="cyan",
+        )
+    )
+
+    # Call summary table
+    tbl = Table(title="Tool Call Summary", show_header=True, header_style="bold magenta")
+    tbl.add_column("Tool", style="cyan", no_wrap=True)
+    tbl.add_column("Calls", justify="right")
+    tbl.add_column("In Allowlist?", justify="center")
+
+    allowed = identity_obj.allowed_tools if identity_obj else []
+    for tool, count in sorted(summary.calls_per_tool.items(), key=lambda x: -x[1]):
+        in_list = (
+            "[green]✓[/green]"
+            if not allowed or tool in allowed
+            else "[red]✗ OUTSIDE[/red]"
+        )
+        tbl.add_row(tool, str(count), in_list)
+
+    console.print(tbl)
+    console.print(
+        f"\n  Total calls : [bold]{summary.total_calls}[/bold]   "
+        f"Denied : [bold red]{summary.calls_denied}[/bold red]   "
+        f"Alerted : [bold yellow]{summary.calls_alerted}[/bold yellow]"
+    )
+
+    if summary.violations:
+        console.print("\n[bold red]⚠  Violations detected:[/bold red]")
+        for v in summary.violations:
+            console.print(f"  • [{v.severity.value.upper()}] {v.description}")
+    else:
+        console.print("\n[green]✓  No violations detected.[/green]")
+
+    if summary.findings:
+        console.print("\n[bold]Findings:[/bold]")
+        for f in summary.findings:
+            console.print(f"  → {f}")
+
+
+@identity_app.command("baseline")
+def identity_baseline(
+    agent_id: str = typer.Argument(..., help="Agent ID to baseline."),
+    hours: int = typer.Option(
+        24, "--hours", "-h", help="Hours of history to include in baseline."
+    ),
+    output: str = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output path for the baseline JSON (default: ~/.crucible/identity-baselines/{agent_id}.json).",
+    ),
+    log_dir: str = typer.Option(
+        None, "--log-dir", help="Override identity-log directory."
+    ),
+) -> None:
+    """Save a behaviour baseline snapshot for a named agent.
+
+    The baseline captures current tool-call distribution so that future
+    [bold]crucible identity diff[/bold] commands can detect anomalies.
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    from crucible.trace.identity_store import IdentityStore
+
+    store = IdentityStore(log_dir=_Path(log_dir) if log_dir else None)
+    summary = store.generate_summary(agent_id, hours=hours)
+
+    if summary.total_calls == 0:
+        console.print(
+            f"[yellow]No calls found for agent '{agent_id}' in the last {hours}h. "
+            "Baseline not saved.[/yellow]"
+        )
+        raise typer.Exit(1)
+
+    out_path = (
+        _Path(output)
+        if output
+        else _Path.home() / ".crucible" / "identity-baselines" / f"{agent_id}.json"
+    )
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(summary.model_dump_json(indent=2), encoding="utf-8")
+
+    console.print(
+        f"[green]✓  Baseline saved[/green] for [bold]{agent_id}[/bold] "
+        f"({summary.total_calls} calls over {hours}h)\n"
+        f"   → {out_path}"
+    )
+
+
+@identity_app.command("diff")
+def identity_diff(
+    agent_id: str = typer.Argument(..., help="Agent ID to compare."),
+    hours: int = typer.Option(
+        24, "--hours", "-h", help="Analysis window for current behaviour."
+    ),
+    baseline_path: str = typer.Option(
+        None,
+        "--baseline",
+        "-b",
+        help="Path to baseline JSON (default: ~/.crucible/identity-baselines/{agent_id}.json).",
+    ),
+    log_dir: str = typer.Option(
+        None, "--log-dir", help="Override identity-log directory."
+    ),
+) -> None:
+    """Compare current agent behaviour against a saved baseline.
+
+    Highlights new tools, disappeared tools, and call-volume changes.
+    Exit code 1 if significant drift is detected (risk delta ≥ 0.2).
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    from rich.table import Table
+
+    from crucible.models import IdentityBehaviorSummary
+    from crucible.trace.identity_store import IdentityStore
+
+    base_path = (
+        _Path(baseline_path)
+        if baseline_path
+        else _Path.home() / ".crucible" / "identity-baselines" / f"{agent_id}.json"
+    )
+    if not base_path.exists():
+        console.print(
+            f"[red]No baseline found at {base_path}.[/red]\n"
+            "Run [bold]crucible identity baseline[/bold] first."
+        )
+        raise typer.Exit(1)
+
+    baseline = IdentityBehaviorSummary.model_validate_json(
+        base_path.read_text(encoding="utf-8")
+    )
+    store = IdentityStore(log_dir=_Path(log_dir) if log_dir else None)
+    current = store.generate_summary(agent_id, hours=hours)
+
+    if current.total_calls == 0:
+        console.print(
+            f"[yellow]No current data for agent '{agent_id}'.[/yellow]"
+        )
+        raise typer.Exit(0)
+
+    # Compute diff
+    new_tools = set(current.unique_tools_used) - set(baseline.unique_tools_used)
+    gone_tools = set(baseline.unique_tools_used) - set(current.unique_tools_used)
+    risk_delta = current.risk_score - baseline.risk_score
+
+    console.print(
+        f"\n[bold cyan]crucible identity diff[/bold cyan] — Agent: [bold]{agent_id}[/bold]"
+    )
+    console.print(
+        f"  Baseline : {baseline.window_start[:10]}  "
+        f"({baseline.total_calls} calls, risk {baseline.risk_score:.2f})"
+    )
+    console.print(
+        f"  Current  : {current.window_start[:10]}  "
+        f"({current.total_calls} calls, risk {current.risk_score:.2f})"
+    )
+
+    delta_colour = "red" if risk_delta > 0.1 else ("yellow" if risk_delta > 0 else "green")
+    console.print(
+        f"  Risk Δ   : [{delta_colour}]{risk_delta:+.4f}[/{delta_colour}]"
+    )
+
+    if new_tools:
+        console.print(f"\n[bold yellow]🆕 New tools (not in baseline):[/bold yellow]")
+        for t in sorted(new_tools):
+            console.print(f"  + {t}")
+
+    if gone_tools:
+        console.print(f"\n[bold blue]⬇ Tools no longer active:[/bold blue]")
+        for t in sorted(gone_tools):
+            console.print(f"  - {t}")
+
+    if not new_tools and not gone_tools and abs(risk_delta) < 0.05:
+        console.print("\n[green]✓  Behaviour is consistent with baseline.[/green]")
+
+    if risk_delta >= 0.2:
+        console.print(
+            "\n[bold red]⚠  Significant behaviour drift detected "
+            f"(Δ {risk_delta:+.4f}).[/bold red]"
+        )
+        raise typer.Exit(1)
+
+
+@identity_app.command("list")
+def identity_list(
+    log_dir: str = typer.Option(
+        None, "--log-dir", help="Override identity-log directory."
+    ),
+) -> None:
+    """List all agents that have recorded behavioural logs."""
+    from pathlib import Path as _Path
+
+    from rich.table import Table
+
+    from crucible.trace.identity_store import IdentityStore
+
+    store = IdentityStore(log_dir=_Path(log_dir) if log_dir else None)
+    agents = store.list_agents()
+
+    if not agents:
+        console.print("[yellow]No agent logs found.[/yellow]")
+        raise typer.Exit(0)
+
+    tbl = Table(
+        title="Recorded Agent Identities",
+        show_header=True,
+        header_style="bold magenta",
+    )
+    tbl.add_column("Agent ID", style="cyan")
+    tbl.add_column("Log File", style="dim")
+
+    log_dir_path = _Path(log_dir) if log_dir else None
+    temp_store = IdentityStore(log_dir=log_dir_path)
+    for agent in sorted(agents):
+        log_file = temp_store._agent_path(agent)
+        tbl.add_row(agent, str(log_file))
+
+    console.print(tbl)
+    console.print(f"\n  [dim]{len(agents)} agent{'s' if len(agents) != 1 else ''} found.[/dim]")
+
+
+@identity_app.command("clear")
+def identity_clear(
+    agent_id: str = typer.Argument(..., help="Agent ID whose log to delete."),
+    yes: bool = typer.Option(
+        False, "--yes", "-y", help="Skip confirmation prompt."
+    ),
+    log_dir: str = typer.Option(
+        None, "--log-dir", help="Override identity-log directory."
+    ),
+) -> None:
+    """Delete the behavioural log for a named agent.
+
+    [bold red]Warning:[/bold red] This is irreversible.
+    """
+    from pathlib import Path as _Path
+
+    from crucible.trace.identity_store import IdentityStore
+
+    if not yes:
+        confirmed = typer.confirm(
+            f"Delete all behavioural log data for agent '{agent_id}'?",
+            default=False,
+        )
+        if not confirmed:
+            console.print("[yellow]Cancelled.[/yellow]")
+            raise typer.Exit(0)
+
+    store = IdentityStore(log_dir=_Path(log_dir) if log_dir else None)
+    deleted = store.clear_agent_log(agent_id)
+
+    if deleted:
+        console.print(
+            f"[green]✓  Log cleared[/green] for agent [bold]{agent_id}[/bold]."
+        )
+    else:
+        console.print(
+            f"[yellow]No log found for agent '{agent_id}'.[/yellow]"
+        )
+        raise typer.Exit(1)

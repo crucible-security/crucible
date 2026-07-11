@@ -162,6 +162,7 @@ default severity rating.
 | `mcp_security` | MCP Trust Boundary Violation | Privilege Escalation | OWASP-AGENT-004, OWASP-AGENT-007 | HIGH |
 | `tool_injection` | Tool Injection (parameter, chain, selection, authorization) | Tool Misuse, Privilege Escalation | OWASP-AGENT-004 | CRITICAL / HIGH |
 | `trace` proxy | MCP Tool call interception & rule enforcement | Scope Violation, Tool Misuse | OWASP-AGENT-004, OWASP-AGENT-007 | HIGH |
+| `trace` + **identity layer** | Named agent identity enforcement, rate limits, allowlists | Excessive Agency, Privilege Escalation | OWASP-AGENT-004 | HIGH / CRITICAL |
 | `poison-test` | Memory / RAG stateful poisoning | Goal Hijacking, Malicious Execution | OWASP-AGENT-001, OWASP-AGENT-003 | HIGH |
 
 > **Reading this table:**
@@ -181,7 +182,7 @@ The table below maps the full OWASP Agentic AI Top 10 to Crucible's current cove
 | ASI01 | Prompt Injection | `prompt_injection` | ✅ Live (50 attacks) |
 | ASI02 | Sensitive Data Exposure / Exfiltration | `prompt_injection` (PI-005, PI-006) | ✅ Partial |
 | ASI03 | Goal Hijacking | `goal_hijacking` | ✅ Live (20 attacks) |
-| ASI04 | Privilege Escalation | `mcp_security`, `tool_injection` (20 attacks), `prompt_injection` (role escalation), `trace` proxy | ✅ Live |
+| ASI04 | Privilege Escalation | `mcp_security`, `tool_injection` (20 attacks), `prompt_injection` (role escalation), `trace` proxy + **identity layer** (v0.9.0) | ✅ Live |
 | ASI05 | Unexpected Code Execution | `jailbreaks` (code execution escapes), `poison-test` (malicious payload execution) | ✅ Live |
 | ASI06 | Safety Guardrail Bypass | `jailbreaks` | ✅ Live (20 attacks) |
 | ASI07 | Supply Chain / MCP Compromise | `mcp_security` (8 attacks), `trace` proxy | ✅ Live |
@@ -272,17 +273,18 @@ Fires 20 payloads testing tool injection and misuse vulnerabilities:
 
 ---
 
-### `trace` proxy
+### `trace` proxy + identity layer
 
-**Primary OWASP Risk:** ASI07 — Supply Chain / MCP Compromise
-**Secondary impacts tested:** ASI04 (Privilege Escalation / Scope Violation)
-**Underlying attack vector:** Interception Proxy Rule enforcement
-**Default severity:** HIGH
+**Primary OWASP Risk:** ASI04 — Privilege Escalation / Excessive Agency
+**Secondary impacts tested:** ASI07 (Supply Chain / MCP Compromise)
+**Underlying attack vector:** Interception Proxy Rule enforcement + Named Agent Identity Enforcement
+**Default severity:** HIGH / CRITICAL
 
-Provides traffic monitoring and rule enforcement for the Model Context Protocol (MCP):
+Provides traffic monitoring, rule enforcement, and identity-aware privilege scoping:
 - **Rule-based Enforcement**: Intercepts `tools/call` JSON-RPC requests and validates parameters/methods against regex patterns in a policy file.
 - **Policy Actions**: Executes `allow`, `deny`, or `alert` actions. Denials return a standard JSON-RPC HTTP 200 error code `-32600` (`blocked_by_policy`) for client compatibility.
-- **Audit Logging**: Writes thread-safe append-only logs (`AuditLog`) capturing inputs, latency, IPs, upstream statuses, and matching rules.
+- **Audit Logging**: Writes thread-safe append-only logs (`AuditLog`) capturing inputs, latency, IPs, upstream statuses, agent identities, and matching rules.
+- **Identity Layer (v0.9.0)**: Named agent identities (`AgentIdentity`) with scoped tool allowlists/denylists, per-session and hourly rate limits, unique-tool-count caps, and UTC hour window restrictions. Agent ID extracted from `X-Crucible-Agent-Id` HTTP header or `agent_id` body field. Behavioral logs written to `~/.crucible/identity-logs/{agent_id}.jsonl`. CLI: `crucible identity audit|baseline|diff|list|clear`.
 
 ---
 

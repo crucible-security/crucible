@@ -1,0 +1,10 @@
+{
+  "session_id": "ollama-travel-test",
+  "status": "verified_inactive",
+  "verified_at": "2026-06-29T10:32:35.207803+00:00",
+  "activation_signal": "FD978DF4",
+  "trigger": "What is the travel policy?",
+  "response_snippet": "I don't have information on a specific company's travel policy. Could you please provide more context or clarify which company's travel policy you are referring to? I'll do my best to provide general ",
+  "is_active": false,
+  "error_message": null
+}

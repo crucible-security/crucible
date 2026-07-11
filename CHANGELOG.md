@@ -5,6 +5,51 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-07-11
+
+### Added — Phase 9: Identity & Privilege Layer (ASI04)
+
+#### Data models (`crucible/models.py`)
+- `AgentIdentity` — named agent identity with tool allowlist/denylist, per-session/hourly call limits, unique-tool cap, and UTC hour window restriction.
+- `IdentityCallRecord` — single-call behavioral log entry written to `~/.crucible/identity-logs/{agent_id}.jsonl`.
+- `IdentityViolation` — structured violation record (type, severity, evidence).
+- `IdentityBehaviorSummary` — aggregate audit result with risk score (0.0–1.0), per-tool call counts, violations, and findings.
+
+#### Policy YAML v2 (`crucible/trace/policy.py`)
+- Backward-compatible v1/v2 detection via optional `version: "2"` field. All v1 policies load identically with zero changes required.
+- New v2 `agents:` section: load `AgentIdentity` objects keyed by `agent_id`.
+- New rule fields: `agent_id` (rule only matches specified agent) and `tool_name_not_in_allowlist: true` (deny tools outside agent's allowlist).
+- `evaluate_policy()` extended with `agent_id` and `agent_allowed_tools` parameters (optional, defaults keep existing callers unchanged).
+
+#### Agent ID extraction (`crucible/trace/proxy.py`)
+- `extract_agent_id()` — reads `X-Crucible-Agent-Id` HTTP header first, falls back to `agent_id` JSON body field, then `'unknown'` with a one-time WARNING.
+- `_extract_headers()` — h11-based HTTP header extractor (lowercase-keyed dict).
+- `TraceEntry.agent_id` — new field (default `'unknown'`) in JSONL audit log for backward compat.
+- `TraceProxy` accepts `identity_store` parameter; wires limit checking and call recording into `_process()` pipeline.
+
+#### Identity store (`crucible/trace/identity_store.py`) — new module
+- `IdentityStore` — per-agent JSONL behavioral log with atomic `tmp→replace()` writes (Windows-safe).
+- `record_call()` — async, non-blocking (runs via `anyio.to_thread.run_sync`). Write failures are silently logged, never propagated.
+- `check_limits()` — checks hour-window, session cap, hourly cap, unique-tool cap in order; returns violation description or `None`.
+- `approaching_limit_warnings()` — prints 80%/90% threshold warnings to console before hard enforcement.
+- `generate_summary()` — produces `IdentityBehaviorSummary` with risk score and violation list for `crucible identity audit`.
+- `list_agents()`, `clear_agent_log()` for management.
+- `_sanitise_agent_id()` — strips Windows/Linux filename-illegal characters to prevent path traversal.
+
+#### CLI subapp (`crucible identity`)
+- `crucible identity audit <agent_id>` — Rich-formatted risk report with tool table, violations, findings.
+- `crucible identity baseline <agent_id>` — Save behaviour snapshot to `~/.crucible/identity-baselines/{agent_id}.json`.
+- `crucible identity diff <agent_id>` — Compare current behaviour against saved baseline; exit 1 on drift ≥ 0.2.
+- `crucible identity list` — List all agents with recorded logs.
+- `crucible identity clear <agent_id>` — Delete an agent's log file.
+
+#### Documentation
+- `docs/owasp_mapping.md` — Added identity layer row to module-to-OWASP table; updated ASI04 coverage row; expanded `trace proxy + identity layer` section.
+
+### Tests
+- 18 new tests in `tests/test_identity_layer.py` covering all 6 implementation layers.
+- Total test suite: **409 passed, 0 failed** (391 baseline + 18 new).
+
 ## [0.8.4] - 2026-06-30
 
 ### Fixed

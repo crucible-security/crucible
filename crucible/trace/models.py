@@ -31,6 +31,15 @@ class PolicyRule(BaseModel):
         description="Regex applied to the JSON-serialised arguments string.",
     )
     action: PolicyAction = Field(description="What to do when this rule matches.")
+    # --- Phase 9 additions (v2 policy fields) ---
+    agent_id: str | None = Field(
+        default=None,
+        description="Only apply this rule if the request agent_id matches. None = any agent.",
+    )
+    tool_name_not_in_allowlist: bool = Field(
+        default=False,
+        description="If True, match when tool_name is not in the agent's allowed_tools list.",
+    )
 
     # Compiled regex — populated by PolicyLoader, not from YAML directly.
     _compiled: re.Pattern[str] | None = None
@@ -40,8 +49,33 @@ class PolicyRule(BaseModel):
         if self.parameter_pattern is not None:
             self._compiled = re.compile(self.parameter_pattern, re.DOTALL)
 
-    def matches(self, tool_name: str | None, arguments_json: str) -> bool:
-        """Return True if this rule matches the given tool call."""
+    def matches(
+        self,
+        tool_name: str | None,
+        arguments_json: str,
+        agent_id: str = "unknown",
+        agent_allowed_tools: list[str] | None = None,
+    ) -> bool:
+        """Return True if this rule matches the given tool call.
+
+        Args:
+            tool_name:           The MCP tool name.
+            arguments_json:      JSON-serialised arguments.
+            agent_id:            The agent making the call (default 'unknown').
+            agent_allowed_tools: The agent's allowed_tools list, for
+                                 tool_name_not_in_allowlist evaluation.
+        """
+        # Agent-scoped rule: only match if agent_id matches
+        if self.agent_id is not None and self.agent_id != agent_id:
+            return False
+        # tool_name_not_in_allowlist: match when tool is NOT in agent's allowlist
+        if self.tool_name_not_in_allowlist:
+            if agent_allowed_tools is None:
+                return False  # no allowlist defined — can't evaluate
+            if tool_name in agent_allowed_tools:
+                return False  # tool IS in allowlist — no match
+            # tool is outside allowlist → rule matches
+            return True
         # Tool name check (None in rule = wildcard)
         if self.tool_name is not None and self.tool_name != tool_name:
             return False
@@ -53,12 +87,18 @@ class PolicyRule(BaseModel):
 
 
 class Policy(BaseModel):
-    """The full policy loaded from a YAML file."""
+    """The full policy loaded from a YAML file (v1 and v2 compatible)."""
 
     rules: list[PolicyRule] = Field(default_factory=list)
     default_action: PolicyAction = Field(
         default=PolicyAction.ALLOW,
         description="Action applied when no rule matches.",
+    )
+    # Phase 9 — v2 policy: agent identity definitions keyed by agent_id.
+    # Always present (empty dict for v1 policies) for consistent access.
+    agents: dict[str, Any] = Field(
+        default_factory=dict,
+        description="AgentIdentity objects keyed by agent_id (v2 policies only).",
     )
 
 
@@ -90,6 +130,13 @@ class TraceEntry(BaseModel):
     )
     request_size_bytes: int = Field(description="Size of the incoming request body.")
     caller_ip: str = Field(description="IP address of the MCP client.")
+    # Phase 9 — identity layer: which named agent made this call.
+    # Populated from X-Crucible-Agent-Id header or agent_id JSON body field.
+    # Defaults to 'unknown' for backward compatibility with existing log files.
+    agent_id: str = Field(
+        default="unknown",
+        description="Named agent identity from X-Crucible-Agent-Id header or body field.",
+    )
 
 
 TraceEntry.model_rebuild()

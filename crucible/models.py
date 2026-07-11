@@ -891,3 +891,126 @@ class PoisonTestResult(BaseModel):
     error_message: str | None = Field(
         default=None, description="Detailed error description if verification failed."
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 9 — Identity & Privilege Layer (ASI03)
+# ---------------------------------------------------------------------------
+
+
+class AgentIdentity(BaseModel):
+    """Named, scoped AI agent identity for policy enforcement.
+
+    Define agents in the policy YAML v2 ``agents:`` section.  At runtime the
+    proxy reads the ``X-Crucible-Agent-Id`` header (or ``agent_id`` JSON body
+    field) and matches it to a definition here.
+    """
+
+    agent_id: str = Field(description="Unique identifier for this agent.")
+    description: str = Field(default="", description="Human-readable description.")
+    allowed_tools: list[str] = Field(
+        default_factory=list,
+        description="Explicit tool allowlist.  Empty list = all tools permitted.",
+    )
+    denied_tools: list[str] = Field(
+        default_factory=list,
+        description="Explicit tool denylist.  Overrides allowed_tools.",
+    )
+    max_calls_per_session: int | None = Field(
+        default=None,
+        description="Maximum number of tool calls per session marker.",
+    )
+    max_calls_per_hour: int | None = Field(
+        default=None,
+        description="Maximum number of tool calls in any rolling 60-minute window.",
+    )
+    max_unique_tools_per_session: int | None = Field(
+        default=None,
+        description="Maximum distinct tool names allowed in a single session.",
+    )
+    allowed_hours_utc: str | None = Field(
+        default=None,
+        description='UTC hour window, e.g. "09:00-18:00".  None = unrestricted.',
+    )
+
+
+class IdentityCallRecord(BaseModel):
+    """Single tool call made by a named agent — stored in the behavioral log.
+
+    One record is appended to ``~/.crucible/identity-logs/{agent_id}.jsonl``
+    for every intercepted tool call, regardless of the policy decision.
+    """
+
+    timestamp: str = Field(description="ISO-8601 UTC timestamp of the call.")
+    agent_id: str = Field(description="Agent that made this call.")
+    tool_name: str = Field(description="Tool name from the tools/call request.")
+    parameters: dict[str, Any] | None = Field(
+        default=None,
+        description="Tool arguments dict, or None if not a tool call.",
+    )
+    policy_action: PolicyAction = Field(description="Policy decision applied.")
+    request_id: str = Field(description="UUID4 matching the proxy audit log entry.")
+    session_marker: str | None = Field(
+        default=None,
+        description="Opaque session identifier supplied by the client.",
+    )
+
+
+class IdentityViolation(BaseModel):
+    """A single detected identity/privilege violation."""
+
+    violation_type: str = Field(
+        description=(
+            "One of: tool_outside_allowlist | denied_tool | rate_limit_session |"
+            " rate_limit_hour | unique_tool_limit | hour_violation"
+        )
+    )
+    severity: Severity = Field(description="Severity of this violation.")
+    agent_id: str = Field(description="Agent that triggered the violation.")
+    tool_name: str | None = Field(
+        default=None,
+        description="Tool involved in the violation, if applicable.",
+    )
+    description: str = Field(description="Human-readable violation description.")
+    detected_at: str = Field(description="ISO-8601 UTC timestamp of detection.")
+    evidence: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Supporting data (counts, limits, timestamps, etc.).",
+    )
+
+
+class IdentityBehaviorSummary(BaseModel):
+    """Aggregate behavior summary produced by ``crucible identity audit``."""
+
+    agent_id: str = Field(description="Agent whose behavior is summarised.")
+    window_start: str = Field(description="ISO-8601 UTC start of the analysis window.")
+    window_end: str = Field(description="ISO-8601 UTC end of the analysis window.")
+    total_calls: int = Field(description="Total tool calls recorded in the window.")
+    unique_tools_used: list[str] = Field(
+        description="Distinct tool names observed."
+    )
+    tools_outside_allowlist: list[str] = Field(
+        description="Tools called that are not in the agent's allowed_tools.",
+    )
+    calls_per_tool: dict[str, int] = Field(
+        description="Call count broken down by tool name.",
+    )
+    calls_denied: int = Field(description="Calls that resulted in a DENY action.")
+    calls_alerted: int = Field(description="Calls that triggered an ALERT action.")
+    risk_score: float = Field(
+        description="Aggregate risk score 0.0 (clean) → 1.0 (high anomaly).",
+    )
+    violations: list[IdentityViolation] = Field(
+        default_factory=list,
+        description="All violations detected in this window.",
+    )
+    findings: list[str] = Field(
+        default_factory=list,
+        description="Human-readable summary strings for each finding.",
+    )
+
+
+# Import guard — PolicyAction is defined in crucible.trace.models, not here.
+# We reference it in IdentityCallRecord via a forward-ref string so that
+# crucible.models stays importable without importing the trace sub-package.
+# The actual enum is resolved at runtime via model_rebuild().

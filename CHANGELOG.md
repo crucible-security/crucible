@@ -5,6 +5,21 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-07-11
+
+### Added — Phase 11: Web Dashboard MVP
+
+- **Offline Web Dashboard (`crucible/dashboard/`)**:
+  - Implementation of offline threat and vulnerability dashboard.
+  - `templates/dashboard.html` — premium single-file HTML/JS/CSS app with tabs for Overview, Scan Details, Compare (Diff), Watch Feed, and Compliance.
+  - Includes custom pure HTML5 Canvas trend plotting and OWASP Agentic AI Top 10 heatmap.
+  - `server.py` — Python stdlib-only HTTP server to host scans and watch logs.
+- **CLI Commands (`crucible/cli.py`)**:
+  - `crucible dashboard` command added supporting `--scan-dir`, `--port`, `--host`, and `--open`.
+- **Tests**:
+  - Added 7 integration tests in `tests/test_dashboard.py` verifying server startup, HTML service, JSON list and detail endpoints, watch logs, and stdlib dependency purity.
+  - Total test suite: **424 passed, 0 failed** (417 baseline + 7 new).
+
 ## [0.9.1] - 2026-07-11
 
 ### Added — Phase 10: Dynamic Payload Generation

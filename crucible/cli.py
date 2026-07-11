@@ -1520,6 +1520,49 @@ def mcp_scan(
         console.print(f"\n[green]JSON report saved to {output}[/green]")
 
 
+@app.command()
+def dashboard(
+    scan_dir: Path = typer.Option(
+        Path("."),
+        "--scan-dir",
+        "-d",
+        help="Directory containing scan JSON result files.",
+    ),
+    port: int = typer.Option(8080, "--port", "-p", help="Port to run the dashboard server on."),
+    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host address to bind the dashboard server to."),
+    open_browser: bool = typer.Option(
+        False,
+        "--open",
+        help="Automatically open the dashboard in the default web browser.",
+    ),
+) -> None:
+    """Launch the Crucible offline threat and vulnerability dashboard."""
+    import webbrowser
+    from crucible.dashboard.server import start_dashboard
+
+    # Resolve scan directory
+    scan_dir_path = scan_dir.resolve()
+    if not scan_dir_path.exists():
+        console.print(f"[red]Scan directory does not exist: {scan_dir_path}[/red]")
+        raise typer.Exit(1)
+
+    url = f"http://{host}:{port}/"
+    console.print(f"[*] Starting Crucible Dashboard on [cyan]{url}[/cyan]...")
+    console.print(f"[*] Serving scans from: [dim]{scan_dir_path}[/dim]")
+
+    if open_browser:
+        console.print("[*] Opening default browser...")
+        webbrowser.open(url)
+
+    try:
+        start_dashboard(scan_dir_path, host=host, port=port)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Dashboard server stopped.[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error starting dashboard server: {e}[/red]")
+        raise typer.Exit(1) from e
+
+
 # ---------------------------------------------------------------------------
 # crucible watch sub-app (Phase 4)
 # ---------------------------------------------------------------------------

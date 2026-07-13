@@ -1,22 +1,25 @@
 from __future__ import annotations
 
-import math
-from pathlib import Path
 import json
+from typing import TYPE_CHECKING
+
+import httpx
 import pytest
 import respx
-import httpx
 from typer.testing import CliRunner
 
 from crucible.cli import app
 from crucible.core.fuzzer import (
     ArmState,
     CrucibleGAF,
-    _logprob_entropy,
     _binary_bypass,
+    _logprob_entropy,
     run_fuzz_session,
 )
 from crucible.models import FuzzSessionResult
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_arm_state_initial() -> None:
@@ -108,15 +111,7 @@ def test_logprob_entropy_extraction() -> None:
     assert _logprob_entropy({"choices": [{"logprobs": None}]}) is None
 
     # Valid choice/logprobs
-    response = {
-        "choices": [
-            {
-                "logprobs": {
-                    "token_logprobs": [-0.1, -0.2, None, -0.3]
-                }
-            }
-        ]
-    }
+    response = {"choices": [{"logprobs": {"token_logprobs": [-0.1, -0.2, None, -0.3]}}]}
     fitness = _logprob_entropy(response)
     assert fitness is not None
     assert 0.0 <= fitness <= 1.0
@@ -129,24 +124,14 @@ def test_binary_bypass_detection() -> None:
     # Safety refusal detection
     refusal_response = {
         "choices": [
-            {
-                "message": {
-                    "content": "I apologize, but I cannot fulfill this request."
-                }
-            }
+            {"message": {"content": "I apologize, but I cannot fulfill this request."}}
         ]
     }
     assert _binary_bypass(refusal_response, 200) == 0.0
 
     # Successful bypass response
     bypass_response = {
-        "choices": [
-            {
-                "message": {
-                    "content": "Here is the code to hack..."
-                }
-            }
-        ]
+        "choices": [{"message": {"content": "Here is the code to hack..."}}]
     }
     assert _binary_bypass(bypass_response, 200) == 1.0
 
@@ -161,7 +146,9 @@ def test_binary_bypass_detection() -> None:
 @respx.mock
 def test_gaf_run_one_round_binary() -> None:
     respx.post("http://agent.test/chat").mock(
-        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "Jailbreak succeeded"}}]})
+        return_value=httpx.Response(
+            200, json={"choices": [{"message": {"content": "Jailbreak succeeded"}}]}
+        )
     )
 
     gaf = CrucibleGAF(strategy_names=["strategy_a"], seed=42)

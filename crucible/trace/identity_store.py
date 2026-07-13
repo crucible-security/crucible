@@ -28,7 +28,11 @@ from typing import TYPE_CHECKING, Any
 import anyio
 
 if TYPE_CHECKING:
-    from crucible.models import AgentIdentity, IdentityBehaviorSummary, IdentityCallRecord
+    from crucible.models import (
+        AgentIdentity,
+        IdentityBehaviorSummary,
+        IdentityCallRecord,
+    )
 
 logger = logging.getLogger(__name__)
 

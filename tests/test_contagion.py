@@ -1,19 +1,23 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
+
 import pytest
 from typer.testing import CliRunner
 
 from crucible.cli import app
-from crucible.contagion.networks import (
-    star_network,
-    mesh_network,
-    hub_spoke_network,
-    chain_network,
-)
 from crucible.contagion.engine import R0Simulator, SimulationResult
+from crucible.contagion.networks import (
+    chain_network,
+    hub_spoke_network,
+    mesh_network,
+    star_network,
+)
 from crucible.contagion.planner import QuarantinePlanner
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_network_examples() -> None:

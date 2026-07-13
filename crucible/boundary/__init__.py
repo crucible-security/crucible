@@ -6,15 +6,15 @@ by injecting noise into embedding space and measuring response entropy.
 
 from __future__ import annotations
 
-from crucible.boundary.scanner import BoundaryScanner, BoundaryScanResult
-from crucible.boundary.noise import NoiseInjector, NoiseMode
 from crucible.boundary.entropy import EntropyAnalyzer, EntropyResult
+from crucible.boundary.noise import NoiseInjector, NoiseMode
+from crucible.boundary.scanner import BoundaryScanner, BoundaryScanResult
 
 __all__ = [
-    "BoundaryScanner",
     "BoundaryScanResult",
-    "NoiseInjector",
-    "NoiseMode",
+    "BoundaryScanner",
     "EntropyAnalyzer",
     "EntropyResult",
+    "NoiseInjector",
+    "NoiseMode",
 ]

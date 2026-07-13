@@ -1,20 +1,24 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
+
 import pytest
 from typer.testing import CliRunner
 
 from crucible.cli import app
 from crucible.models import (
-    ScanResult,
     AgentTarget,
-    ModuleResult,
-    Finding,
     AttackCategory,
+    Finding,
+    ModuleResult,
+    ScanResult,
     Severity,
 )
 from crucible.reporters.stix_reporter import STIXReporter
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture
@@ -107,6 +111,7 @@ def test_stix_reporter_failed_findings_included(base_target: AgentTarget) -> Non
 
     # Verify SHA-256 hash pattern
     import hashlib
+
     expected_hash = hashlib.sha256(b"jailbreak me now please").hexdigest()
     assert obj["pattern"] == f"[file:hashes.'SHA-256' = '{expected_hash}']"
 

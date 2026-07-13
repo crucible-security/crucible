@@ -9,13 +9,11 @@ from __future__ import annotations
 
 import sys
 import time
-from typing import List
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from crucible.ebpf.controller import EbpfController, EbpfEvent, BCC_AVAILABLE
-
+from crucible.ebpf.controller import BCC_AVAILABLE, EbpfController, EbpfEvent
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -35,7 +33,7 @@ def targeted_controller() -> EbpfController:
 
 
 @pytest.fixture()
-def collected_events() -> List[EbpfEvent]:
+def collected_events() -> list[EbpfEvent]:
     return []
 
 
@@ -43,6 +41,7 @@ def collected_events() -> List[EbpfEvent]:
 def event_collector(collected_events):
     def _collect(event: EbpfEvent) -> None:
         collected_events.append(event)
+
     return _collect
 
 
@@ -89,7 +88,9 @@ class TestEbpfEvent:
 
     def test_event_timestamp_is_float(self):
         ts = time.time()
-        event = EbpfEvent(pid=1, comm="x", event_type="EXECVE", details="y", timestamp=ts)
+        event = EbpfEvent(
+            pid=1, comm="x", event_type="EXECVE", details="y", timestamp=ts
+        )
         assert isinstance(event.timestamp, float)
         assert event.timestamp <= time.time()
 
@@ -148,63 +149,91 @@ class TestPlatformDetection:
 
 
 class TestSimulatorMode:
-    def test_simulator_fires_events(self, controller, collected_events, event_collector):
+    def test_simulator_fires_events(
+        self, controller, collected_events, event_collector
+    ):
         """Simulator should yield at least one event."""
-        with patch("crucible.ebpf.controller.BCC_AVAILABLE", False), \
-             patch.object(sys, "platform", "win32"):
+        with (
+            patch("crucible.ebpf.controller.BCC_AVAILABLE", False),
+            patch.object(sys, "platform", "win32"),
+        ):
             controller.start_monitoring(event_collector, max_events=3)
 
         assert len(collected_events) > 0
 
-    def test_simulator_produces_execve(self, controller, collected_events, event_collector):
+    def test_simulator_produces_execve(
+        self, controller, collected_events, event_collector
+    ):
         """Simulator should produce at least one EXECVE event."""
-        with patch("crucible.ebpf.controller.BCC_AVAILABLE", False), \
-             patch.object(sys, "platform", "win32"):
+        with (
+            patch("crucible.ebpf.controller.BCC_AVAILABLE", False),
+            patch.object(sys, "platform", "win32"),
+        ):
             controller.start_monitoring(event_collector, max_events=3)
 
         types = [e.event_type for e in collected_events]
         assert "EXECVE" in types
 
-    def test_simulator_produces_openat(self, controller, collected_events, event_collector):
+    def test_simulator_produces_openat(
+        self, controller, collected_events, event_collector
+    ):
         """Simulator should produce at least one OPENAT event."""
-        with patch("crucible.ebpf.controller.BCC_AVAILABLE", False), \
-             patch.object(sys, "platform", "win32"):
+        with (
+            patch("crucible.ebpf.controller.BCC_AVAILABLE", False),
+            patch.object(sys, "platform", "win32"),
+        ):
             controller.start_monitoring(event_collector, max_events=3)
 
         types = [e.event_type for e in collected_events]
         assert "OPENAT" in types
 
-    def test_simulator_events_have_pid(self, controller, collected_events, event_collector):
-        with patch("crucible.ebpf.controller.BCC_AVAILABLE", False), \
-             patch.object(sys, "platform", "win32"):
+    def test_simulator_events_have_pid(
+        self, controller, collected_events, event_collector
+    ):
+        with (
+            patch("crucible.ebpf.controller.BCC_AVAILABLE", False),
+            patch.object(sys, "platform", "win32"),
+        ):
             controller.start_monitoring(event_collector, max_events=2)
 
         for event in collected_events:
             assert isinstance(event.pid, int)
             assert event.pid > 0
 
-    def test_simulator_events_have_comm(self, controller, collected_events, event_collector):
-        with patch("crucible.ebpf.controller.BCC_AVAILABLE", False), \
-             patch.object(sys, "platform", "win32"):
+    def test_simulator_events_have_comm(
+        self, controller, collected_events, event_collector
+    ):
+        with (
+            patch("crucible.ebpf.controller.BCC_AVAILABLE", False),
+            patch.object(sys, "platform", "win32"),
+        ):
             controller.start_monitoring(event_collector, max_events=2)
 
         for event in collected_events:
             assert isinstance(event.comm, str)
             assert len(event.comm) > 0
 
-    def test_simulator_events_have_details(self, controller, collected_events, event_collector):
-        with patch("crucible.ebpf.controller.BCC_AVAILABLE", False), \
-             patch.object(sys, "platform", "win32"):
+    def test_simulator_events_have_details(
+        self, controller, collected_events, event_collector
+    ):
+        with (
+            patch("crucible.ebpf.controller.BCC_AVAILABLE", False),
+            patch.object(sys, "platform", "win32"),
+        ):
             controller.start_monitoring(event_collector, max_events=2)
 
         for event in collected_events:
             assert isinstance(event.details, str)
             assert len(event.details) > 0
 
-    def test_simulator_respects_max_events(self, controller, event_collector, collected_events):
+    def test_simulator_respects_max_events(
+        self, controller, event_collector, collected_events
+    ):
         """Should stop after max_events even if more events are available."""
-        with patch("crucible.ebpf.controller.BCC_AVAILABLE", False), \
-             patch.object(sys, "platform", "win32"):
+        with (
+            patch("crucible.ebpf.controller.BCC_AVAILABLE", False),
+            patch.object(sys, "platform", "win32"),
+        ):
             controller.start_monitoring(event_collector, max_events=1)
 
         assert len(collected_events) == 1
@@ -213,8 +242,10 @@ class TestSimulatorMode:
         self, controller, event_collector, collected_events
     ):
         """monitoring flag should be reset to False after start_monitoring returns."""
-        with patch("crucible.ebpf.controller.BCC_AVAILABLE", False), \
-             patch.object(sys, "platform", "win32"):
+        with (
+            patch("crucible.ebpf.controller.BCC_AVAILABLE", False),
+            patch.object(sys, "platform", "win32"),
+        ):
             controller.start_monitoring(event_collector, max_events=2)
 
         assert controller.monitoring is False
@@ -223,16 +254,22 @@ class TestSimulatorMode:
         self, targeted_controller, event_collector, collected_events
     ):
         """Events in simulator mode should use the target_pid if set."""
-        with patch("crucible.ebpf.controller.BCC_AVAILABLE", False), \
-             patch.object(sys, "platform", "win32"):
+        with (
+            patch("crucible.ebpf.controller.BCC_AVAILABLE", False),
+            patch.object(sys, "platform", "win32"),
+        ):
             targeted_controller.start_monitoring(event_collector, max_events=1)
 
         assert collected_events[0].pid == 9999
 
-    def test_simulator_duration_limit(self, controller, event_collector, collected_events):
+    def test_simulator_duration_limit(
+        self, controller, event_collector, collected_events
+    ):
         """Should respect duration limit (short duration, may get 0 events)."""
-        with patch("crucible.ebpf.controller.BCC_AVAILABLE", False), \
-             patch.object(sys, "platform", "win32"):
+        with (
+            patch("crucible.ebpf.controller.BCC_AVAILABLE", False),
+            patch.object(sys, "platform", "win32"),
+        ):
             start = time.time()
             controller.start_monitoring(event_collector, duration=0.001)
             elapsed = time.time() - start
@@ -240,10 +277,14 @@ class TestSimulatorMode:
         # Should return relatively quickly (within 1 second)
         assert elapsed < 1.0
 
-    def test_suspicious_paths_detected(self, controller, event_collector, collected_events):
+    def test_suspicious_paths_detected(
+        self, controller, event_collector, collected_events
+    ):
         """Simulator should include sensitive path access patterns."""
-        with patch("crucible.ebpf.controller.BCC_AVAILABLE", False), \
-             patch.object(sys, "platform", "win32"):
+        with (
+            patch("crucible.ebpf.controller.BCC_AVAILABLE", False),
+            patch.object(sys, "platform", "win32"),
+        ):
             controller.start_monitoring(event_collector, max_events=10)
 
         details_all = " ".join(e.details for e in collected_events)
@@ -258,8 +299,10 @@ class TestSimulatorMode:
         ctrl = EbpfController()
 
         def _run():
-            with patch("crucible.ebpf.controller.BCC_AVAILABLE", False), \
-                 patch.object(sys, "platform", "win32"):
+            with (
+                patch("crucible.ebpf.controller.BCC_AVAILABLE", False),
+                patch.object(sys, "platform", "win32"),
+            ):
                 ctrl.start_monitoring(event_collector, max_events=100)
 
         t = threading.Thread(target=_run)

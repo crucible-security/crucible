@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-
-import pytest
 
 from crucible.attacks.inter_agent_trust import ALL_INTER_AGENT_TRUST_ATTACKS
 from crucible.models import AttackCategory, Severity
-from crucible.modules.security import InterAgentTrustModule, get_all_modules
+from crucible.modules.security import get_all_modules
 
 
 def test_iac_module_loads() -> None:
@@ -66,7 +63,7 @@ def test_iac_module_excludable() -> None:
 
 def test_iac_findings_in_sarif_output(tmp_path) -> None:
     """SARIF reporter output contains IAC rule metadata."""
-    from crucible.models import Finding, ScanResult, ScanStatus, ModuleResult
+    from crucible.models import Finding, ModuleResult, ScanResult, ScanStatus
     from crucible.reporters.sarif_reporter import SARIFReporter
 
     finding = Finding(
@@ -104,10 +101,10 @@ def test_iac_findings_in_sarif_output(tmp_path) -> None:
     reporter.write(scan_result, output_path)
 
     sarif_data = json.loads(output_path.read_text(encoding="utf-8"))
-    
+
     # Check rule contains mapped fields
     rules = sarif_data["runs"][0]["tool"]["driver"]["rules"]
     assert len(rules) > 0
-    iac_rule = [r for r in rules if r["id"] == "IAC-001"][0]
+    iac_rule = next(r for r in rules if r["id"] == "IAC-001")
     assert iac_rule["properties"]["owasp_ref"] == "ASI07"
     assert iac_rule["properties"]["atlas_technique"] == "AML.T0054"

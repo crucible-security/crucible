@@ -10,19 +10,19 @@ from __future__ import annotations
 
 import random
 import string
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 
 class NoiseMode(str, Enum):
     """Available noise injection strategies."""
 
-    CHAR_SWAP = "char_swap"         # Random character swaps within words
-    WORD_DROP = "word_drop"         # Drop random words from the prompt
-    SYNONYM_SUB = "synonym_sub"     # Substitute words with simple synonyms
-    SUFFIX_APPEND = "suffix_append" # Append random suffix tokens
-    PREFIX_INJECT = "prefix_inject" # Prepend random prefix tokens
-    CASE_FLIP = "case_flip"         # Randomly flip word casing
+    CHAR_SWAP = "char_swap"  # Random character swaps within words
+    WORD_DROP = "word_drop"  # Drop random words from the prompt
+    SYNONYM_SUB = "synonym_sub"  # Substitute words with simple synonyms
+    SUFFIX_APPEND = "suffix_append"  # Append random suffix tokens
+    PREFIX_INJECT = "prefix_inject"  # Prepend random prefix tokens
+    CASE_FLIP = "case_flip"  # Randomly flip word casing
 
 
 # Lightweight synonym map for common sensitive keywords (no external dep)
@@ -123,7 +123,9 @@ class NoiseInjector:
         """Append random noise tokens to the end of the prompt."""
         n_tokens = max(1, int(self.intensity * 10))
         tokens = [
-            "".join(self._rng.choices(string.ascii_lowercase, k=self._rng.randint(3, 8)))
+            "".join(
+                self._rng.choices(string.ascii_lowercase, k=self._rng.randint(3, 8))
+            )
             for _ in range(n_tokens)
         ]
         return text + " " + " ".join(tokens)
@@ -132,7 +134,9 @@ class NoiseInjector:
         """Prepend random noise tokens before the prompt."""
         n_tokens = max(1, int(self.intensity * 10))
         tokens = [
-            "".join(self._rng.choices(string.ascii_lowercase, k=self._rng.randint(3, 8)))
+            "".join(
+                self._rng.choices(string.ascii_lowercase, k=self._rng.randint(3, 8))
+            )
             for _ in range(n_tokens)
         ]
         return " ".join(tokens) + " " + text

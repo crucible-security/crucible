@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import http.server
 import json
 import threading
 import time
-from pathlib import Path
-import http.server
+from typing import TYPE_CHECKING
 
-import pytest
 import httpx
+import pytest
 
-from crucible.dashboard.server import DashboardHTTPHandler, start_dashboard
+from crucible.dashboard.server import DashboardHTTPHandler
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from pathlib import Path
 
 # A port to bind our test server to
 TEST_PORT = 18999
@@ -23,7 +27,7 @@ def test_dashboard_server(tmp_path_factory) -> Iterator[tuple[Path, str]]:
     """Fixture that starts the dashboard server in a background thread."""
     # Create temp directories for scans and templates
     scan_dir = tmp_path_factory.mktemp("scans")
-    
+
     # Write a mock scan file
     mock_scan_data = {
         "target": {"name": "test-agent-dashboard"},
@@ -42,9 +46,9 @@ def test_dashboard_server(tmp_path_factory) -> Iterator[tuple[Path, str]]:
                         "response_snippet": "safe response",
                         "execution_error": False,
                     }
-                ]
+                ],
             }
-        ]
+        ],
     }
     mock_scan_file = scan_dir / "scan1.json"
     mock_scan_file.write_text(json.dumps(mock_scan_data), encoding="utf-8")
@@ -52,18 +56,20 @@ def test_dashboard_server(tmp_path_factory) -> Iterator[tuple[Path, str]]:
     # Set up template path
     template_dir = tmp_path_factory.mktemp("templates")
     template_file = template_dir / "dashboard.html"
-    template_file.write_text("<html><body>Mock Dashboard Template</body></html>", encoding="utf-8")
+    template_file.write_text(
+        "<html><body>Mock Dashboard Template</body></html>", encoding="utf-8"
+    )
 
     # Configure class variables
     DashboardHTTPHandler.scan_dir = scan_dir
     DashboardHTTPHandler.template_path = template_file
 
     server = http.server.HTTPServer((TEST_HOST, TEST_PORT), DashboardHTTPHandler)
-    
+
     # Run server in thread
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    
+
     # Wait for server to start
     time.sleep(0.5)
 
@@ -125,9 +131,7 @@ def test_dashboard_html_is_served(test_dashboard_server) -> None:
 def test_no_scans_page_shown_when_dir_empty(tmp_path) -> None:
     """Empty scan dir returns empty array in scans API."""
     DashboardHTTPHandler.scan_dir = tmp_path
-    
-    # Just instantiate and call handler directly for unit-level verification
-    handler = DashboardHTTPHandler
+
     # Verify that the path globbing is empty
     scans = list(tmp_path.glob("*.json"))
     assert len(scans) == 0
@@ -136,8 +140,9 @@ def test_no_scans_page_shown_when_dir_empty(tmp_path) -> None:
 def test_no_new_python_dependencies() -> None:
     """Dashboard code uses only stdlib (http.server, json, pathlib)."""
     import inspect
+
     from crucible.dashboard import server
-    
+
     # Check imports in server.py
     source = inspect.getsource(server)
     # Ensure no external packages are imported at file level

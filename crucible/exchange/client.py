@@ -16,7 +16,7 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -137,7 +137,7 @@ class ExchangeClient:
         with httpx.Client(timeout=self.timeout, headers=self._headers) as client:
             resp = client.post(f"{self.base_url}/records", json=sanitized)
             resp.raise_for_status()
-            return resp.json()
+            return cast("dict[str, Any]", resp.json())
 
     def pull(
         self,
@@ -164,11 +164,11 @@ class ExchangeClient:
         with httpx.Client(timeout=self.timeout, headers=self._headers) as client:
             resp = client.get(f"{self.base_url}/records", params=params)
             resp.raise_for_status()
-            return resp.json()
+            return cast("list[dict[str, Any]]", resp.json())
 
     def health(self) -> dict[str, Any]:
         """Check the health status of the exchange node."""
         with httpx.Client(timeout=self.timeout, headers=self._headers) as client:
             resp = client.get(f"{self.base_url}/health")
             resp.raise_for_status()
-            return resp.json()
+            return cast("dict[str, Any]", resp.json())

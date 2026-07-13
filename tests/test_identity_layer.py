@@ -15,10 +15,13 @@ from __future__ import annotations
 
 import json
 import textwrap
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-import pytest
 import anyio
+import pytest
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Step 9.2 — Data model import and field validation
@@ -108,13 +111,15 @@ def test_v1_policy_backward_compatible(tmp_path: Path) -> None:
     """v1 policy.yaml with no agents: section loads exactly as before."""
     from crucible.trace.policy import load_policy
 
-    policy_yaml = textwrap.dedent("""\
+    policy_yaml = textwrap.dedent(
+        """\
         default_action: allow
         rules:
           - name: block-bash
             tool_name: bash
             action: deny
-    """)
+    """
+    )
     p = tmp_path / "v1_policy.yaml"
     p.write_text(policy_yaml, encoding="utf-8")
 
@@ -132,7 +137,8 @@ def test_v2_policy_loads_agents(tmp_path: Path) -> None:
     """v2 policy.yaml with agents: section loads AgentIdentity objects."""
     from crucible.trace.policy import load_policy
 
-    policy_yaml = textwrap.dedent("""\
+    policy_yaml = textwrap.dedent(
+        """\
         version: "2"
         default_action: allow
         agents:
@@ -147,7 +153,8 @@ def test_v2_policy_loads_agents(tmp_path: Path) -> None:
           - name: block-bash-globally
             tool_name: bash
             action: deny
-    """)
+    """
+    )
     p = tmp_path / "v2_policy.yaml"
     p.write_text(policy_yaml, encoding="utf-8")
 
@@ -165,7 +172,8 @@ def test_v2_policy_agent_scoped_rule(tmp_path: Path) -> None:
     """v2 agent-scoped rule only matches the specified agent."""
     from crucible.trace.policy import evaluate_policy, load_policy
 
-    policy_yaml = textwrap.dedent("""\
+    policy_yaml = textwrap.dedent(
+        """\
         version: "2"
         default_action: allow
         agents:
@@ -177,22 +185,19 @@ def test_v2_policy_agent_scoped_rule(tmp_path: Path) -> None:
             agent_id: restricted-agent
             tool_name: bash
             action: deny
-    """)
+    """
+    )
     p = tmp_path / "v2_scoped.yaml"
     p.write_text(policy_yaml, encoding="utf-8")
     policy = load_policy(p)
 
     # restricted-agent calling bash → DENY
-    action, rule = evaluate_policy(
-        policy, "bash", {}, agent_id="restricted-agent"
-    )
+    action, rule = evaluate_policy(policy, "bash", {}, agent_id="restricted-agent")
     assert action.value == "deny"
     assert rule == "restricted-agent-deny-bash"
 
     # other-agent calling bash → ALLOW (rule doesn't match different agent)
-    action2, rule2 = evaluate_policy(
-        policy, "bash", {}, agent_id="other-agent"
-    )
+    action2, rule2 = evaluate_policy(policy, "bash", {}, agent_id="other-agent")
     assert action2.value == "allow"
     assert rule2 is None
 
@@ -201,7 +206,8 @@ def test_v2_policy_tool_name_not_in_allowlist(tmp_path: Path) -> None:
     """tool_name_not_in_allowlist rule denies tools outside the agent's allowlist."""
     from crucible.trace.policy import evaluate_policy, load_policy
 
-    policy_yaml = textwrap.dedent("""\
+    policy_yaml = textwrap.dedent(
+        """\
         version: "2"
         default_action: allow
         agents:
@@ -213,7 +219,8 @@ def test_v2_policy_tool_name_not_in_allowlist(tmp_path: Path) -> None:
             agent_id: narrow-agent
             tool_name_not_in_allowlist: true
             action: deny
-    """)
+    """
+    )
     p = tmp_path / "v2_allowlist.yaml"
     p.write_text(policy_yaml, encoding="utf-8")
     policy = load_policy(p)
@@ -221,15 +228,21 @@ def test_v2_policy_tool_name_not_in_allowlist(tmp_path: Path) -> None:
     allowed_tools = policy.agents["narrow-agent"].allowed_tools
 
     # read_file is in allowlist → ALLOW
-    action, rule = evaluate_policy(
-        policy, "read_file", {}, agent_id="narrow-agent",
+    action, _rule = evaluate_policy(
+        policy,
+        "read_file",
+        {},
+        agent_id="narrow-agent",
         agent_allowed_tools=allowed_tools,
     )
     assert action.value == "allow"
 
     # bash is NOT in allowlist → DENY
     action2, rule2 = evaluate_policy(
-        policy, "bash", {}, agent_id="narrow-agent",
+        policy,
+        "bash",
+        {},
+        agent_id="narrow-agent",
         agent_allowed_tools=allowed_tools,
     )
     assert action2.value == "deny"
@@ -309,7 +322,7 @@ def test_identity_store_record_and_read(tmp_path: Path) -> None:
 
 def test_identity_store_sanitises_agent_id(tmp_path: Path) -> None:
     """Agent IDs with path-unsafe characters are sanitised to prevent traversal."""
-    from crucible.trace.identity_store import IdentityStore, _sanitise_agent_id
+    from crucible.trace.identity_store import _sanitise_agent_id
 
     # Windows-unsafe characters must be replaced
     assert _sanitise_agent_id("agent/with/slashes") == "agent_with_slashes"
@@ -382,7 +395,6 @@ def test_identity_store_check_limits_session(tmp_path: Path) -> None:
 @pytest.mark.anyio
 async def test_proxy_records_agent_id_in_trace_entry(tmp_path: Path) -> None:
     """TraceEntry.agent_id is populated from X-Crucible-Agent-Id header."""
-    import datetime as _dt
 
     from crucible.trace.audit_log import AuditLog
     from crucible.trace.models import Policy
@@ -397,12 +409,14 @@ async def test_proxy_records_agent_id_in_trace_entry(tmp_path: Path) -> None:
     )
 
     # Build a minimal HTTP POST with the agent_id header
-    body = json.dumps({
-        "jsonrpc": "2.0",
-        "method": "tools/call",
-        "id": 1,
-        "params": {"name": "bash", "arguments": {"cmd": "ls"}},
-    }).encode()
+    body = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "id": 1,
+            "params": {"name": "bash", "arguments": {"cmd": "ls"}},
+        }
+    ).encode()
     headers = (
         b"POST /api/chat HTTP/1.1\r\n"
         b"Host: localhost\r\n"
@@ -457,12 +471,14 @@ async def test_proxy_identity_limit_denies_over_session_cap(tmp_path: Path) -> N
         identity_store=store,
     )
 
-    body = json.dumps({
-        "jsonrpc": "2.0",
-        "method": "tools/call",
-        "id": 42,
-        "params": {"name": "read_file", "arguments": {}},
-    }).encode()
+    body = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "id": 42,
+            "params": {"name": "read_file", "arguments": {}},
+        }
+    ).encode()
     request = (
         b"POST /api/chat HTTP/1.1\r\n"
         b"Host: localhost\r\n"

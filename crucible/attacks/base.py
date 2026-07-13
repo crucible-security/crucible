@@ -296,6 +296,7 @@ class BaseAttack(ABC):
                     findings.append(finding)
             except Exception as e:
                 import sys
+
                 print(
                     f"[crucible scan] WARNING: dynamic payload generation failed for {self.name}: {e}",
                     file=sys.stderr,
@@ -315,12 +316,13 @@ class BaseAttack(ABC):
     ) -> list[str]:
         import json
         import sys
-        from crucible.models import PROVIDER_PRESETS, AgentTarget
-        from crucible.core.response_extractor import extract_response
+
         from crucible.attacks.generator_prompt import (
             GENERATOR_SYSTEM_PROMPT,
             GENERATOR_USER_TEMPLATE,
         )
+        from crucible.core.response_extractor import extract_response
+        from crucible.models import PROVIDER_PRESETS, AgentTarget
 
         examples_list = self.get_payloads()
         examples = "\n".join(f"- {p}" for p in examples_list[:3])
@@ -347,7 +349,9 @@ class BaseAttack(ABC):
             response_path = preset.response_path
             headers = dict(preset.extra_headers or {})
             url = generator_endpoint
-            if preset.url_suffix and not url.rstrip("/").endswith(preset.url_suffix.rstrip("/")):
+            if preset.url_suffix and not url.rstrip("/").endswith(
+                preset.url_suffix.rstrip("/")
+            ):
                 url = url.rstrip("/") + preset.url_suffix
         else:
             body_template = '{"message": "{payload}"}'
@@ -358,7 +362,7 @@ class BaseAttack(ABC):
         # Build request body using AgentTarget helper
         temp_target = AgentTarget(
             name="generator",
-            url=url,
+            url=url,  # type: ignore[arg-type]
             body_template=body_template,
             response_path=response_path,
             headers=headers,

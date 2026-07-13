@@ -11,16 +11,20 @@ accepts ``logprobs: true`` in the request body and returns ``logprobs`` in
 the response choices.  All non-logprob endpoints are fully supported in
 binary mode.
 """
+
 from __future__ import annotations
 
+import contextlib
 import math
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
+if TYPE_CHECKING:
+    from crucible.models import FuzzSessionResult
 
 # ---------------------------------------------------------------------------
 # UCB1 arm state
@@ -37,9 +41,7 @@ class ArmState:
     reward_history: list[float] = field(default_factory=list)
     bypasses_found: int = 0
 
-    def ucb1_score(
-        self, total_pulls: int, exploration: float = math.sqrt(2)
-    ) -> float:
+    def ucb1_score(self, total_pulls: int, exploration: float = math.sqrt(2)) -> float:
         """UCB1 = Q(a) + c * sqrt(ln(t) / N(a)).
 
         Unvisited arms return +inf to force initial exploration.
@@ -198,14 +200,10 @@ class CrucibleGAF:
 
         # 3. Convergence: all arms visited ≥ 5 times and variance < 0.01
         if all(arm.visit_count >= 5 for arm in self.arms.values()):
-            all_rewards = [
-                r for arm in self.arms.values() for r in arm.reward_history
-            ]
+            all_rewards = [r for arm in self.arms.values() for r in arm.reward_history]
             if len(all_rewards) >= 2:
                 mean = sum(all_rewards) / len(all_rewards)
-                variance = sum((r - mean) ** 2 for r in all_rewards) / len(
-                    all_rewards
-                )
+                variance = sum((r - mean) ** 2 for r in all_rewards) / len(all_rewards)
                 if variance < 0.01:
                     return True, "convergence_low_variance"
 
@@ -283,10 +281,8 @@ class CrucibleGAF:
                 timeout=timeout,
             )
             resp_json: dict[str, Any] = {}
-            try:
+            with contextlib.suppress(Exception):
                 resp_json = resp.json()
-            except Exception:
-                pass
 
             if self.logprob_mode:
                 lp_fitness = _logprob_entropy(resp_json)
@@ -388,7 +384,7 @@ def run_fuzz_session(
     seed: int | None = None,
     logprob_mode: bool = False,
     timeout: int = 30,
-) -> "FuzzSessionResult":
+) -> FuzzSessionResult:
     """Run a complete CGAF fuzz session and return a structured result.
 
     This is the main entry point for programmatic use.

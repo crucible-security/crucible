@@ -73,12 +73,12 @@ class SSRFValidatorTransformer(cst.CSTTransformer):  # type: ignore[misc]
         self.url_arg = url_arg
         self.in_target = False
 
-    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:  # noqa: N802
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
         if node.name.value == self.target_function:
             self.in_target = True
         return True
 
-    def leave_FunctionDef(  # noqa: N802
+    def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
     ) -> cst.FunctionDef:
         if original_node.name.value == self.target_function:

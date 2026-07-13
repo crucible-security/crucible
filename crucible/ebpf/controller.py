@@ -4,15 +4,21 @@ import os
 import sys
 import time
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 BCC_AVAILABLE = False
 try:
     if sys.platform.startswith("linux"):
         from bcc import BPF
+
         BCC_AVAILABLE = True
+    else:
+        BPF = Any
 except ImportError:
-    pass
+    BPF = Any  # type: ignore
 
 
 @dataclass

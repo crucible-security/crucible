@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from dataclasses import dataclass
+from typing import Any
 
 
 class PrivacyLayer:
@@ -39,17 +39,20 @@ class PrivacyLayer:
         """Return the SHA-256 hex digest of *payload*."""
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
-    def sanitize_dict(self, record: dict) -> dict:
+    def sanitize_dict(self, record: dict[str, Any]) -> dict[str, Any]:
         """Sanitize a dict by hashing known sensitive fields and redacting PII.
 
         Returns a new dict; the original is not modified.
         """
-        sanitized: dict = {}
+        sanitized: dict[str, Any] = {}
         for key, value in record.items():
             if isinstance(value, str):
-                if key in ("prompt", "payload", "raw_prompt", "input"):
-                    sanitized[key] = self.hash_payload(value)
-                elif key in ("endpoint", "url", "target_url", "base_url"):
+                if key in ("prompt", "payload", "raw_prompt", "input") or key in (
+                    "endpoint",
+                    "url",
+                    "target_url",
+                    "base_url",
+                ):
                     sanitized[key] = self.hash_payload(value)
                 else:
                     cleaned = self._redact_pii(value)

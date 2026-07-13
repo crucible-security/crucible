@@ -13,12 +13,12 @@ Privacy guarantees:
 from __future__ import annotations
 
 from crucible.exchange.client import ExchangeClient, ThreatRecord
-from crucible.exchange.server import ExchangeServer
 from crucible.exchange.privacy import PrivacyLayer
+from crucible.exchange.server import ExchangeServer
 
 __all__ = [
     "ExchangeClient",
-    "ThreatRecord",
     "ExchangeServer",
     "PrivacyLayer",
+    "ThreatRecord",
 ]

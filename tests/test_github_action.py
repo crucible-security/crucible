@@ -8,13 +8,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
 ACTION_YML = Path(__file__).parent.parent / "action.yml"
 
 
 # ── Structural tests ──────────────────────────────────────────────────────────
+
 
 def test_action_yml_exists() -> None:
     """action.yml exists at repo root."""
@@ -78,7 +77,10 @@ def test_example_workflow_exists() -> None:
 
 # ── parse_results.py unit tests ───────────────────────────────────────────────
 
-def _make_scan_report(tmp_path: Path, grade: str = "B", score: float = 75.0, failed: int = 5) -> Path:
+
+def _make_scan_report(
+    tmp_path: Path, grade: str = "B", score: float = 75.0, failed: int = 5
+) -> Path:
     """Helper to create a minimal scan JSON report for testing."""
     data = {
         "grade": grade,

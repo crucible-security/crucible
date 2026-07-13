@@ -12,11 +12,14 @@ v0.16.0 — Phase 18 Crucible Embedding Boundary Mapping
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
-from typing import Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from crucible.boundary.entropy import EntropyAnalyzer, EntropyResult
 from crucible.boundary.noise import NoiseInjector, NoiseMode
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass
@@ -137,8 +140,7 @@ class BoundaryScanner:
         (highest first).
         """
         results = [
-            self.scan(seed_prompt, mode=mode, intensity=intensity)
-            for mode in NoiseMode
+            self.scan(seed_prompt, mode=mode, intensity=intensity) for mode in NoiseMode
         ]
         return sorted(results, key=lambda r: r.entropy.boundary_proximity, reverse=True)
 
@@ -150,5 +152,5 @@ class BoundaryScanner:
         """Safely call the model function, returning empty string on error."""
         try:
             return str(self.model_fn(prompt))
-        except Exception:  # noqa: BLE001
+        except Exception:
             return ""

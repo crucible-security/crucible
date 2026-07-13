@@ -70,7 +70,9 @@ _AGENT_ID_HEADER = "x-crucible-agent-id"
 _WARN_UNKNOWN_AGENT: bool = True  # warn once per process start
 
 
-def extract_agent_id(raw_headers: dict[str, str], body_dict: dict[str, Any] | None) -> str:
+def extract_agent_id(
+    raw_headers: dict[str, str], body_dict: dict[str, Any] | None
+) -> str:
     """Extract the calling agent's identity from the request.
 
     Resolution order:
@@ -89,7 +91,7 @@ def extract_agent_id(raw_headers: dict[str, str], body_dict: dict[str, Any] | No
 
     # 2. Body field
     if body_dict and isinstance(body_dict.get("agent_id"), str):
-        return body_dict["agent_id"].strip()
+        return str(body_dict["agent_id"]).strip()
 
     # 3. Fallback with one-time warning
     if _WARN_UNKNOWN_AGENT:

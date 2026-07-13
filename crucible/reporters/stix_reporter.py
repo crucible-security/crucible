@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 from crucible.reporters.base import BaseReporter
 
 if TYPE_CHECKING:
-    from crucible.models import ScanResult, Finding
+    from crucible.models import Finding, ScanResult
 
 
 class STIXReporter(BaseReporter):
@@ -27,6 +27,7 @@ class STIXReporter(BaseReporter):
 
     def render(self, result: ScanResult) -> None:
         from rich.console import Console
+
         console = Console()
         console.print(self.to_json(result))
 
@@ -74,18 +75,22 @@ class STIXReporter(BaseReporter):
 
         ext_refs = []
         if finding.atlas_technique:
-            ext_refs.append({
-                "source_name": "mitre-atlas",
-                "external_id": finding.atlas_technique,
-                "url": f"https://atlas.mitre.org/techniques/{finding.atlas_technique}",
-            })
+            ext_refs.append(
+                {
+                    "source_name": "mitre-atlas",
+                    "external_id": finding.atlas_technique,
+                    "url": f"https://atlas.mitre.org/techniques/{finding.atlas_technique}",
+                }
+            )
 
         if finding.owasp_ref:
-            ext_refs.append({
-                "source_name": "owasp-llm-top-10",
-                "external_id": finding.owasp_ref.split(":")[0],
-                "description": finding.owasp_ref,
-            })
+            ext_refs.append(
+                {
+                    "source_name": "owasp-llm-top-10",
+                    "external_id": finding.owasp_ref.split(":")[0],
+                    "description": finding.owasp_ref,
+                }
+            )
 
         indicator: dict[str, Any] = {
             "type": "indicator",

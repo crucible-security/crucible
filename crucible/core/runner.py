@@ -133,9 +133,7 @@ async def run_module_with_progress(
             module_results.append(result)
         progress.advance(
             task_id,
-            advance=_module_payload_count(
-                module, dynamic_payloads, dynamic_count
-            ),
+            advance=_module_payload_count(module, dynamic_payloads, dynamic_count),
         )
 
 
@@ -283,8 +281,7 @@ async def run_scan(
     start = time.monotonic()
 
     total_attacks = sum(
-        _module_payload_count(m, dynamic_payloads, dynamic_count)
-        for m in modules
+        _module_payload_count(m, dynamic_payloads, dynamic_count) for m in modules
     )
     progress_target = sys.stderr if format in ["json", "html"] else sys.stdout
     progress_console = Console(file=progress_target)

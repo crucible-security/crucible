@@ -5,9 +5,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from importlib.metadata import PackageNotFoundError, version
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator
+
+if TYPE_CHECKING:
+    from crucible.trace.models import PolicyAction
 
 try:
     _crucible_version = version("crucible-security")
@@ -994,9 +997,7 @@ class IdentityBehaviorSummary(BaseModel):
     window_start: str = Field(description="ISO-8601 UTC start of the analysis window.")
     window_end: str = Field(description="ISO-8601 UTC end of the analysis window.")
     total_calls: int = Field(description="Total tool calls recorded in the window.")
-    unique_tools_used: list[str] = Field(
-        description="Distinct tool names observed."
-    )
+    unique_tools_used: list[str] = Field(description="Distinct tool names observed.")
     tools_outside_allowlist: list[str] = Field(
         description="Tools called that are not in the agent's allowed_tools.",
     )
@@ -1039,14 +1040,26 @@ class FuzzSessionResult(BaseModel):
 
     target: str = Field(description="Target endpoint URL.")
     total_iterations: int = Field(description="Total rounds/pulls executed.")
-    early_stopped: bool = Field(description="Whether fuzzing stopped before max_iterations.")
-    stop_reason: str = Field(description="The reason for stopping (e.g. threshold met, convergence).")
-    best_strategy: str = Field(description="The strategy with the highest estimated reward.")
-    fitness_threshold: float = Field(description="The early stopping fitness threshold.")
+    early_stopped: bool = Field(
+        description="Whether fuzzing stopped before max_iterations."
+    )
+    stop_reason: str = Field(
+        description="The reason for stopping (e.g. threshold met, convergence)."
+    )
+    best_strategy: str = Field(
+        description="The strategy with the highest estimated reward."
+    )
+    fitness_threshold: float = Field(
+        description="The early stopping fitness threshold."
+    )
     logprob_mode: bool = Field(description="Whether logprob entropy mode was active.")
     arm_results: list[FuzzArmResult] = Field(description="Details for each fuzzer arm.")
-    elapsed_seconds: float = Field(description="Time elapsed during the fuzzing session.")
-    round_log: list[dict[str, Any]] = Field(description="Chronological log of all rounds.")
+    elapsed_seconds: float = Field(
+        description="Time elapsed during the fuzzing session."
+    )
+    round_log: list[dict[str, Any]] = Field(
+        description="Chronological log of all rounds."
+    )
 
 
 class STIXIndicator(BaseModel):
@@ -1059,7 +1072,9 @@ class STIXIndicator(BaseModel):
     modified: str = Field(description="Modification timestamp.")
     name: str = Field(description="Name of the indicator.")
     description: str = Field(description="Description of the indicator.")
-    indicator_types: list[str] = Field(default_factory=lambda: ["compromise", "malicious-activity"])
+    indicator_types: list[str] = Field(
+        default_factory=lambda: ["compromise", "malicious-activity"]
+    )
     pattern: str = Field(description="STIX pattern mapping the file hash.")
     pattern_type: str = Field(default="stix")
     pattern_version: str = Field(default="2.1")
@@ -1073,5 +1088,3 @@ class STIXBundle(BaseModel):
     type: str = Field(default="bundle")
     id: str = Field(description="Unique STIX bundle ID.")
     objects: list[STIXIndicator] = Field(description="List of STIX objects.")
-
-

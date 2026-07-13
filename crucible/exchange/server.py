@@ -15,11 +15,12 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from crucible.exchange.privacy import PrivacyLayer
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS threat_records (
@@ -65,7 +66,9 @@ class ExchangeServer:
     ) -> None:
         self.db_path = str(db_path)
         self.privacy = privacy or PrivacyLayer()
-        self._conn: sqlite3.Connection = sqlite3.connect(self.db_path, check_same_thread=False)
+        self._conn: sqlite3.Connection = sqlite3.connect(
+            self.db_path, check_same_thread=False
+        )
         self._conn.row_factory = sqlite3.Row
         self._init_db()
 
@@ -120,23 +123,26 @@ class ExchangeServer:
 
         results = []
         for row in rows:
-            results.append({
-                "record_id": row["record_id"],
-                "threat_type": row["threat_type"],
-                "severity": row["severity"],
-                "payload_hash": row["payload_hash"],
-                "endpoint_hash": row["endpoint_hash"],
-                "tags": json.loads(row["tags"]),
-                "metadata": json.loads(row["metadata"]),
-                "created_at": row["created_at"],
-            })
+            results.append(
+                {
+                    "record_id": row["record_id"],
+                    "threat_type": row["threat_type"],
+                    "severity": row["severity"],
+                    "payload_hash": row["payload_hash"],
+                    "endpoint_hash": row["endpoint_hash"],
+                    "tags": json.loads(row["tags"]),
+                    "metadata": json.loads(row["metadata"]),
+                    "created_at": row["created_at"],
+                }
+            )
         return results
 
     def count(self) -> int:
         """Return total number of records stored."""
         cur = self._conn.cursor()
         cur.execute("SELECT COUNT(*) FROM threat_records;")
-        return cur.fetchone()[0]
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
 
     def health(self) -> dict[str, Any]:
         """Return node health status."""

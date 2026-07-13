@@ -4,6 +4,7 @@ import contextlib
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -681,6 +682,7 @@ def _render_output(
             sys.stdout.write(sarif_reporter.to_json(result) + "\n")
     elif format == "stix":
         from crucible.reporters.stix_reporter import STIXReporter
+
         stix_reporter = STIXReporter()
         if not output:
             sys.stdout.write(stix_reporter.to_json(result) + "\n")
@@ -707,6 +709,7 @@ def _render_output(
             saved = s_reporter.write(result, output)
         elif format == "stix" or output.suffix == ".stix":
             from crucible.reporters.stix_reporter import STIXReporter
+
             st_reporter = STIXReporter()
             saved = st_reporter.write(result, output)
         elif format == "html" or output.suffix == ".html":
@@ -1541,8 +1544,15 @@ def dashboard(
         "-d",
         help="Directory containing scan JSON result files.",
     ),
-    port: int = typer.Option(8080, "--port", "-p", help="Port to run the dashboard server on."),
-    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host address to bind the dashboard server to."),
+    port: int = typer.Option(
+        8080, "--port", "-p", help="Port to run the dashboard server on."
+    ),
+    host: str = typer.Option(
+        "127.0.0.1",
+        "--host",
+        "-h",
+        help="Host address to bind the dashboard server to.",
+    ),
     open_browser: bool = typer.Option(
         False,
         "--open",
@@ -1551,6 +1561,7 @@ def dashboard(
 ) -> None:
     """Launch the Crucible offline threat and vulnerability dashboard."""
     import webbrowser
+
     from crucible.dashboard.server import start_dashboard
 
     # Resolve scan directory
@@ -2794,8 +2805,6 @@ def poison_status(
         console.print("---")
 
 
-
-
 if __name__ == "__main__":
     app()
 
@@ -2892,7 +2901,9 @@ def identity_audit(
     )
 
     # Call summary table
-    tbl = Table(title="Tool Call Summary", show_header=True, header_style="bold magenta")
+    tbl = Table(
+        title="Tool Call Summary", show_header=True, header_style="bold magenta"
+    )
     tbl.add_column("Tool", style="cyan", no_wrap=True)
     tbl.add_column("Calls", justify="right")
     tbl.add_column("In Allowlist?", justify="center")
@@ -2947,7 +2958,6 @@ def identity_baseline(
     The baseline captures current tool-call distribution so that future
     [bold]crucible identity diff[/bold] commands can detect anomalies.
     """
-    import json as _json
     from pathlib import Path as _Path
 
     from crucible.trace.identity_store import IdentityStore
@@ -2998,10 +3008,7 @@ def identity_diff(
     Highlights new tools, disappeared tools, and call-volume changes.
     Exit code 1 if significant drift is detected (risk delta ≥ 0.2).
     """
-    import json as _json
     from pathlib import Path as _Path
-
-    from rich.table import Table
 
     from crucible.models import IdentityBehaviorSummary
     from crucible.trace.identity_store import IdentityStore
@@ -3025,9 +3032,7 @@ def identity_diff(
     current = store.generate_summary(agent_id, hours=hours)
 
     if current.total_calls == 0:
-        console.print(
-            f"[yellow]No current data for agent '{agent_id}'.[/yellow]"
-        )
+        console.print(f"[yellow]No current data for agent '{agent_id}'.[/yellow]")
         raise typer.Exit(0)
 
     # Compute diff
@@ -3047,18 +3052,18 @@ def identity_diff(
         f"({current.total_calls} calls, risk {current.risk_score:.2f})"
     )
 
-    delta_colour = "red" if risk_delta > 0.1 else ("yellow" if risk_delta > 0 else "green")
-    console.print(
-        f"  Risk Δ   : [{delta_colour}]{risk_delta:+.4f}[/{delta_colour}]"
+    delta_colour = (
+        "red" if risk_delta > 0.1 else ("yellow" if risk_delta > 0 else "green")
     )
+    console.print(f"  Risk Δ   : [{delta_colour}]{risk_delta:+.4f}[/{delta_colour}]")
 
     if new_tools:
-        console.print(f"\n[bold yellow]🆕 New tools (not in baseline):[/bold yellow]")
+        console.print("\n[bold yellow]🆕 New tools (not in baseline):[/bold yellow]")
         for t in sorted(new_tools):
             console.print(f"  + {t}")
 
     if gone_tools:
-        console.print(f"\n[bold blue]⬇ Tools no longer active:[/bold blue]")
+        console.print("\n[bold blue]⬇ Tools no longer active:[/bold blue]")
         for t in sorted(gone_tools):
             console.print(f"  - {t}")
 
@@ -3108,15 +3113,15 @@ def identity_list(
         tbl.add_row(agent, str(log_file))
 
     console.print(tbl)
-    console.print(f"\n  [dim]{len(agents)} agent{'s' if len(agents) != 1 else ''} found.[/dim]")
+    console.print(
+        f"\n  [dim]{len(agents)} agent{'s' if len(agents) != 1 else ''} found.[/dim]"
+    )
 
 
 @identity_app.command("clear")
 def identity_clear(
     agent_id: str = typer.Argument(..., help="Agent ID whose log to delete."),
-    yes: bool = typer.Option(
-        False, "--yes", "-y", help="Skip confirmation prompt."
-    ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
     log_dir: str = typer.Option(
         None, "--log-dir", help="Override identity-log directory."
     ),
@@ -3146,9 +3151,7 @@ def identity_clear(
             f"[green]✓  Log cleared[/green] for agent [bold]{agent_id}[/bold]."
         )
     else:
-        console.print(
-            f"[yellow]No log found for agent '{agent_id}'.[/yellow]"
-        )
+        console.print(f"[yellow]No log found for agent '{agent_id}'.[/yellow]")
         raise typer.Exit(1)
 
 
@@ -3230,8 +3233,9 @@ def fuzz_run(
     ),
 ) -> None:
     """Run a contextual gradient-aware fuzzing session against the target agent."""
-    from crucible.core.fuzzer import run_fuzz_session
     from rich.table import Table
+
+    from crucible.core.fuzzer import run_fuzz_session
 
     parsed_headers = {}
     if header:
@@ -3245,13 +3249,16 @@ def fuzz_run(
             with open(payload_file, encoding="utf-8") as f:
                 payloads = json.load(f)
             if not isinstance(payloads, dict):
-                raise ValueError("Payload file must be a JSON object mapping strategies to lists of strings.")
+                raise ValueError(
+                    "Payload file must be a JSON object mapping strategies to lists of strings."
+                )
         except Exception as exc:
             console.print(f"[red]Error reading payload file: {exc}[/red]")
             raise typer.Exit(code=1)
     else:
         # construct default payloads from modules
         from crucible.modules.security import get_all_modules
+
         payloads = {}
         for mod in get_all_modules():
             mod_payloads = []
@@ -3301,7 +3308,9 @@ def fuzz_run(
     if result.early_stopped:
         console.print(f"\n[green]✓ Early stopped: {result.stop_reason}[/green]")
     else:
-        console.print(f"\n[yellow]Fuzzing session completed (max iterations reached)[/yellow]")
+        console.print(
+            "\n[yellow]Fuzzing session completed (max iterations reached)[/yellow]"
+        )
 
     console.print(f"  • Best Strategy: [bold cyan]{result.best_strategy}[/bold cyan]")
     console.print(f"  • Elapsed Time: {result.elapsed_seconds:.3f}s")
@@ -3330,13 +3339,16 @@ contagion_app = typer.Typer(
 app.add_typer(contagion_app, name="contagion")
 
 
-def _build_network(network_type: str, nodes: int, hubs: int, spokes: int) -> dict[str, list[str]]:
+def _build_network(
+    network_type: str, nodes: int, hubs: int, spokes: int
+) -> dict[str, list[str]]:
     from crucible.contagion.networks import (
-        star_network,
-        mesh_network,
-        hub_spoke_network,
         chain_network,
+        hub_spoke_network,
+        mesh_network,
+        star_network,
     )
+
     if network_type == "star":
         return star_network(nodes)
     elif network_type == "mesh":
@@ -3404,8 +3416,9 @@ def contagion_simulate(
     ),
 ) -> None:
     """Run an R0 cascading compromise simulation."""
-    from crucible.contagion.engine import R0Simulator
     from rich.table import Table
+
+    from crucible.contagion.engine import R0Simulator
 
     try:
         network = _build_network(network_type, nodes, hubs, spokes)
@@ -3426,7 +3439,9 @@ def contagion_simulate(
     # Ensure seeds exist in network
     for s in seeds:
         if s not in network:
-            console.print(f"[red]Patient zero seed '{s}' not found in network nodes.[/red]")
+            console.print(
+                f"[red]Patient zero seed '{s}' not found in network nodes.[/red]"
+            )
             raise typer.Exit(code=1)
 
     simulator = R0Simulator(network=network, beta=beta, duration=duration, seed=seed)
@@ -3438,9 +3453,15 @@ def contagion_simulate(
     console.print(f"  • Transmission Probability (Beta): {beta}")
     console.print(f"  • Infectious Duration: {duration} turns")
     console.print(f"  • Mean Node Connection Degree: {result.mean_degree:.3f}")
-    console.print(f"  • Theoretical R0: [bold green]{result.theoretical_r0:.3f}[/bold green]")
-    console.print(f"  • Simulated/Empirical R0: [bold yellow]{result.empirical_r0:.3f}[/bold yellow]")
-    console.print(f"  • Total Compromised Nodes: {len(result.nodes_infected)} ({len(result.nodes_infected)/len(network)*100:.1f}%)")
+    console.print(
+        f"  • Theoretical R0: [bold green]{result.theoretical_r0:.3f}[/bold green]"
+    )
+    console.print(
+        f"  • Simulated/Empirical R0: [bold yellow]{result.empirical_r0:.3f}[/bold yellow]"
+    )
+    console.print(
+        f"  • Total Compromised Nodes: {len(result.nodes_infected)} ({len(result.nodes_infected)/len(network)*100:.1f}%)"
+    )
 
     # Render step table
     tbl = Table(title="Simulation Timeline", header_style="bold magenta")
@@ -3536,8 +3557,9 @@ def contagion_plan(
     ),
 ) -> None:
     """Design quarantine cuts to contain compromise."""
-    from crucible.contagion.planner import QuarantinePlanner
     from rich.table import Table
+
+    from crucible.contagion.planner import QuarantinePlanner
 
     try:
         network = _build_network(network_type, nodes, hubs, spokes)
@@ -3549,12 +3571,18 @@ def contagion_plan(
 
     if source and sink:
         if source not in network or sink not in network:
-            console.print(f"[red]Error: source '{source}' and sink '{sink}' must exist in the network.[/red]")
+            console.print(
+                f"[red]Error: source '{source}' and sink '{sink}' must exist in the network.[/red]"
+            )
             raise typer.Exit(code=1)
-        console.print(f"[bold cyan]Quarantine Goal: Isolate Source '{source}' from Sink '{sink}'[/bold cyan]")
+        console.print(
+            f"[bold cyan]Quarantine Goal: Isolate Source '{source}' from Sink '{sink}'[/bold cyan]"
+        )
         cuts = planner.plan_min_cut(source, sink)
     else:
-        console.print("[bold cyan]Quarantine Goal: Reduce R0 < 1.0 (Herd Immunity/Cascading Containment)[/bold cyan]")
+        console.print(
+            "[bold cyan]Quarantine Goal: Reduce R0 < 1.0 (Herd Immunity/Cascading Containment)[/bold cyan]"
+        )
         cuts = planner.plan_centrality_cuts(beta, duration)
 
     console.print(f"  • Total recommended edge cuts: {len(cuts)}")
@@ -3568,9 +3596,13 @@ def contagion_plan(
         for u, v in cuts:
             tbl.add_row(u, "⇹ (cut)", v)
         console.print(tbl)
-        console.print("\n[yellow]⚠️  Implementing these cuts will drop network connectivity below containment threshold.[/yellow]")
+        console.print(
+            "\n[yellow]⚠️  Implementing these cuts will drop network connectivity below containment threshold.[/yellow]"
+        )
     else:
-        console.print("[green]✓ No cuts recommended. Network R0 is already below containment threshold.[/green]")
+        console.print(
+            "[green]✓ No cuts recommended. Network R0 is already below containment threshold.[/green]"
+        )
 
 
 # =============================================================================
@@ -3608,15 +3640,19 @@ def ebpf_start(
     ),
 ) -> None:
     """Start the eBPF sidecar monitoring agent process."""
+
     from crucible.ebpf.controller import EbpfController, EbpfEvent
-    from rich.table import Table
 
     controller = EbpfController(target_pid=pid)
 
     if controller.is_linux_active():
-        console.print("[bold green]✓ eBPF Kernel Probe active.[/bold green] Monitoring syscalls...")
+        console.print(
+            "[bold green]✓ eBPF Kernel Probe active.[/bold green] Monitoring syscalls..."
+        )
     else:
-        console.print("[yellow]⚠️  eBPF BCC library not available or not on Linux.[/yellow]")
+        console.print(
+            "[yellow]⚠️  eBPF BCC library not available or not on Linux.[/yellow]"
+        )
         console.print("[cyan]ℹ Running in High-Fidelity eBPF Simulator Mode...[/cyan]")
 
     if pid:
@@ -3639,7 +3675,9 @@ def ebpf_start(
     except KeyboardInterrupt:
         console.print("\n[yellow]Monitoring stopped by user.[/yellow]")
 
-    console.print(f"\n[bold magenta]Monitoring completed. Total events received: {len(events_received)}[/bold magenta]")
+    console.print(
+        f"\n[bold magenta]Monitoring completed. Total events received: {len(events_received)}[/bold magenta]"
+    )
 
 
 # =============================================================================
@@ -3689,14 +3727,15 @@ def boundary_scan(
 ) -> None:
     """Scan a prompt's embedding boundary by injecting noise and measuring response entropy."""
     import httpx
+    from rich.table import Table
+
     from crucible.boundary.noise import NoiseMode
     from crucible.boundary.scanner import BoundaryScanner
-    from crucible.boundary.entropy import EntropyAnalyzer
-    from rich.table import Table
 
     # Build model_fn
     if endpoint:
-        def model_fn(p: str) -> str:  # type: ignore[misc]
+
+        def model_fn(p: str) -> str:
             try:
                 resp = httpx.post(
                     endpoint,
@@ -3708,8 +3747,10 @@ def boundary_scan(
                 return data.get("response") or data.get("text") or str(data)
             except Exception as exc:
                 return f"[error: {exc}]"
+
     else:
-        def model_fn(p: str) -> str:  # type: ignore[misc]
+
+        def model_fn(p: str) -> str:
             # Echo stub — returns first 6 words
             return " ".join(p.split()[:6])
 
@@ -3722,15 +3763,21 @@ def boundary_scan(
     run_all = mode.lower() == "all"
 
     if run_all:
-        console.print(f"\n[bold]Boundary Scan[/bold] — all modes | intensity={intensity:.2f} | variants={variants}")
+        console.print(
+            f"\n[bold]Boundary Scan[/bold] — all modes | intensity={intensity:.2f} | variants={variants}"
+        )
         results = scanner.scan_all_modes(prompt, intensity=intensity)
     else:
         try:
             noise_mode = NoiseMode(mode)
         except ValueError:
-            console.print(f"[red]Unknown noise mode '{mode}'. Valid modes: {', '.join(m.value for m in NoiseMode)}, all[/red]")
+            console.print(
+                f"[red]Unknown noise mode '{mode}'. Valid modes: {', '.join(m.value for m in NoiseMode)}, all[/red]"
+            )
             raise typer.Exit(code=1)
-        console.print(f"\n[bold]Boundary Scan[/bold] — mode={mode} | intensity={intensity:.2f} | variants={variants}")
+        console.print(
+            f"\n[bold]Boundary Scan[/bold] — mode={mode} | intensity={intensity:.2f} | variants={variants}"
+        )
         results = [scanner.scan(prompt, mode=noise_mode, intensity=intensity)]
 
     tbl = Table(title="Boundary Scan Results", header_style="bold magenta")
@@ -3741,7 +3788,11 @@ def boundary_scan(
     tbl.add_column("Status", justify="center")
 
     for result in results:
-        status = "[bold red]⚠ NEAR BOUNDARY[/bold red]" if result.near_boundary else "[green]✓ STABLE[/green]"
+        status = (
+            "[bold red]⚠ NEAR BOUNDARY[/bold red]"
+            if result.near_boundary
+            else "[green]✓ STABLE[/green]"
+        )
         tbl.add_row(
             result.noise_mode.value,
             f"{result.entropy.lexical_entropy:.3f}",
@@ -3754,10 +3805,16 @@ def boundary_scan(
 
     near = [r for r in results if r.near_boundary]
     if near:
-        console.print(f"\n[bold red]⚠  {len(near)} mode(s) indicate proximity to decision boundary![/bold red]")
-        console.print("[yellow]Consider hardening the model's robustness in these injection dimensions.[/yellow]")
+        console.print(
+            f"\n[bold red]⚠  {len(near)} mode(s) indicate proximity to decision boundary![/bold red]"
+        )
+        console.print(
+            "[yellow]Consider hardening the model's robustness in these injection dimensions.[/yellow]"
+        )
     else:
-        console.print("\n[green]✓ No boundary proximity detected across tested modes.[/green]")
+        console.print(
+            "\n[green]✓ No boundary proximity detected across tested modes.[/green]"
+        )
 
 
 # =============================================================================
@@ -3777,10 +3834,16 @@ app.add_typer(exchange_app, name="exchange")
 @exchange_app.command("push")
 def exchange_push(
     prompt: str = typer.Option(
-        ..., "--prompt", "-p", help="Raw prompt text (will be SHA-256 hashed before transmission)."
+        ...,
+        "--prompt",
+        "-p",
+        help="Raw prompt text (will be SHA-256 hashed before transmission).",
     ),
     endpoint: str = typer.Option(
-        ..., "--endpoint", "-e", help="Raw model endpoint URL (will be hashed before transmission)."
+        ...,
+        "--endpoint",
+        "-e",
+        help="Raw model endpoint URL (will be hashed before transmission).",
     ),
     threat_type: str = typer.Option(
         "prompt_injection", "--type", "-t", help="Threat category label."
@@ -3788,9 +3851,7 @@ def exchange_push(
     severity: str = typer.Option(
         "medium", "--severity", "-s", help="Severity: low | medium | high | critical."
     ),
-    tags: str = typer.Option(
-        "", "--tags", help="Comma-separated tag list."
-    ),
+    tags: str = typer.Option("", "--tags", help="Comma-separated tag list."),
     node: str = typer.Option(
         "http://localhost:8765", "--node", "-n", help="Exchange node URL."
     ),
@@ -3816,14 +3877,18 @@ def exchange_push(
         raise typer.Exit(code=1)
 
     console.print(f"\n[bold]Threat Exchange Push[/bold] → {node}")
-    console.print(f"  • Type: [cyan]{threat_type}[/cyan]  Severity: [red]{severity}[/red]")
+    console.print(
+        f"  • Type: [cyan]{threat_type}[/cyan]  Severity: [red]{severity}[/red]"
+    )
     console.print(f"  • Payload hash: [dim]{record.payload_hash[:16]}…[/dim]")
     console.print(f"  • Endpoint hash: [dim]{record.endpoint_hash[:16]}…[/dim]")
 
     client = ExchangeClient(base_url=node)
     try:
         result = client.push(record)
-        console.print(f"[bold green]✓ Record pushed.[/bold green] Server response: {result}")
+        console.print(
+            f"[bold green]✓ Record pushed.[/bold green] Server response: {result}"
+        )
     except Exception as exc:
         console.print(f"[red]Push failed: {exc}[/red]")
         raise typer.Exit(code=1)
@@ -3831,14 +3896,19 @@ def exchange_push(
 
 @exchange_app.command("pull")
 def exchange_pull(
-    threat_type: str = typer.Option(None, "--type", "-t", help="Filter by threat type."),
+    threat_type: str = typer.Option(
+        None, "--type", "-t", help="Filter by threat type."
+    ),
     severity: str = typer.Option(None, "--severity", "-s", help="Filter by severity."),
     limit: int = typer.Option(50, "--limit", "-l", help="Maximum records to retrieve."),
-    node: str = typer.Option("http://localhost:8765", "--node", "-n", help="Exchange node URL."),
+    node: str = typer.Option(
+        "http://localhost:8765", "--node", "-n", help="Exchange node URL."
+    ),
 ) -> None:
     """Pull threat records from an exchange node."""
-    from crucible.exchange.client import ExchangeClient
     from rich.table import Table
+
+    from crucible.exchange.client import ExchangeClient
 
     client = ExchangeClient(base_url=node)
     console.print(f"\n[bold]Threat Exchange Pull[/bold] ← {node}")
@@ -3874,7 +3944,9 @@ def exchange_pull(
 
 @exchange_app.command("status")
 def exchange_status(
-    node: str = typer.Option("http://localhost:8765", "--node", "-n", help="Exchange node URL."),
+    node: str = typer.Option(
+        "http://localhost:8765", "--node", "-n", help="Exchange node URL."
+    ),
 ) -> None:
     """Check health status of the exchange node."""
     from crucible.exchange.client import ExchangeClient
@@ -3888,8 +3960,3 @@ def exchange_status(
     except Exception as exc:
         console.print(f"[bold red]✗ Exchange node unreachable[/bold red]: {exc}")
         raise typer.Exit(code=1)
-
-
-
-
-

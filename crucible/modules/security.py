@@ -11,6 +11,7 @@ from crucible.attacks.hallucination import ALL_HALLUCINATION_ATTACKS
 from crucible.attacks.infrastructure_escalation import (
     ALL_INFRASTRUCTURE_ESCALATION_ATTACKS,
 )
+from crucible.attacks.inter_agent_trust import ALL_INTER_AGENT_TRUST_ATTACKS
 from crucible.attacks.jailbreaks import ALL_JAILBREAK_ATTACKS
 from crucible.attacks.mcp_attacks import (
     MCPSchemaInjectionAttack,
@@ -20,7 +21,6 @@ from crucible.attacks.memory_poisoning import ALL_MEMORY_POISONING_ATTACKS
 from crucible.attacks.prompt_injection import ALL_PROMPT_INJECTION_ATTACKS
 from crucible.attacks.tool_injection import ALL_TOOL_INJECTION_ATTACKS
 from crucible.attacks.toxicity import ALL_TOXICITY_ATTACKS
-from crucible.attacks.inter_agent_trust import ALL_INTER_AGENT_TRUST_ATTACKS
 from crucible.models import AttackCategory
 from crucible.modules.base import BaseModule
 
@@ -157,7 +157,7 @@ class AgenticSecurityModule(BaseModule):
     category = AttackCategory.PROMPT_INJECTION
 
     def get_attacks(self) -> list[BaseAttack]:
-        return [cls() for cls in ALL_AGENTIC_ATTACKS]
+        return [cls() for cls in ALL_AGENTIC_ATTACKS]  # type: ignore[abstract]
 
 
 class BrowserAgentModule(BaseModule):
@@ -210,7 +210,7 @@ class InterAgentTrustModule(BaseModule):
     category = AttackCategory.EXCESSIVE_AGENCY
 
     def get_attacks(self) -> list[BaseAttack]:
-        return [cls() for cls in ALL_INTER_AGENT_TRUST_ATTACKS]
+        return [cls() for cls in ALL_INTER_AGENT_TRUST_ATTACKS]  # type: ignore[abstract]
 
 
 ALL_SECURITY_MODULES: list[type[BaseModule]] = [

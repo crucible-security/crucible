@@ -9,8 +9,11 @@ v0.16.0 — Phase 18 Crucible Embedding Boundary Mapping
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Sequence
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 @dataclass
@@ -84,7 +87,9 @@ class EntropyAnalyzer:
         unique_count = len({r.strip().lower() for r in resp_list})
 
         # Composite boundary proximity (equal-weighted average of 3 signals)
-        boundary_proximity = (lexical_entropy / 10.0 + response_variance + flip_rate) / 3.0
+        boundary_proximity = (
+            lexical_entropy / 10.0 + response_variance + flip_rate
+        ) / 3.0
         boundary_proximity = min(1.0, max(0.0, boundary_proximity))
 
         return EntropyResult(

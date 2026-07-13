@@ -7,8 +7,8 @@ import pytest
 import respx
 
 from crucible.attacks.base import BaseAttack
-from crucible.models import AttackCategory, Finding, Severity, AgentTarget, ScanResult
-from crucible.core.runner import run_scan
+from crucible.models import AgentTarget, AttackCategory, Finding, Severity
+
 
 class _DummyAttack(BaseAttack):
     name = "TEST-001"
@@ -23,7 +23,9 @@ class _DummyAttack(BaseAttack):
 @pytest.mark.anyio
 async def test_generator_prompt_template_renders() -> None:
     """Generator prompt template renders without error for all attack categories."""
-    from crucible.attacks.generator_prompt import GENERATOR_SYSTEM_PROMPT, GENERATOR_USER_TEMPLATE
+    from crucible.attacks.generator_prompt import (
+        GENERATOR_USER_TEMPLATE,
+    )
 
     for cat in AttackCategory:
         # Render prompt with dummy values
@@ -44,14 +46,10 @@ async def test_generator_prompt_template_renders() -> None:
 async def test_generate_dynamic_payloads_returns_list() -> None:
     """generate_dynamic_payloads() returns a list of strings."""
     attack = _DummyAttack()
-    
+
     # Mock successful JSON array response
     respx.post("http://localhost:11434/api/chat").respond(
-        json={
-            "message": {
-                "content": '["dynamic payload A", "dynamic payload B"]'
-            }
-        }
+        json={"message": {"content": '["dynamic payload A", "dynamic payload B"]'}}
     )
 
     payloads = await attack.generate_dynamic_payloads(
@@ -68,15 +66,11 @@ async def test_generate_dynamic_payloads_returns_list() -> None:
 async def test_generate_dynamic_payloads_count_respected() -> None:
     """Returns at most {count} payloads."""
     attack = _DummyAttack()
-    
+
     # Even if generator returns more than count, generator_user_template asks for count.
     # We will verify the user prompt passes the correct count.
     respx.post("http://localhost:11434/api/chat").respond(
-        json={
-            "message": {
-                "content": '["p1", "p2", "p3"]'
-            }
-        }
+        json={"message": {"content": '["p1", "p2", "p3"]'}}
     )
 
     payloads = await attack.generate_dynamic_payloads(
@@ -94,7 +88,7 @@ async def test_generate_dynamic_payloads_count_respected() -> None:
 async def test_generate_dynamic_payloads_graceful_failure() -> None:
     """Returns [] if generator endpoint unreachable — no exception."""
     attack = _DummyAttack()
-    
+
     # Simulate network error
     respx.post("http://localhost:11434/api/chat").mock(
         side_effect=httpx.ConnectError("Connection refused")
@@ -115,14 +109,10 @@ async def test_generate_dynamic_payloads_no_duplicates_with_static() -> None:
     """Deduplication ensures dynamic payloads do not duplicate static ones."""
     # We test this inside execute() where deduplication happens
     attack = _DummyAttack()
-    
+
     # Generator returns one duplicate ("static payload 1") and one new one ("new dynamic 1")
     respx.post("http://localhost:11434/api/chat").respond(
-        json={
-            "message": {
-                "content": '["static payload 1", "new dynamic 1"]'
-            }
-        }
+        json={"message": {"content": '["static payload 1", "new dynamic 1"]'}}
     )
 
     # Mock the target endpoint as well
@@ -167,13 +157,9 @@ async def test_generate_dynamic_payloads_no_duplicates_with_static() -> None:
 async def test_static_payloads_always_run_first() -> None:
     """In --dynamic mode, static findings appear before dynamic findings."""
     attack = _DummyAttack()
-    
+
     respx.post("http://localhost:11434/api/chat").respond(
-        json={
-            "message": {
-                "content": '["dynamic 1", "dynamic 2"]'
-            }
-        }
+        json={"message": {"content": '["dynamic 1", "dynamic 2"]'}}
     )
     respx.post("http://localhost:9999/api/chat").respond(
         json={"message": {"content": "Refused"}}
@@ -198,7 +184,12 @@ async def test_static_payloads_always_run_first() -> None:
 
     assert len(findings) == 4
     # Sources should be ordered: static, static, dynamic, dynamic
-    assert [f.payload_source for f in findings] == ["static", "static", "dynamic", "dynamic"]
+    assert [f.payload_source for f in findings] == [
+        "static",
+        "static",
+        "dynamic",
+        "dynamic",
+    ]
     assert [f.payload_index for f in findings] == [0, 1, 0, 1]
 
 

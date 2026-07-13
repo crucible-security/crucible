@@ -111,7 +111,19 @@ select = [
     "TCH", # flake8-type-checking
     "RUF", # ruff-specific
 ]
-ignore = ["E501", "RUF001", "B008", "RUF012", "SIM110"]  # line length handled by black, RUF001 intentional for bypass tests, B008 common in typer
+ignore = [
+    "E501",    # line length handled by black
+    "RUF001",  # intentional Unicode in bypass-test prompts
+    "B008",    # common Typer default= pattern
+    "RUF012",  # mutable class vars in Pydantic models
+    "SIM110",  # comprehension style — readability preference
+    "B904",    # raise in except — typer.Exit(code=1) is not exception chaining
+    "N802",    # uppercase in test function names (grade letter in name e.g. grade_A)
+    "SIM102",  # nested-if readability preference in hot-path simulation loops
+    "SIM103",  # return negated condition — readability preference
+    "E741",    # ambiguous var `l` in variance formula (math convention)
+    "RUF002",  # en-dash in docstrings — intentional for readability
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["crucible"]
@@ -164,7 +176,8 @@ module = [
     "fastapi.*",
     "fastapi",
     "uvicorn",
-    "jmespath"
+    "jmespath",
+    "yaml",
 ]
 ignore_missing_imports = true
 
@@ -183,3 +196,14 @@ warn_unused_ignores = false
 [[tool.mypy.overrides]]
 module = "crucible.core.api"
 disable_error_code = ["misc", "untyped-decorator"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disable_error_code = ["abstract", "arg-type", "misc", "assignment", "type-arg", "unused-ignore"]
+
+[[tool.mypy.overrides]]
+module = "crucible.trace.policy"
+disable_error_code = ["unused-ignore"]
+

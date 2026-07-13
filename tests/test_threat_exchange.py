@@ -9,17 +9,14 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from typing import Any
-from unittest.mock import patch
 
+import httpx
 import pytest
 import respx
-import httpx
 
-from crucible.exchange.privacy import PrivacyLayer
 from crucible.exchange.client import ExchangeClient, ThreatRecord
+from crucible.exchange.privacy import PrivacyLayer
 from crucible.exchange.server import ExchangeServer
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -60,6 +57,7 @@ def sample_record(privacy) -> ThreatRecord:
 # PrivacyLayer tests
 # ---------------------------------------------------------------------------
 
+
 class TestPrivacyLayer:
     def test_hash_payload_is_sha256(self, privacy):
         text = "hello world"
@@ -81,7 +79,9 @@ class TestPrivacyLayer:
     def test_sanitize_endpoint_field_hashed(self, privacy):
         record = {"endpoint": "http://secret.api.com/v1/complete"}
         out = privacy.sanitize_dict(record)
-        assert out["endpoint"] == privacy.hash_payload("http://secret.api.com/v1/complete")
+        assert out["endpoint"] == privacy.hash_payload(
+            "http://secret.api.com/v1/complete"
+        )
 
     def test_sanitize_preserves_non_sensitive_fields(self, privacy):
         record = {"severity": "medium", "threat_type": "jailbreak"}
@@ -115,6 +115,7 @@ class TestPrivacyLayer:
 # ---------------------------------------------------------------------------
 # ThreatRecord tests
 # ---------------------------------------------------------------------------
+
 
 class TestThreatRecord:
     def test_build_record_hashes_prompt(self, privacy, sample_record):
@@ -155,8 +156,16 @@ class TestThreatRecord:
 
     def test_to_dict_contains_all_keys(self, sample_record):
         d = sample_record.to_dict()
-        for key in ("record_id", "threat_type", "severity", "payload_hash",
-                    "endpoint_hash", "tags", "metadata", "created_at"):
+        for key in (
+            "record_id",
+            "threat_type",
+            "severity",
+            "payload_hash",
+            "endpoint_hash",
+            "tags",
+            "metadata",
+            "created_at",
+        ):
             assert key in d
 
     def test_record_tags_preserved(self, sample_record):
@@ -167,6 +176,7 @@ class TestThreatRecord:
 # ---------------------------------------------------------------------------
 # ExchangeServer (in-memory SQLite) tests
 # ---------------------------------------------------------------------------
+
 
 class TestExchangeServer:
     def test_server_starts_empty(self, server):
@@ -265,11 +275,14 @@ class TestExchangeServer:
 # ExchangeClient (mocked HTTP) tests
 # ---------------------------------------------------------------------------
 
+
 class TestExchangeClient:
     @respx.mock
     def test_push_calls_post_endpoint(self, client, sample_record):
         route = respx.post("http://test-exchange.local/records").mock(
-            return_value=httpx.Response(200, json={"status": "ok", "id": sample_record.record_id})
+            return_value=httpx.Response(
+                200, json={"status": "ok", "id": sample_record.record_id}
+            )
         )
         result = client.push(sample_record)
         assert route.called
@@ -287,7 +300,9 @@ class TestExchangeClient:
     @respx.mock
     def test_health_check(self, client):
         route = respx.get("http://test-exchange.local/health").mock(
-            return_value=httpx.Response(200, json={"status": "healthy", "record_count": 42})
+            return_value=httpx.Response(
+                200, json={"status": "healthy", "record_count": 42}
+            )
         )
         result = client.health()
         assert route.called

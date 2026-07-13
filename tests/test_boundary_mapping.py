@@ -6,15 +6,11 @@ any external model API calls — a deterministic echo model is used throughout.
 
 from __future__ import annotations
 
-import math
-from typing import List
-
 import pytest
 
+from crucible.boundary.entropy import EntropyAnalyzer
 from crucible.boundary.noise import NoiseInjector, NoiseMode
-from crucible.boundary.entropy import EntropyAnalyzer, EntropyResult
 from crucible.boundary.scanner import BoundaryScanner, BoundaryScanResult
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -39,9 +35,11 @@ VARIED_RESPONSES = [
 @pytest.fixture()
 def echo_model():
     """A deterministic model that echoes back the first 5 words of the prompt."""
+
     def _model(prompt: str) -> str:
         words = prompt.split()
         return " ".join(words[:5]) if words else ""
+
     return _model
 
 
@@ -52,6 +50,7 @@ def varied_model():
 
     def _model(prompt: str) -> str:
         return next(responses, "No response.")
+
     return _model
 
 
@@ -68,6 +67,7 @@ def varied_scanner(varied_model) -> BoundaryScanner:
 # ---------------------------------------------------------------------------
 # NoiseInjector tests
 # ---------------------------------------------------------------------------
+
 
 class TestNoiseInjector:
     def test_char_swap_changes_text(self):
@@ -128,6 +128,7 @@ class TestNoiseInjector:
 # EntropyAnalyzer tests
 # ---------------------------------------------------------------------------
 
+
 class TestEntropyAnalyzer:
     def test_stable_responses_low_entropy(self):
         analyzer = EntropyAnalyzer()
@@ -173,7 +174,7 @@ class TestEntropyAnalyzer:
     def test_is_near_boundary_flag(self):
         analyzer = EntropyAnalyzer()
         stable = analyzer.analyze(STABLE_RESPONSES)
-        varied = analyzer.analyze(VARIED_RESPONSES)
+        analyzer.analyze(VARIED_RESPONSES)
         # Stable responses should not be near boundary
         assert stable.is_near_boundary is False
 
@@ -190,6 +191,7 @@ class TestEntropyAnalyzer:
 # ---------------------------------------------------------------------------
 # BoundaryScanner tests
 # ---------------------------------------------------------------------------
+
 
 class TestBoundaryScanner:
     def test_scan_returns_result(self, scanner):

@@ -1,0 +1,49 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.10, pytest-8.4.2, pluggy-1.6.0 -- /Library/Frameworks/Python.framework/Versions/3.12/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/runner/work/crucible/crucible
+configfile: pyproject.toml
+plugins: cov-5.0.0, anyio-4.14.2, asyncio-0.26.0, respx-0.23.1
+asyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 547 items / 1 error
+
+==================================== ERRORS ====================================
+___________________ ERROR collecting tests/test_dashboard.py ___________________
+ImportError while importing test module '/Users/runner/work/crucible/crucible/tests/test_dashboard.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/_pytest/python.py:498: in importtestmodule
+    mod = import_path(
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path
+    importlib.import_module(module_name)
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:935: in _load_unlocked
+    ???
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:186: in exec_module
+    exec(co, module.__dict__)
+tests/test_dashboard.py:14: in <module>
+    from crucible.dashboard.server import DashboardHTTPHandler
+E   ModuleNotFoundError: No module named 'crucible.dashboard'
+=============================== warnings summary ===============================
+../../../../../Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+--------- coverage: platform darwin, python 3.12.10-final-0 ----------
+Coverage XML written to file coverage.xml
+
+FAIL Required test coverage of 68.0% not reached. Total coverage: 31.46%
+=========================== short test summary info ============================
+ERROR tests/test_dashboard.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+========================= 1 warning, 1 error in 2.48s ==========================

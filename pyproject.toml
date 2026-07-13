@@ -207,3 +207,7 @@ disable_error_code = ["abstract", "arg-type", "misc", "assignment", "type-arg", 
 module = "crucible.trace.policy"
 disable_error_code = ["unused-ignore"]
 
+[[tool.mypy.overrides]]
+module = "crucible.modules.security"
+disable_error_code = ["unused-ignore"]
+

@@ -17,8 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-# A port to bind our test server to
-TEST_PORT = 18999
+# Use a dynamic port to avoid conflicts on any platform
 TEST_HOST = "127.0.0.1"
 
 
@@ -64,7 +63,9 @@ def test_dashboard_server(tmp_path_factory) -> Iterator[tuple[Path, str]]:
     DashboardHTTPHandler.scan_dir = scan_dir
     DashboardHTTPHandler.template_path = template_file
 
-    server = http.server.HTTPServer((TEST_HOST, TEST_PORT), DashboardHTTPHandler)
+    # Use port 0 — OS assigns a free port, avoids conflicts on any platform
+    server = http.server.HTTPServer((TEST_HOST, 0), DashboardHTTPHandler)
+    actual_port = server.server_address[1]
 
     # Run server in thread
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -73,7 +74,7 @@ def test_dashboard_server(tmp_path_factory) -> Iterator[tuple[Path, str]]:
     # Wait for server to start
     time.sleep(0.5)
 
-    yield scan_dir, f"http://{TEST_HOST}:{TEST_PORT}"
+    yield scan_dir, f"http://{TEST_HOST}:{actual_port}"
 
     # Shutdown server
     server.shutdown()

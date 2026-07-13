@@ -37,7 +37,15 @@ jobs:
         run: ruff check crucible/ tests/
 
       - name: Mypy (type checking)
-        run: mypy crucible/ tests/
+        run: |
+          mypy crucible/ tests/ > mypy_output.txt 2>&1 || (cat mypy_output.txt && exit 1)
+
+      - name: Upload Mypy Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mypy-log-${{ matrix.python-version }}
+          path: mypy_output.txt
 
   test:
     name: Test Suite
@@ -61,7 +69,15 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run tests with coverage
-        run: pytest tests/ -v --cov=crucible --cov-report=xml
+        run: |
+          pytest tests/ -v --cov=crucible --cov-report=xml > pytest_output.txt 2>&1 || (cat pytest_output.txt && exit 2)
+
+      - name: Upload Pytest Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-log-${{ matrix.os }}-${{ matrix.python-version }}
+          path: pytest_output.txt
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'

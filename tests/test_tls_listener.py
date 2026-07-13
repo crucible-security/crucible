@@ -97,7 +97,7 @@ class _TLSProxyThread:
 
         self._thread = threading.Thread(target=_run, daemon=True)
         self._thread.start()
-        if not _wait_for_tls_port(self._proxy.listen_port):
+        if not _wait_for_port(self._proxy.listen_port):
             raise RuntimeError(
                 f"TLS proxy failed to start on port {self._proxy.listen_port}"
             )

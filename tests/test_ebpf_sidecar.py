@@ -1,8 +1,8 @@
 """tests/test_ebpf_sidecar.py — Phase 17 eBPF Sidecar tests (v0.15.0)
 
 Tests run in simulator mode on all platforms (including Windows/macOS).
-Linux-only BCC integration tests are marked with @pytest.mark.linux_only
-and are skipped automatically on non-Linux systems.
+Linux-only BCC integration tests are marked with ``linux_bcc`` and are skipped
+when not on Linux **or** when the optional ``bcc`` package is not installed.
 """
 
 from __future__ import annotations
@@ -319,16 +319,18 @@ class TestSimulatorMode:
 # Linux-only marker tests (skipped on non-Linux)
 # ---------------------------------------------------------------------------
 
-linux_only = pytest.mark.skipif(
-    not sys.platform.startswith("linux"),
-    reason="Requires Linux kernel with BCC eBPF support",
+linux_bcc = pytest.mark.skipif(
+    (not sys.platform.startswith("linux")) or (not BCC_AVAILABLE),
+    reason="Requires Linux kernel with BCC eBPF support installed",
 )
 
 
-@linux_only
+@linux_bcc
 class TestLinuxBCCIntegration:
     """These tests only run on Linux with BCC installed.
-    On Windows/macOS they are automatically skipped.
+
+    GitHub-hosted Linux runners do not ship BCC by default, so the suite must
+    skip (not fail) when the optional import is unavailable.
     """
 
     def test_bcc_available_on_linux(self, controller):

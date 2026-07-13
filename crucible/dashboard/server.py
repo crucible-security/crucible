@@ -1,8 +1,9 @@
-import os
-import json
 import http.server
+import json
+import os
 import urllib.parse
 from pathlib import Path
+
 
 class DashboardHTTPHandler(http.server.SimpleHTTPRequestHandler):
     scan_dir: Path = Path(".")
@@ -19,22 +20,26 @@ class DashboardHTTPHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             try:
                 scans = []
-                for p in sorted(self.scan_dir.glob("*.json"), key=os.path.getmtime, reverse=True):
+                for p in sorted(
+                    self.scan_dir.glob("*.json"), key=os.path.getmtime, reverse=True
+                ):
                     # Quick validate if it looks like a scan result JSON
                     try:
                         data = json.loads(p.read_text(encoding="utf-8"))
                         if isinstance(data, dict) and "target" in data:
-                            scans.append({
-                                "filename": p.name,
-                                "target": data["target"].get("name", "unknown"),
-                                "overall_score": data.get("overall_score", 0.0),
-                                "grade": data.get("grade", "F"),
-                                "timestamp": data.get("started_at", ""),
-                                "total_findings": sum(
-                                    len(m.get("findings", []))
-                                    for m in data.get("modules", [])
-                                )
-                            })
+                            scans.append(
+                                {
+                                    "filename": p.name,
+                                    "target": data["target"].get("name", "unknown"),
+                                    "overall_score": data.get("overall_score", 0.0),
+                                    "grade": data.get("grade", "F"),
+                                    "timestamp": data.get("started_at", ""),
+                                    "total_findings": sum(
+                                        len(m.get("findings", []))
+                                        for m in data.get("modules", [])
+                                    ),
+                                }
+                            )
                     except Exception:
                         continue
                 self.wfile.write(json.dumps(scans).encode("utf-8"))
@@ -44,10 +49,14 @@ class DashboardHTTPHandler(http.server.SimpleHTTPRequestHandler):
 
         # API: fetch single scan content
         if path.startswith("/api/scan/"):
-            filename = path[len("/api/scan/"):]
+            filename = path[len("/api/scan/") :]
             # Safe path traversal check
             target_file = (self.scan_dir / filename).resolve()
-            if not target_file.is_file() or not target_file.name.endswith(".json") or not target_file.is_relative_to(self.scan_dir.resolve()):
+            if (
+                not target_file.is_file()
+                or not target_file.name.endswith(".json")
+                or not target_file.is_relative_to(self.scan_dir.resolve())
+            ):
                 self.send_response(404)
                 self.end_headers()
                 return

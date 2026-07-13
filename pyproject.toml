@@ -178,6 +178,8 @@ module = [
     "uvicorn",
     "jmespath",
     "yaml",
+    "bcc",
+    "bcc.*",
 ]
 ignore_missing_imports = true
 
@@ -211,3 +213,7 @@ disable_error_code = ["unused-ignore"]
 module = "crucible.modules.security"
 disable_error_code = ["unused-ignore"]
 
+[[tool.mypy.overrides]]
+module = "crucible.ebpf.controller"
+# Linux-only optional module with conditional BCC imports — suppress cross-platform type issues
+disable_error_code = ["name-defined", "misc", "unused-ignore", "assignment"]

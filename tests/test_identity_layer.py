@@ -17,7 +17,6 @@ import json
 import textwrap
 from typing import TYPE_CHECKING
 
-import anyio
 import pytest
 
 if TYPE_CHECKING:
@@ -310,7 +309,6 @@ def test_identity_store_record_and_read(tmp_path: Path) -> None:
         request_id="aabbccdd-0000-0000-0000-000000000001",
     )
 
-    anyio.from_thread.run_sync = None  # not needed — use sync directly
     # Use sync internal method to avoid spinning up an event loop in this test
     store._append_record(record.agent_id, record.model_dump_json())
 

@@ -444,4 +444,4 @@ generate_huntr_reports.py
 generate_openwebui_report.py
 
 # ── Crucible: dashboard / unfinished internal tooling ────────────────────────
-dashboard/
+/dashboard/

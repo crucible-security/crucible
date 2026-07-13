@@ -1,0 +1,66 @@
+name: AI Agent Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: "0 2 * * *"
+
+permissions:
+  contents: read
+  security-events: write   # Required for SARIF upload to GitHub Code Scanning
+
+jobs:
+  crucible-scan:
+    name: Crucible Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ── Basic Scan (OpenAI-compatible endpoint) ──────────────────────────
+      - name: Run Crucible Security Scan
+        id: crucible
+        uses: crucible-security/crucible@v0.11.0
+        with:
+          target: ${{ secrets.AGENT_URL }}
+          format_preset: openai
+          model: gpt-4o
+          headers: '{"Authorization": "Bearer ${{ secrets.OPENAI_API_KEY }}"}'
+          fail_on_grade: C          # Fail workflow if grade is C, D, or F
+          upload_artifact: "true"
+          artifact_name: "crucible-scan-${{ github.run_number }}"
+
+      # ── Surface outputs in workflow logs ─────────────────────────────────
+      - name: Report scan results
+        run: |
+          echo "Security Grade : ${{ steps.crucible.outputs.grade }}"
+          echo "Security Score : ${{ steps.crucible.outputs.score }}"
+          echo "Failed Findings: ${{ steps.crucible.outputs.failed_count }}"
+          echo "Total Findings : ${{ steps.crucible.outputs.total_count }}"
+
+      # ── Upload SARIF to GitHub Code Scanning ─────────────────────────────
+      - name: Generate SARIF report
+        if: always()
+        run: |
+          pip install crucible-security --quiet
+          crucible report \
+            --input /tmp/crucible_report.json \
+            --output crucible.sarif \
+            --format sarif
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: crucible.sarif
+          category: crucible-security

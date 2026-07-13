@@ -254,6 +254,25 @@ Add to your CI/CD in 3 lines:
 - run: crucible scan --target ${{ secrets.AGENT_URL }} --fail-on CRITICAL
 ```
 
+## GitHub Action
+
+[![Crucible Security Agent Scan](https://github.com/crucible-security/agent-scan-action/actions/workflows/security.yml/badge.svg)](https://github.com/crucible-security/agent-scan-action)
+
+We also provide the official **Crucible Security Agent Scan** GitHub Action. It integrates directly into your workflows to run automated security audits, surface interactive Markdown reports, upload SARIF findings to GitHub Code Scanning, and enforce grade-based merge blocking.
+
+### Usage Example
+
+```yaml
+- name: Crucible Security Scan
+  uses: crucible-security/agent-scan-action@v0.11.0
+  with:
+    target: ${{ secrets.AGENT_URL }}
+    format_preset: openai
+    model: gpt-4o
+    headers: '{"Authorization": "Bearer ${{ secrets.OPENAI_API_KEY }}"}'
+    fail_on_grade: C # Fails workflow if grade is C, D, or F
+```
+
 ## Architecture
 
 ```

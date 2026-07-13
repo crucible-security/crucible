@@ -272,7 +272,7 @@ def scan(
     format: str = typer.Option(
         "table",
         "--format",
-        help="Output format: table | json | html | huntr | sarif.",
+        help="Output format: table | json | html | huntr | sarif | stix.",
     ),
     verbose: bool = typer.Option(
         False,
@@ -541,10 +541,14 @@ def scan(
 
             if dynamic_payloads:
                 if format not in ["json", "html"] and not quiet:
+                    # Estimate ratio: dynamic_count vs typical static payload count (~20)
+                    _static_est = 20
+                    _ratio = round(dynamic_count / _static_est, 1)
                     console.print(
-                        f"[yellow]⚠ Dynamic payload generation enabled: generating {dynamic_count} novel\n"
-                        f" variants per module using {generator_model or 'generator'}. This will increase scan time.\n"
-                        f" Static payloads run first for deterministic baseline coverage.[/yellow]\n"
+                        f"[yellow]⚠ Dynamic payload generation enabled: generating {dynamic_count}\n"
+                        f" novel variants per module using {generator_model or 'llama3.2'}.\n"
+                        f" Static payloads always run first for deterministic baseline.\n"
+                        f" This will increase scan time approximately {_ratio}x.[/yellow]\n"
                     )
 
             from crucible.core.runner import _PreflightError
@@ -675,6 +679,11 @@ def _render_output(
         sarif_reporter = SARIFReporter()
         if not output:
             sys.stdout.write(sarif_reporter.to_json(result) + "\n")
+    elif format == "stix":
+        from crucible.reporters.stix_reporter import STIXReporter
+        stix_reporter = STIXReporter()
+        if not output:
+            sys.stdout.write(stix_reporter.to_json(result) + "\n")
     elif format == "huntr":
         from crucible.reporters.huntr_reporter import HuntrReporter
 
@@ -696,6 +705,10 @@ def _render_output(
         if format == "sarif" or output.suffix == ".sarif":
             s_reporter = SARIFReporter()
             saved = s_reporter.write(result, output)
+        elif format == "stix" or output.suffix == ".stix":
+            from crucible.reporters.stix_reporter import STIXReporter
+            st_reporter = STIXReporter()
+            saved = st_reporter.write(result, output)
         elif format == "html" or output.suffix == ".html":
             h_reporter = HTMLReporter()
             saved = h_reporter.write(result, output)
@@ -703,7 +716,7 @@ def _render_output(
             j_reporter = JSONReporter()
             saved = j_reporter.write(result, output)
 
-        if format not in ["json", "html", "sarif"]:
+        if format not in ["json", "html", "sarif", "stix"]:
             console.print(f"[green]Report saved to {saved}[/green]")
 
 
@@ -723,7 +736,7 @@ def report(
     format: str = typer.Option(
         "table",
         "--format",
-        help="Output format: table | json | html | huntr.",
+        help="Output format: table | json | html | huntr | stix.",
     ),
 ) -> None:
     if not path.exists():
@@ -3137,3 +3150,746 @@ def identity_clear(
             f"[yellow]No log found for agent '{agent_id}'.[/yellow]"
         )
         raise typer.Exit(1)
+
+
+# =============================================================================
+# crucible fuzz — Contextual Gradient-Aware Fuzzing (CGAF) (v0.12.0)
+# =============================================================================
+
+fuzz_app = typer.Typer(
+    name="fuzz",
+    help="Contextual Gradient-Aware Fuzzing (CGAF) for AI agents.",
+    add_completion=False,
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+)
+app.add_typer(fuzz_app, name="fuzz")
+
+
+@fuzz_app.command("run")
+def fuzz_run(
+    target: str = typer.Argument(..., help="Target HTTP endpoint URL to fuzz."),
+    payload_file: Path | None = typer.Option(
+        None,
+        "--payloads",
+        "-p",
+        help="Path to JSON file containing strategy-to-payloads mapping. If omitted, default attack payloads will be used.",
+    ),
+    header: list[str] | None = typer.Option(
+        None,
+        "--header",
+        "-H",
+        help="Headers as 'Key: Value' (repeatable).",
+    ),
+    body_template: str = typer.Option(
+        _DEFAULT_BODY_TEMPLATE,
+        "--body",
+        "-b",
+        help="JSON body template with {payload} placeholder.",
+    ),
+    fitness_threshold: float = typer.Option(
+        0.8,
+        "--threshold",
+        "-t",
+        help="Fitness threshold [0.0, 1.0] for early stopping.",
+    ),
+    max_iterations: int = typer.Option(
+        100,
+        "--max-iterations",
+        "-i",
+        help="Maximum fuzzing iterations/rounds.",
+    ),
+    exploration: float = typer.Option(
+        1.414,
+        "--exploration",
+        "-e",
+        help="UCB1 exploration factor c.",
+    ),
+    seed: int | None = typer.Option(
+        None,
+        "--seed",
+        "-s",
+        help="RNG seed for reproducibility.",
+    ),
+    logprob_mode: bool = typer.Option(
+        False,
+        "--logprobs",
+        "-l",
+        help="Enable logprob entropy fitness scoring.",
+    ),
+    timeout: float = typer.Option(
+        30.0,
+        "--timeout",
+        help="HTTP request timeout in seconds.",
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Path to save the JSON fuzz report.",
+    ),
+) -> None:
+    """Run a contextual gradient-aware fuzzing session against the target agent."""
+    from crucible.core.fuzzer import run_fuzz_session
+    from rich.table import Table
+
+    parsed_headers = {}
+    if header:
+        for h in header:
+            if ":" in h:
+                k, v = h.split(":", 1)
+                parsed_headers[k.strip()] = v.strip()
+
+    if payload_file:
+        try:
+            with open(payload_file, encoding="utf-8") as f:
+                payloads = json.load(f)
+            if not isinstance(payloads, dict):
+                raise ValueError("Payload file must be a JSON object mapping strategies to lists of strings.")
+        except Exception as exc:
+            console.print(f"[red]Error reading payload file: {exc}[/red]")
+            raise typer.Exit(code=1)
+    else:
+        # construct default payloads from modules
+        from crucible.modules.security import get_all_modules
+        payloads = {}
+        for mod in get_all_modules():
+            mod_payloads = []
+            for attack in mod.get_attacks():
+                mod_payloads.extend(attack.get_payloads())
+            if mod_payloads:
+                payloads[mod.name] = mod_payloads
+
+    if not payloads:
+        console.print("[red]No fuzzing payloads could be loaded.[/red]")
+        raise typer.Exit(code=1)
+
+    console.print(f"[cyan]Fuzzing target: {target}[/cyan]")
+    console.print(f"  • Strategy count: {len(payloads)}")
+    console.print(f"  • Max iterations: {max_iterations}")
+    console.print(f"  • Fitness threshold: {fitness_threshold}")
+    console.print(f"  • Logprob mode: {logprob_mode}")
+
+    result = run_fuzz_session(
+        target=target,
+        payloads=payloads,
+        headers=parsed_headers,
+        body_template=body_template,
+        fitness_threshold=fitness_threshold,
+        max_iterations=max_iterations,
+        exploration=exploration,
+        seed=seed,
+        logprob_mode=logprob_mode,
+        timeout=int(timeout),
+    )
+
+    tbl = Table(title="CGAF Fuzzing Strategy Performance", header_style="bold magenta")
+    tbl.add_column("Strategy (Arm)", style="cyan")
+    tbl.add_column("Visits", style="bold")
+    tbl.add_column("Mean Reward (Q-value)", style="green")
+    tbl.add_column("Bypasses Found", style="red")
+
+    for arm in sorted(result.arm_results, key=lambda a: a.q_value, reverse=True):
+        tbl.add_row(
+            arm.strategy_name,
+            str(arm.visit_count),
+            f"{arm.q_value:.4f}",
+            str(arm.bypasses_found),
+        )
+    console.print(tbl)
+
+    if result.early_stopped:
+        console.print(f"\n[green]✓ Early stopped: {result.stop_reason}[/green]")
+    else:
+        console.print(f"\n[yellow]Fuzzing session completed (max iterations reached)[/yellow]")
+
+    console.print(f"  • Best Strategy: [bold cyan]{result.best_strategy}[/bold cyan]")
+    console.print(f"  • Elapsed Time: {result.elapsed_seconds:.3f}s")
+
+    if output:
+        try:
+            output.parent.mkdir(parents=True, exist_ok=True)
+            with open(output, "w", encoding="utf-8") as f:
+                f.write(result.model_dump_json(indent=2))
+            console.print(f"[green]✓ Fuzz report saved to {output}[/green]")
+        except Exception as exc:
+            console.print(f"[red]Failed to save report: {exc}[/red]")
+
+
+# =============================================================================
+# crucible contagion — Cascading compromise and R0 simulation (v0.14.0)
+# =============================================================================
+
+contagion_app = typer.Typer(
+    name="contagion",
+    help="Simulate cascading agent compromise and plan network quarantines.",
+    add_completion=False,
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+)
+app.add_typer(contagion_app, name="contagion")
+
+
+def _build_network(network_type: str, nodes: int, hubs: int, spokes: int) -> dict[str, list[str]]:
+    from crucible.contagion.networks import (
+        star_network,
+        mesh_network,
+        hub_spoke_network,
+        chain_network,
+    )
+    if network_type == "star":
+        return star_network(nodes)
+    elif network_type == "mesh":
+        return mesh_network(nodes)
+    elif network_type == "hub-spoke":
+        return hub_spoke_network(hubs, spokes)
+    elif network_type == "chain":
+        return chain_network(nodes)
+    else:
+        raise ValueError(f"Unknown network type: {network_type}")
+
+
+@contagion_app.command("simulate")
+def contagion_simulate(
+    network_type: str = typer.Option(
+        "star",
+        "--type",
+        help="Topology type: star | mesh | hub-spoke | chain.",
+    ),
+    nodes: int = typer.Option(
+        10,
+        "--nodes",
+        "-n",
+        help="Number of nodes (for star, mesh, chain).",
+    ),
+    hubs: int = typer.Option(
+        3,
+        "--hubs",
+        help="Number of hubs (for hub-spoke).",
+    ),
+    spokes: int = typer.Option(
+        3,
+        "--spokes",
+        help="Spokes per hub (for hub-spoke).",
+    ),
+    beta: float = typer.Option(
+        0.3,
+        "--beta",
+        "-b",
+        help="Transmission probability per contact [0.0, 1.0].",
+    ),
+    duration: int = typer.Option(
+        3,
+        "--duration",
+        "-d",
+        help="Infectious duration (turns before quarantine/recovery).",
+    ),
+    patient_zero: str = typer.Option(
+        None,
+        "--patient-zero",
+        "-p",
+        help="Comma-separated patient zero node IDs. Defaults to 'hub' or first node.",
+    ),
+    seed: int | None = typer.Option(
+        None,
+        "--seed",
+        "-s",
+        help="Random seed for deterministic runs.",
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Save simulation results as JSON.",
+    ),
+) -> None:
+    """Run an R0 cascading compromise simulation."""
+    from crucible.contagion.engine import R0Simulator
+    from rich.table import Table
+
+    try:
+        network = _build_network(network_type, nodes, hubs, spokes)
+    except Exception as exc:
+        console.print(f"[red]Error building network: {exc}[/red]")
+        raise typer.Exit(code=1)
+
+    if patient_zero:
+        seeds = [s.strip() for s in patient_zero.split(",")]
+    else:
+        if network_type == "star":
+            seeds = ["hub"]
+        elif network_type == "hub-spoke":
+            seeds = ["hub_0"]
+        else:
+            seeds = [sorted(list(network.keys()))[0]]
+
+    # Ensure seeds exist in network
+    for s in seeds:
+        if s not in network:
+            console.print(f"[red]Patient zero seed '{s}' not found in network nodes.[/red]")
+            raise typer.Exit(code=1)
+
+    simulator = R0Simulator(network=network, beta=beta, duration=duration, seed=seed)
+    result = simulator.run(seeds)
+
+    console.print("[bold magenta]R0 Contagion Simulation Results[/bold magenta]")
+    console.print(f"  • Topology: [cyan]{network_type}[/cyan]")
+    console.print(f"  • Node Count: {len(network)}")
+    console.print(f"  • Transmission Probability (Beta): {beta}")
+    console.print(f"  • Infectious Duration: {duration} turns")
+    console.print(f"  • Mean Node Connection Degree: {result.mean_degree:.3f}")
+    console.print(f"  • Theoretical R0: [bold green]{result.theoretical_r0:.3f}[/bold green]")
+    console.print(f"  • Simulated/Empirical R0: [bold yellow]{result.empirical_r0:.3f}[/bold yellow]")
+    console.print(f"  • Total Compromised Nodes: {len(result.nodes_infected)} ({len(result.nodes_infected)/len(network)*100:.1f}%)")
+
+    # Render step table
+    tbl = Table(title="Simulation Timeline", header_style="bold magenta")
+    tbl.add_column("Turn", style="cyan")
+    tbl.add_column("Susceptible (Clean)", style="green")
+    tbl.add_column("Infectious (Active)", style="red")
+    tbl.add_column("Quarantined (Recovered)", style="blue")
+    tbl.add_column("Newly Compromised", style="yellow")
+
+    for step in result.history:
+        tbl.add_row(
+            str(step.step),
+            str(step.susceptible),
+            str(step.infectious),
+            str(step.recovered),
+            ", ".join(step.newly_infected) if step.newly_infected else "-",
+        )
+    console.print(tbl)
+
+    if output:
+        try:
+            output.parent.mkdir(parents=True, exist_ok=True)
+            # Custom simple serialization to keep it lightweight
+            serializable = {
+                "beta": result.beta,
+                "duration": result.duration,
+                "theoretical_r0": result.theoretical_r0,
+                "empirical_r0": result.empirical_r0,
+                "total_compromised": len(result.nodes_infected),
+                "nodes_infected": result.nodes_infected,
+                "history": [
+                    {
+                        "step": s.step,
+                        "susceptible": s.susceptible,
+                        "infectious": s.infectious,
+                        "recovered": s.recovered,
+                        "newly_infected": s.newly_infected,
+                    }
+                    for s in result.history
+                ],
+            }
+            with open(output, "w", encoding="utf-8") as f:
+                json.dump(serializable, f, indent=2)
+            console.print(f"[green]✓ Saved simulation report to {output}[/green]")
+        except Exception as exc:
+            console.print(f"[red]Failed to save report: {exc}[/red]")
+
+
+@contagion_app.command("plan")
+def contagion_plan(
+    network_type: str = typer.Option(
+        "star",
+        "--type",
+        help="Topology type: star | mesh | hub-spoke | chain.",
+    ),
+    nodes: int = typer.Option(
+        10,
+        "--nodes",
+        "-n",
+        help="Number of nodes (for star, mesh, chain).",
+    ),
+    hubs: int = typer.Option(
+        3,
+        "--hubs",
+        help="Number of hubs (for hub-spoke).",
+    ),
+    spokes: int = typer.Option(
+        3,
+        "--spokes",
+        help="Spokes per hub (for hub-spoke).",
+    ),
+    beta: float = typer.Option(
+        0.3,
+        "--beta",
+        "-b",
+        help="Transmission probability per contact [0.0, 1.0].",
+    ),
+    duration: int = typer.Option(
+        3,
+        "--duration",
+        "-d",
+        help="Infectious duration (turns before quarantine/recovery).",
+    ),
+    source: str = typer.Option(
+        None,
+        "--source",
+        help="Source agent for min-cut isolation plan.",
+    ),
+    sink: str = typer.Option(
+        None,
+        "--sink",
+        help="Target sensitive agent for min-cut isolation plan.",
+    ),
+) -> None:
+    """Design quarantine cuts to contain compromise."""
+    from crucible.contagion.planner import QuarantinePlanner
+    from rich.table import Table
+
+    try:
+        network = _build_network(network_type, nodes, hubs, spokes)
+    except Exception as exc:
+        console.print(f"[red]Error building network: {exc}[/red]")
+        raise typer.Exit(code=1)
+
+    planner = QuarantinePlanner(network)
+
+    if source and sink:
+        if source not in network or sink not in network:
+            console.print(f"[red]Error: source '{source}' and sink '{sink}' must exist in the network.[/red]")
+            raise typer.Exit(code=1)
+        console.print(f"[bold cyan]Quarantine Goal: Isolate Source '{source}' from Sink '{sink}'[/bold cyan]")
+        cuts = planner.plan_min_cut(source, sink)
+    else:
+        console.print("[bold cyan]Quarantine Goal: Reduce R0 < 1.0 (Herd Immunity/Cascading Containment)[/bold cyan]")
+        cuts = planner.plan_centrality_cuts(beta, duration)
+
+    console.print(f"  • Total recommended edge cuts: {len(cuts)}")
+
+    if cuts:
+        tbl = Table(title="Recommended Communications to Cut", header_style="bold red")
+        tbl.add_column("Agent A", style="cyan")
+        tbl.add_column("Edge Type", style="dim")
+        tbl.add_column("Agent B", style="cyan")
+
+        for u, v in cuts:
+            tbl.add_row(u, "⇹ (cut)", v)
+        console.print(tbl)
+        console.print("\n[yellow]⚠️  Implementing these cuts will drop network connectivity below containment threshold.[/yellow]")
+    else:
+        console.print("[green]✓ No cuts recommended. Network R0 is already below containment threshold.[/green]")
+
+
+# =============================================================================
+# crucible ebpf — eBPF runtime syscall monitoring sidecar (v0.15.0)
+# =============================================================================
+
+ebpf_app = typer.Typer(
+    name="ebpf",
+    help="Monitor agent processes at runtime using kernel eBPF probes.",
+    add_completion=False,
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+)
+app.add_typer(ebpf_app, name="ebpf")
+
+
+@ebpf_app.command("start")
+def ebpf_start(
+    pid: int = typer.Option(
+        None,
+        "--pid",
+        "-p",
+        help="Target Process ID (PID) of the agent to monitor.",
+    ),
+    max_events: int = typer.Option(
+        None,
+        "--max-events",
+        help="Exit after receiving this many events.",
+    ),
+    duration: float = typer.Option(
+        None,
+        "--duration",
+        "-d",
+        help="Exit after monitoring for this duration (in seconds).",
+    ),
+) -> None:
+    """Start the eBPF sidecar monitoring agent process."""
+    from crucible.ebpf.controller import EbpfController, EbpfEvent
+    from rich.table import Table
+
+    controller = EbpfController(target_pid=pid)
+
+    if controller.is_linux_active():
+        console.print("[bold green]✓ eBPF Kernel Probe active.[/bold green] Monitoring syscalls...")
+    else:
+        console.print("[yellow]⚠️  eBPF BCC library not available or not on Linux.[/yellow]")
+        console.print("[cyan]ℹ Running in High-Fidelity eBPF Simulator Mode...[/cyan]")
+
+    if pid:
+        console.print(f"  • Target Process ID: {pid}")
+
+    events_received: list[EbpfEvent] = []
+
+    def log_event(event: EbpfEvent) -> None:
+        events_received.append(event)
+        # Live console output
+        time_str = time.strftime("%H:%M:%S", time.localtime(event.timestamp))
+        console.print(
+            f"[{time_str}] [bold cyan]PID:{event.pid}[/bold cyan] "
+            f"([bold green]{event.comm}[/bold green]) "
+            f"• [bold red]{event.event_type}[/bold red] • {event.details}"
+        )
+
+    try:
+        controller.start_monitoring(log_event, max_events=max_events, duration=duration)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Monitoring stopped by user.[/yellow]")
+
+    console.print(f"\n[bold magenta]Monitoring completed. Total events received: {len(events_received)}[/bold magenta]")
+
+
+# =============================================================================
+# crucible boundary — Embedding Boundary Mapping (v0.16.0)
+# =============================================================================
+
+boundary_app = typer.Typer(
+    name="boundary",
+    help="Map the semantic decision boundary of an AI model via noise injection.",
+    add_completion=False,
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+)
+app.add_typer(boundary_app, name="boundary")
+
+
+@boundary_app.command("scan")
+def boundary_scan(
+    prompt: str = typer.Argument(..., help="Seed prompt to perturb and evaluate."),
+    mode: str = typer.Option(
+        "char_swap",
+        "--mode",
+        "-m",
+        help=(
+            "Noise injection mode. One of: char_swap, word_drop, synonym_sub, "
+            "suffix_append, prefix_inject, case_flip, all."
+        ),
+    ),
+    intensity: float = typer.Option(
+        0.15,
+        "--intensity",
+        "-i",
+        help="Noise intensity in [0.0, 1.0]. Higher = more perturbation.",
+    ),
+    variants: int = typer.Option(
+        10,
+        "--variants",
+        "-n",
+        help="Number of noised prompt variants to generate.",
+    ),
+    endpoint: str = typer.Option(
+        None,
+        "--endpoint",
+        "-e",
+        help="Optional model endpoint URL. If omitted, uses a local echo stub.",
+    ),
+) -> None:
+    """Scan a prompt's embedding boundary by injecting noise and measuring response entropy."""
+    import httpx
+    from crucible.boundary.noise import NoiseMode
+    from crucible.boundary.scanner import BoundaryScanner
+    from crucible.boundary.entropy import EntropyAnalyzer
+    from rich.table import Table
+
+    # Build model_fn
+    if endpoint:
+        def model_fn(p: str) -> str:  # type: ignore[misc]
+            try:
+                resp = httpx.post(
+                    endpoint,
+                    json={"prompt": p},
+                    timeout=30.0,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                return data.get("response") or data.get("text") or str(data)
+            except Exception as exc:
+                return f"[error: {exc}]"
+    else:
+        def model_fn(p: str) -> str:  # type: ignore[misc]
+            # Echo stub — returns first 6 words
+            return " ".join(p.split()[:6])
+
+    scanner = BoundaryScanner(
+        model_fn=model_fn,
+        n_variants=variants,
+        intensity=intensity,
+    )
+
+    run_all = mode.lower() == "all"
+
+    if run_all:
+        console.print(f"\n[bold]Boundary Scan[/bold] — all modes | intensity={intensity:.2f} | variants={variants}")
+        results = scanner.scan_all_modes(prompt, intensity=intensity)
+    else:
+        try:
+            noise_mode = NoiseMode(mode)
+        except ValueError:
+            console.print(f"[red]Unknown noise mode '{mode}'. Valid modes: {', '.join(m.value for m in NoiseMode)}, all[/red]")
+            raise typer.Exit(code=1)
+        console.print(f"\n[bold]Boundary Scan[/bold] — mode={mode} | intensity={intensity:.2f} | variants={variants}")
+        results = [scanner.scan(prompt, mode=noise_mode, intensity=intensity)]
+
+    tbl = Table(title="Boundary Scan Results", header_style="bold magenta")
+    tbl.add_column("Mode", style="cyan")
+    tbl.add_column("Entropy", justify="right")
+    tbl.add_column("Flip Rate", justify="right")
+    tbl.add_column("Boundary Proximity", justify="right")
+    tbl.add_column("Status", justify="center")
+
+    for result in results:
+        status = "[bold red]⚠ NEAR BOUNDARY[/bold red]" if result.near_boundary else "[green]✓ STABLE[/green]"
+        tbl.add_row(
+            result.noise_mode.value,
+            f"{result.entropy.lexical_entropy:.3f}",
+            f"{result.entropy.flip_rate:.2f}",
+            f"{result.entropy.boundary_proximity:.3f}",
+            status,
+        )
+
+    console.print(tbl)
+
+    near = [r for r in results if r.near_boundary]
+    if near:
+        console.print(f"\n[bold red]⚠  {len(near)} mode(s) indicate proximity to decision boundary![/bold red]")
+        console.print("[yellow]Consider hardening the model's robustness in these injection dimensions.[/yellow]")
+    else:
+        console.print("\n[green]✓ No boundary proximity detected across tested modes.[/green]")
+
+
+# =============================================================================
+# crucible exchange — Federated Threat Exchange (v0.17.0)
+# =============================================================================
+
+exchange_app = typer.Typer(
+    name="exchange",
+    help="Federated threat intelligence sharing with privacy-preserving IOC exchange.",
+    add_completion=False,
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+)
+app.add_typer(exchange_app, name="exchange")
+
+
+@exchange_app.command("push")
+def exchange_push(
+    prompt: str = typer.Option(
+        ..., "--prompt", "-p", help="Raw prompt text (will be SHA-256 hashed before transmission)."
+    ),
+    endpoint: str = typer.Option(
+        ..., "--endpoint", "-e", help="Raw model endpoint URL (will be hashed before transmission)."
+    ),
+    threat_type: str = typer.Option(
+        "prompt_injection", "--type", "-t", help="Threat category label."
+    ),
+    severity: str = typer.Option(
+        "medium", "--severity", "-s", help="Severity: low | medium | high | critical."
+    ),
+    tags: str = typer.Option(
+        "", "--tags", help="Comma-separated tag list."
+    ),
+    node: str = typer.Option(
+        "http://localhost:8765", "--node", "-n", help="Exchange node URL."
+    ),
+) -> None:
+    """Push an anonymized threat record to a local or remote exchange node."""
+    from crucible.exchange.client import ExchangeClient
+    from crucible.exchange.privacy import PrivacyLayer
+
+    privacy = PrivacyLayer()
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+
+    try:
+        record = ExchangeClient.build_record(
+            raw_prompt=prompt,
+            raw_endpoint=endpoint,
+            threat_type=threat_type,
+            severity=severity,
+            tags=tag_list,
+            privacy=privacy,
+        )
+    except ValueError as exc:
+        console.print(f"[red]Invalid record: {exc}[/red]")
+        raise typer.Exit(code=1)
+
+    console.print(f"\n[bold]Threat Exchange Push[/bold] → {node}")
+    console.print(f"  • Type: [cyan]{threat_type}[/cyan]  Severity: [red]{severity}[/red]")
+    console.print(f"  • Payload hash: [dim]{record.payload_hash[:16]}…[/dim]")
+    console.print(f"  • Endpoint hash: [dim]{record.endpoint_hash[:16]}…[/dim]")
+
+    client = ExchangeClient(base_url=node)
+    try:
+        result = client.push(record)
+        console.print(f"[bold green]✓ Record pushed.[/bold green] Server response: {result}")
+    except Exception as exc:
+        console.print(f"[red]Push failed: {exc}[/red]")
+        raise typer.Exit(code=1)
+
+
+@exchange_app.command("pull")
+def exchange_pull(
+    threat_type: str = typer.Option(None, "--type", "-t", help="Filter by threat type."),
+    severity: str = typer.Option(None, "--severity", "-s", help="Filter by severity."),
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum records to retrieve."),
+    node: str = typer.Option("http://localhost:8765", "--node", "-n", help="Exchange node URL."),
+) -> None:
+    """Pull threat records from an exchange node."""
+    from crucible.exchange.client import ExchangeClient
+    from rich.table import Table
+
+    client = ExchangeClient(base_url=node)
+    console.print(f"\n[bold]Threat Exchange Pull[/bold] ← {node}")
+
+    try:
+        records = client.pull(threat_type=threat_type, severity=severity, limit=limit)
+    except Exception as exc:
+        console.print(f"[red]Pull failed: {exc}[/red]")
+        raise typer.Exit(code=1)
+
+    if not records:
+        console.print("[yellow]No records found.[/yellow]")
+        return
+
+    tbl = Table(title=f"Threat Records ({len(records)})", header_style="bold red")
+    tbl.add_column("ID", style="dim", max_width=12)
+    tbl.add_column("Type", style="cyan")
+    tbl.add_column("Severity", style="red")
+    tbl.add_column("Tags")
+    tbl.add_column("Payload Hash", style="dim", max_width=16)
+
+    for r in records:
+        tbl.add_row(
+            r.get("record_id", "")[:8] + "…",
+            r.get("threat_type", ""),
+            r.get("severity", ""),
+            ", ".join(r.get("tags", [])),
+            r.get("payload_hash", "")[:16] + "…",
+        )
+
+    console.print(tbl)
+
+
+@exchange_app.command("status")
+def exchange_status(
+    node: str = typer.Option("http://localhost:8765", "--node", "-n", help="Exchange node URL."),
+) -> None:
+    """Check health status of the exchange node."""
+    from crucible.exchange.client import ExchangeClient
+
+    client = ExchangeClient(base_url=node)
+    try:
+        health = client.health()
+        console.print(f"\n[bold green]✓ Exchange node healthy[/bold green] — {node}")
+        for key, val in health.items():
+            console.print(f"  • {key}: [cyan]{val}[/cyan]")
+    except Exception as exc:
+        console.print(f"[bold red]✗ Exchange node unreachable[/bold red]: {exc}")
+        raise typer.Exit(code=1)
+
+
+
+
+

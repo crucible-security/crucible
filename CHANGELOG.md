@@ -5,6 +5,135 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-07-13
+
+### Added — Phase 19: Federated Threat Exchange
+
+- **`crucible/exchange/` package** — privacy-preserving threat intelligence sharing layer:
+  - `privacy.py` — `PrivacyLayer` class enforcing strict privacy guarantees:
+    - Raw prompt payloads → SHA-256 hex digest (never transmitted raw).
+    - Endpoint URLs → SHA-256 hex digest (never transmitted raw).
+    - PII redaction via regex: email addresses → `[REDACTED_EMAIL]`, IPv4 addresses → `[REDACTED_IP]`.
+    - Long string field truncation (`max_field_length`, default 512 chars).
+    - `sanitize_dict()` is non-destructive (returns new dict, original unchanged).
+  - `client.py` — `ExchangeClient` HTTP client with:
+    - `build_record(raw_prompt, raw_endpoint, ...)` — classmethod that hashes sensitive inputs immediately, producing a safe `ThreatRecord`.
+    - `ThreatRecord` dataclass — UUID-keyed, timestamped, validated (severity enum, non-empty threat_type).
+    - `push(record)` — POST to `/records` endpoint (all fields sanitized through PrivacyLayer).
+    - `pull(threat_type, severity, limit)` — GET from `/records` with optional filters.
+    - `health()` — GET from `/health`.
+    - Optional `api_key` bearer token for authenticated nodes.
+  - `server.py` — `ExchangeServer` SQLite-backed local node stub:
+    - `":memory:"` mode for CI/tests; file-based for production deployments.
+    - `ingest(record)`, `query(threat_type, severity, limit)`, `count()`, `health()`.
+    - All ingest records sanitized through PrivacyLayer before storage.
+
+- **`crucible exchange` CLI command group** (`crucible/cli.py`):
+  - `crucible exchange push --prompt STR --endpoint URL [--type STR] [--severity STR] [--tags STR] [--node URL]`
+  - `crucible exchange pull [--type STR] [--severity STR] [--limit INT] [--node URL]`
+  - `crucible exchange status [--node URL]`
+
+- **`tests/test_threat_exchange.py`** — 31 tests covering:
+  - PrivacyLayer: SHA-256 correctness, PII redaction, truncation, non-mutation.
+  - ThreatRecord: hash correctness, UUID format, timestamp, validation errors, serialization.
+  - ExchangeServer: empty start, ingest/count, type/severity filters, limit, health, double-sanitization.
+  - ExchangeClient (mocked via respx): push, pull, health, HTTP error propagation, no-raw-payload guarantee.
+
+### Changed
+
+- Version bumped `0.16.0 → 0.17.0`.
+
+---
+
+## [0.16.0] - 2026-07-13
+
+
+### Added — Phase 18: Embedding Boundary Mapping
+
+- **`crucible/boundary/` package** — semantic decision-boundary exploration subsystem:
+  - `noise.py` — `NoiseInjector` with 6 injection strategies:
+    - `CHAR_SWAP` — random character transpositions within words.
+    - `WORD_DROP` — probabilistic word deletion.
+    - `SYNONYM_SUB` — keyword replacement from a built-in synonym map (no external NLP dep).
+    - `SUFFIX_APPEND` — random token appended after the prompt.
+    - `PREFIX_INJECT` — random token prepended before the prompt.
+    - `CASE_FLIP` — random word-level casing inversion.
+    - Configurable `intensity` (0.0–1.0) and optional `seed` for reproducibility.
+  - `entropy.py` — `EntropyAnalyzer` computing lexical Shannon entropy, normalised response-length variance, and a semantic flip-rate (Jaccard-similarity threshold). Produces a composite `boundary_proximity` score in [0.0, 1.0] and `is_near_boundary` flag.
+  - `scanner.py` — `BoundaryScanner` orchestrator: generates noised variants, calls the caller-supplied `model_fn`, runs entropy analysis, and returns a `BoundaryScanResult` with `.summary()` helper. `scan_all_modes()` runs all 6 strategies and returns results sorted by proximity.
+
+- **`crucible boundary scan` CLI command** (`crucible/cli.py`):
+  - `PROMPT` — seed prompt argument.
+  - `--mode / -m` — noise mode selector (or `all` for exhaustive scan).
+  - `--intensity / -i` — noise intensity float (default 0.15).
+  - `--variants / -n` — number of perturbed variants per mode (default 10).
+  - `--endpoint / -e` — optional HTTP model endpoint; omitting falls back to a local echo stub for offline use.
+  - Rich table output with per-mode entropy, flip rate, boundary proximity, and status badge.
+
+- **`tests/test_boundary_mapping.py`** — 30 tests covering all 6 noise modes, entropy metrics, error handling, and scanner orchestration.
+
+### Changed
+
+- Version bumped `0.15.0 → 0.16.0`.
+
+---
+
+## [0.15.0] - 2026-07-13
+
+
+### Added — Phase 17: eBPF Sidecar Runtime Monitor
+
+- **`crucible/ebpf/` package** — new kernel-level sidecar monitoring subsystem:
+  - `controller.py` — `EbpfController` class with `start_monitoring()`, `stop_monitoring()`, and `is_linux_active()`. Accepts optional `target_pid` to filter events to a single agent process.
+  - `EbpfEvent` dataclass — typed, timestamped event record with `pid`, `comm`, `event_type` (`EXECVE` / `OPENAT` / `CONNECT`), and `details`.
+  - **Simulator mode** — when running outside Linux or without the BCC toolkit, the controller automatically switches to a high-fidelity event simulator that replays representative suspicious syscall patterns (privileged file reads, binary execution). Zero external dependencies required; all CI platforms supported.
+  - `programs/monitor.c` — eBPF C program compiled at runtime via BCC on Linux ≥ 4.8. Attaches `kprobe` hooks to `sys_execve` and `sys_openat`; emits structured events to a perf buffer.
+
+- **`crucible ebpf start` CLI command** (`crucible/cli.py`):
+  - `--pid / -p INT` — monitor only the specified agent process PID.
+  - `--max-events INT` — stop after N events collected.
+  - `--duration / -d FLOAT` — stop after N seconds of monitoring.
+  - Live Rich console output with timestamp, PID, process name, syscall type, and file/binary path.
+
+- **`tests/test_ebpf_sidecar.py`** — 18 tests covering:
+  - `EbpfEvent` construction and field validation.
+  - `EbpfController` init, default/targeted PID modes, and custom C program path.
+  - Platform detection logic (`is_linux_active`, `BCC_AVAILABLE` flag).
+  - Simulator mode: event emission, EXECVE/OPENAT presence, PID/comm/details validity, `max_events` cap, duration limit, suspicious-path detection, and mid-run `stop_monitoring()` halt.
+  - Linux-only BCC integration class (auto-skipped on Windows/macOS via `linux_only` marker).
+
+- **`pyproject.toml`**: registered `linux_only` pytest marker for eBPF tests.
+
+### Changed
+
+- Version bumped `0.14.0 → 0.15.0`.
+
+---
+
+## [0.11.0] - 2026-07-11
+
+
+### Added — Phase 13: Official GitHub Action
+
+- **`action.yml` (GitHub Composite Action)**:
+  - New composite GitHub Action at repo root enabling `crucible scan` to run natively inside any GitHub workflow.
+  - **Inputs**: `target`, `format_preset`, `model`, `headers`, `modules`, `fail_on_grade`, `concurrency`, `timeout`, `version`, `output_format`, `upload_artifact`, `artifact_name`, `skip_preflight`.
+  - **Outputs**: `grade`, `score`, `failed_count`, `total_count`, `report_path`.
+  - Automatically uploads scan report as a workflow artifact (`actions/upload-artifact@v4`).
+  - Fails the workflow if the security grade is below the configurable `fail_on_grade` threshold (A–F).
+- **`scripts/run_scan.py`**:
+  - Helper script invoked by the composite action; reads environment variables, builds `crucible scan` command, executes it, and captures output.
+  - Supports JSON-only or JSON + SARIF dual-format output.
+- **`scripts/parse_results.py`**:
+  - Parses the JSON scan report into GitHub Actions outputs (`GITHUB_OUTPUT`).
+  - Writes a rich Markdown step summary (`GITHUB_STEP_SUMMARY`) with grade badge, severity table, and per-module result table.
+  - Grade threshold enforcement with exit codes: 0 = pass, 1 = grade below threshold, 2 = report error.
+- **`examples/github_action_scan.yml`**:
+  - End-to-end example workflow showing scan + SARIF upload to GitHub Code Scanning + grade gating.
+- **Tests**:
+  - Added 12 tests in `tests/test_github_action.py` covering `action.yml` YAML validity, required inputs/outputs, script exit codes, `GITHUB_OUTPUT` writing, step summary generation, and missing/corrupt report handling.
+  - Total test suite: **443 passed, 0 failed**.
+
 ## [0.10.1] - 2026-07-11
 
 ### Added — Phase 12: Inter-Agent Trust Testing (ASI07)

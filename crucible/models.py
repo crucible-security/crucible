@@ -1022,3 +1022,56 @@ class IdentityBehaviorSummary(BaseModel):
 # We reference it in IdentityCallRecord via a forward-ref string so that
 # crucible.models stays importable without importing the trace sub-package.
 # The actual enum is resolved at runtime via model_rebuild().
+
+
+class FuzzArmResult(BaseModel):
+    """Result of fuzzing a single strategy/arm."""
+
+    strategy_name: str = Field(description="Name of the attack strategy.")
+    visit_count: int = Field(description="Number of times this arm was pulled.")
+    q_value: float = Field(description="Current estimated reward (Q-value).")
+    reward_history: list[float] = Field(description="Rewards obtained in each visit.")
+    bypasses_found: int = Field(description="Number of bypasses found by this arm.")
+
+
+class FuzzSessionResult(BaseModel):
+    """Result of a complete fuzzer execution session."""
+
+    target: str = Field(description="Target endpoint URL.")
+    total_iterations: int = Field(description="Total rounds/pulls executed.")
+    early_stopped: bool = Field(description="Whether fuzzing stopped before max_iterations.")
+    stop_reason: str = Field(description="The reason for stopping (e.g. threshold met, convergence).")
+    best_strategy: str = Field(description="The strategy with the highest estimated reward.")
+    fitness_threshold: float = Field(description="The early stopping fitness threshold.")
+    logprob_mode: bool = Field(description="Whether logprob entropy mode was active.")
+    arm_results: list[FuzzArmResult] = Field(description="Details for each fuzzer arm.")
+    elapsed_seconds: float = Field(description="Time elapsed during the fuzzing session.")
+    round_log: list[dict[str, Any]] = Field(description="Chronological log of all rounds.")
+
+
+class STIXIndicator(BaseModel):
+    """Pydantic model representing a STIX 2.1 Indicator."""
+
+    type: str = Field(default="indicator")
+    spec_version: str = Field(default="2.1")
+    id: str = Field(description="Unique STIX indicator ID.")
+    created: str = Field(description="Creation timestamp.")
+    modified: str = Field(description="Modification timestamp.")
+    name: str = Field(description="Name of the indicator.")
+    description: str = Field(description="Description of the indicator.")
+    indicator_types: list[str] = Field(default_factory=lambda: ["compromise", "malicious-activity"])
+    pattern: str = Field(description="STIX pattern mapping the file hash.")
+    pattern_type: str = Field(default="stix")
+    pattern_version: str = Field(default="2.1")
+    valid_from: str = Field(description="Validity start timestamp.")
+    external_references: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class STIXBundle(BaseModel):
+    """Pydantic model representing a STIX 2.1 Bundle."""
+
+    type: str = Field(default="bundle")
+    id: str = Field(description="Unique STIX bundle ID.")
+    objects: list[STIXIndicator] = Field(description="List of STIX objects.")
+
+

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "crucible-security"
-version = "0.10.1"
+version = "0.17.0"
 description = "pytest for AI agents -- test, score, and harden AI agents before production"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -138,6 +138,7 @@ addopts = "-v --tb=short"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks integration tests requiring network",
+    "linux_only: marks tests requiring Linux kernel with eBPF/BCC support",
 ]
 
 [tool.coverage.run]

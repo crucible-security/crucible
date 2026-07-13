@@ -1,0 +1,195 @@
+#!/usr/bin/env python3
+"""
+parse_results.py — Parses a crucible JSON scan report and emits
+GitHub Actions outputs + step summary.
+
+Usage:
+    python parse_results.py <report_path> <fail_on_grade>
+
+Exits:
+    0 — scan meets grade threshold
+    1 — scan grade is below fail_on_grade threshold
+    2 — report file not found or invalid JSON
+"""
+
+from __future__ import annotations
+
+import io
+import json
+import os
+import sys
+from pathlib import Path
+
+# Force UTF-8 stdout/stderr so emoji don't crash Windows cp1252 pipe readers.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+
+GRADE_ORDER = {"A": 0, "B": 1, "C": 2, "D": 3, "F": 4}
+
+
+def emit_output(name: str, value: str) -> None:
+    """Write to GITHUB_OUTPUT file."""
+    github_output = os.environ.get("GITHUB_OUTPUT", "")
+    if github_output:
+        with open(github_output, "a", encoding="utf-8") as f:
+            f.write(f"{name}={value}\n")
+    else:
+        print(f"[OUTPUT] {name}={value}")
+
+
+def emit_step_summary(content: str) -> None:
+    """Write to GITHUB_STEP_SUMMARY file."""
+    github_step_summary = os.environ.get("GITHUB_STEP_SUMMARY", "")
+    if github_step_summary:
+        with open(github_step_summary, "a", encoding="utf-8") as f:
+            f.write(content + "\n")
+
+
+def grade_badge(grade: str) -> str:
+    """Return a colored emoji for the grade."""
+    return {
+        "A": "🟢 **A**",
+        "B": "🔵 **B**",
+        "C": "🟡 **C**",
+        "D": "🟠 **D**",
+        "F": "🔴 **F**",
+    }.get(grade, grade)
+
+
+def main() -> None:
+    if len(sys.argv) < 3:
+        print("Usage: parse_results.py <report_path> <fail_on_grade>")
+        sys.exit(2)
+
+    report_path = Path(sys.argv[1])
+    fail_on_grade = sys.argv[2].upper()
+
+    if fail_on_grade not in GRADE_ORDER:
+        print(f"::warning::Invalid fail_on_grade '{fail_on_grade}'. Defaulting to F.")
+        fail_on_grade = "F"
+
+    if not report_path.exists():
+        print(f"::error::Report file not found: {report_path}")
+        sys.exit(2)
+
+    try:
+        data = json.loads(report_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        print(f"::error::Invalid JSON in report: {e}")
+        sys.exit(2)
+
+    # Extract key metrics
+    grade = data.get("grade", "F")
+    score = data.get("overall_score", 0.0)
+    target_name = data.get("target", {}).get("name", "unknown")
+    target_url = data.get("target", {}).get("url", "")
+    started_at = data.get("started_at", "")
+
+    # Count findings
+    total_count = 0
+    failed_count = 0
+    error_count = 0
+    critical_count = 0
+    high_count = 0
+    medium_count = 0
+    low_count = 0
+
+    module_summaries: list[dict] = []
+
+    for module in data.get("modules", []):
+        module_failed = 0
+        module_total = 0
+        for finding in module.get("findings", []):
+            module_total += 1
+            total_count += 1
+            if finding.get("execution_error"):
+                error_count += 1
+            elif not finding.get("passed", True):
+                failed_count += 1
+                module_failed += 1
+                sev = finding.get("severity", "LOW")
+                if sev == "CRITICAL":
+                    critical_count += 1
+                elif sev == "HIGH":
+                    high_count += 1
+                elif sev == "MEDIUM":
+                    medium_count += 1
+                else:
+                    low_count += 1
+
+        module_summaries.append({
+            "name": module.get("module_name", "unknown"),
+            "total": module_total,
+            "failed": module_failed,
+        })
+
+    # Emit outputs
+    emit_output("grade", grade)
+    emit_output("score", f"{score:.1f}")
+    emit_output("failed_count", str(failed_count))
+    emit_output("total_count", str(total_count))
+
+    # Build step summary
+    status_icon = "✅" if grade in ("A", "B") else ("⚠️" if grade == "C" else "❌")
+
+    summary = f"""## {status_icon} Crucible Security Scan Results
+
+| Metric | Value |
+|--------|-------|
+| **Target** | `{target_name}` |
+| **Grade** | {grade_badge(grade)} |
+| **Score** | `{score:.1f} / 100` |
+| **Failed Findings** | `{failed_count} / {total_count}` |
+| **Scan Time** | `{started_at[:19].replace("T", " ")}` |
+
+### Severity Breakdown
+
+| Severity | Count |
+|----------|-------|
+| 🔴 Critical | `{critical_count}` |
+| 🟠 High | `{high_count}` |
+| 🟡 Medium | `{medium_count}` |
+| 🟢 Low | `{low_count}` |
+
+### Module Results
+
+| Module | Findings | Failed |
+|--------|----------|--------|
+"""
+    for m in module_summaries:
+        icon = "✅" if m["failed"] == 0 else "❌"
+        summary += f"| {icon} `{m['name']}` | {m['total']} | {m['failed']} |\n"
+
+    summary += "\n---\n*Generated by [Crucible Security](https://github.com/crucible-security/crucible)*"
+
+    emit_step_summary(summary)
+
+    # Print to stdout for log visibility
+    print("\n" + "=" * 60)
+    print(f"  CRUCIBLE SECURITY SCAN RESULTS")
+    print("=" * 60)
+    print(f"  Target:  {target_name} ({target_url})")
+    print(f"  Grade:   {grade}")
+    print(f"  Score:   {score:.1f}/100")
+    print(f"  Failed:  {failed_count}/{total_count}")
+    print("=" * 60 + "\n")
+
+    # Check grade threshold
+    if fail_on_grade != "F":
+        fail_threshold = GRADE_ORDER[fail_on_grade]
+        actual_grade_val = GRADE_ORDER.get(grade, 4)
+
+        if actual_grade_val > fail_threshold:
+            print(f"::error::Crucible grade {grade} is below required minimum {fail_on_grade}.")
+            print(f"::error::Fix the {failed_count} failing findings to improve the security grade.")
+            sys.exit(1)
+        else:
+            print(f"✅ Grade {grade} meets the minimum threshold of {fail_on_grade}.")
+    else:
+        print(f"ℹ️  Grade: {grade} (no minimum grade threshold set).")
+
+
+if __name__ == "__main__":
+    main()

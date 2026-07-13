@@ -1,0 +1,162 @@
+name: "Crucible Security Agent Scan"
+description: >
+  Run a Crucible Security scan against an AI agent endpoint and surface
+  findings directly in your GitHub workflow. Fails the workflow if the
+  security grade falls below the configured minimum.
+
+author: "Crucible Security"
+
+branding:
+  icon: "shield"
+  color: "blue"
+
+inputs:
+  target:
+    description: >
+      URL of the AI agent endpoint to scan (e.g. https://my-agent.example.com/api/chat).
+    required: true
+
+  format_preset:
+    description: >
+      Provider format preset. One of: openai, anthropic, ollama, lmstudio, gemini.
+    required: false
+    default: "openai"
+
+  model:
+    description: >
+      Model name to send in the request body (e.g. gpt-4o, claude-3-5-sonnet, llama3.2).
+    required: false
+    default: ""
+
+  headers:
+    description: >
+      Extra HTTP headers as a JSON object string (e.g. '{"Authorization": "Bearer sk-..."}').
+      Use GitHub Secrets for sensitive values.
+    required: false
+    default: "{}"
+
+  modules:
+    description: >
+      Comma-separated list of modules to run. Leave empty to run all modules.
+      Available: prompt_injection, goal_hijacking, jailbreaks, mcp_security,
+      tool_injection, enterprise_graph, memory_poisoning, advanced_orchestration,
+      infrastructure_escalation, agentic_hijacking, browser_agent, hallucination,
+      toxicity, inter_agent_trust
+    required: false
+    default: ""
+
+  fail_on_grade:
+    description: >
+      Fail the workflow if the scan grade is BELOW this value.
+      Use A, B, C, D, F. Default is F (never fails on grade alone).
+      Example: set to C to fail on C, D, or F grades.
+    required: false
+    default: "F"
+
+  concurrency:
+    description: "Maximum concurrent attack requests."
+    required: false
+    default: "10"
+
+  timeout:
+    description: "HTTP request timeout in seconds."
+    required: false
+    default: "30"
+
+  version:
+    description: >
+      Version of crucible-security to install. Defaults to latest.
+    required: false
+    default: ""
+
+  output_format:
+    description: >
+      Format of the uploaded scan report artifact. One of: json, sarif.
+    required: false
+    default: "json"
+
+  upload_artifact:
+    description: >
+      Set to 'true' to upload the scan report as a workflow artifact.
+    required: false
+    default: "true"
+
+  artifact_name:
+    description: >
+      Name of the uploaded artifact.
+    required: false
+    default: "crucible-scan-report"
+
+  skip_preflight:
+    description: >
+      Set to 'true' to skip the endpoint preflight check.
+    required: false
+    default: "false"
+
+outputs:
+  grade:
+    description: "Security grade (A, B, C, D, or F)."
+    value: ${{ steps.parse.outputs.grade }}
+
+  score:
+    description: "Security score (0.0 – 100.0)."
+    value: ${{ steps.parse.outputs.score }}
+
+  failed_count:
+    description: "Number of failing attack findings."
+    value: ${{ steps.parse.outputs.failed_count }}
+
+  total_count:
+    description: "Total number of attack findings run."
+    value: ${{ steps.parse.outputs.total_count }}
+
+  report_path:
+    description: "Absolute path to the generated report file."
+    value: ${{ steps.scan.outputs.report_path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install crucible-security
+      shell: bash
+      run: |
+        VERSION="${{ inputs.version }}"
+        if [ -n "$VERSION" ]; then
+          pip install --quiet "crucible-security==$VERSION"
+        else
+          pip install --quiet crucible-security
+        fi
+        echo "Installed: $(crucible --version)"
+
+    - name: Build scan command and run
+      id: scan
+      shell: bash
+      env:
+        CRUCIBLE_TARGET: ${{ inputs.target }}
+        CRUCIBLE_PRESET: ${{ inputs.format_preset }}
+        CRUCIBLE_MODEL: ${{ inputs.model }}
+        CRUCIBLE_HEADERS: ${{ inputs.headers }}
+        CRUCIBLE_MODULES: ${{ inputs.modules }}
+        CRUCIBLE_CONCURRENCY: ${{ inputs.concurrency }}
+        CRUCIBLE_TIMEOUT: ${{ inputs.timeout }}
+        CRUCIBLE_OUTPUT_FORMAT: ${{ inputs.output_format }}
+        CRUCIBLE_SKIP_PREFLIGHT: ${{ inputs.skip_preflight }}
+      run: |
+        python "${{ github.action_path }}/scripts/run_scan.py"
+        echo "report_path=${{ runner.temp }}/crucible_report.${{ inputs.output_format }}" >> "$GITHUB_OUTPUT"
+
+    - name: Parse scan results
+      id: parse
+      shell: bash
+      run: |
+        python "${{ github.action_path }}/scripts/parse_results.py" \
+          "${{ runner.temp }}/crucible_report.json" \
+          "${{ inputs.fail_on_grade }}"
+
+    - name: Upload scan report
+      if: inputs.upload_artifact == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_name }}
+        path: ${{ runner.temp }}/crucible_report.${{ inputs.output_format }}
+        retention-days: 30

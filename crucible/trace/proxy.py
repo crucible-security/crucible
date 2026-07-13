@@ -53,7 +53,6 @@ import anyio
 import anyio.abc
 import h11
 import httpx
-from anyio.streams.tls import TLSListener
 
 from crucible.trace.models import Policy, PolicyAction, TraceEntry
 from crucible.trace.policy import evaluate_policy
@@ -491,19 +490,7 @@ class TraceProxy:
             local_port=self.listen_port,
         )
 
-        # --- TLS wrapping (additive, plain-HTTP path unchanged) ---
-        if self.tls_cert is not None and self.tls_key is not None:
-            from crucible.trace.tls_utils import build_ssl_context
-
-            ssl_ctx: ssl.SSLContext = build_ssl_context(self.tls_cert, self.tls_key)
-            listener: anyio.abc.Listener[anyio.abc.ByteStream] = TLSListener(
-                listener=tcp_listener,
-                ssl_context=ssl_ctx,
-                standard_compatible=True,
-                handshake_timeout=self.tls_handshake_timeout,
-            )
-        else:
-            listener = tcp_listener
+        listener = tcp_listener
 
         async with listener, anyio.create_task_group() as tg:
 
@@ -521,6 +508,30 @@ class TraceProxy:
                             caller_ip = str(peer[0]) if peer else "unknown"
                         except Exception:
                             pass
+
+                    # Perform TLS handshake manually if cert/key are provided
+                    if self.tls_cert is not None and self.tls_key is not None:
+                        from anyio.streams.tls import TLSStream
+
+                        from crucible.trace.tls_utils import build_ssl_context
+
+                        ssl_ctx: ssl.SSLContext = build_ssl_context(
+                            self.tls_cert, self.tls_key
+                        )
+                        try:
+                            # Wrap the raw TCP stream with TLS and enforce handshake timeout
+                            with anyio.fail_after(self.tls_handshake_timeout):
+                                stream = await TLSStream.wrap(
+                                    stream,
+                                    ssl_context=ssl_ctx,
+                                    server_side=True,
+                                    standard_compatible=True,
+                                )
+                        except Exception:
+                            # Handshake failed or timed out — close stream and abort connection silently
+                            await stream.aclose()
+                            return
+
                     async with stream:
                         await self.handle_connection(stream, caller_ip)
                 except Exception:

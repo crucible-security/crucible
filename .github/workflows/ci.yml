@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   lint:
@@ -47,6 +47,16 @@ jobs:
           name: mypy-log-${{ matrix.python-version }}
           path: mypy_output.txt
 
+      - name: Commit and push debug logs to branch
+        if: always()
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git checkout -b ci-debug-lint-${{ matrix.python-version }}
+          git add mypy_output.txt || true
+          git commit -m "chore: debug lint logs for ${{ matrix.python-version }}" || true
+          git push origin HEAD --force
+
   test:
     name: Test Suite
     runs-on: ${{ matrix.os }}
@@ -78,6 +88,16 @@ jobs:
         with:
           name: pytest-log-${{ matrix.os }}-${{ matrix.python-version }}
           path: pytest_output.txt
+
+      - name: Commit and push debug logs to branch
+        if: always()
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git checkout -b ci-debug-test-${{ matrix.os }}-${{ matrix.python-version }}
+          git add pytest_output.txt || true
+          git commit -m "chore: debug test logs for ${{ matrix.os }} ${{ matrix.python-version }}" || true
+          git push origin HEAD --force
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'

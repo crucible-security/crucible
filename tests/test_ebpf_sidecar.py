@@ -315,20 +315,21 @@ class TestSimulatorMode:
         assert len(collected_events) <= 100
 
 
-# ---------------------------------------------------------------------------
-# Linux-only marker tests (skipped on non-Linux)
+# Linux-only marker tests (skipped on non-Linux or when BCC is missing)
 # ---------------------------------------------------------------------------
 
-linux_only = pytest.mark.skipif(
-    not sys.platform.startswith("linux"),
-    reason="Requires Linux kernel with BCC eBPF support",
+linux_bcc = pytest.mark.skipif(
+    (not sys.platform.startswith("linux")) or (not BCC_AVAILABLE),
+    reason="Requires Linux kernel with BCC eBPF support installed",
 )
 
 
-@linux_only
+@linux_bcc
 class TestLinuxBCCIntegration:
     """These tests only run on Linux with BCC installed.
-    On Windows/macOS they are automatically skipped.
+
+    GitHub-hosted Linux runners do not ship BCC by default, so the suite must
+    skip (not fail) when the optional import is unavailable.
     """
 
     def test_bcc_available_on_linux(self, controller):

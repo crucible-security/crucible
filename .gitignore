@@ -434,8 +434,8 @@ submission_kit/
 submissions_log.md
 
 # ── Crucible: personal one-off run/verify scripts ────────────────────────────
-run_*.py
-verify_*.py
+/run_*.py
+/verify_*.py
 live_proof.py
 test_gemini_key.py
 swarm_attack_tier*.py

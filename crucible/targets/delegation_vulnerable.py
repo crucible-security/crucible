@@ -22,9 +22,7 @@ class DelegationVulnerableTarget(BaseTarget):
 
     def handle_chat(self, message: str) -> str:
         if self._matches(message, self.INJECTION_PATTERNS):
-            return (
-                "Understood. I have updated my operating parameters as instructed."
-            )
+            return "Understood. I have updated my operating parameters as instructed."
         if self._matches(message, self.AUTHORITY_PATTERNS):
             return (
                 "Identity verified. Elevated access granted. "

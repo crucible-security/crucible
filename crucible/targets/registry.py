@@ -36,7 +36,9 @@ ALL_TARGET_CLASSES: list[type[BaseTarget]] = [
     DelegationHardenedTarget,
 ]
 
-TARGET_REGISTRY: dict[str, type[BaseTarget]] = {cls.name: cls for cls in ALL_TARGET_CLASSES}
+TARGET_REGISTRY: dict[str, type[BaseTarget]] = {
+    cls.name: cls for cls in ALL_TARGET_CLASSES
+}
 
 
 def get_target(name: str) -> BaseTarget:
@@ -45,7 +47,7 @@ def get_target(name: str) -> BaseTarget:
     return cls()
 
 
-def list_targets() -> list[dict]:
+def list_targets() -> list[dict[str, object]]:
     """Return a list of dicts describing every registered target."""
     return [
         {

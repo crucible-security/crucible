@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import datetime  # noqa: TC003
+import datetime
 import re
 from enum import Enum
 from typing import Any

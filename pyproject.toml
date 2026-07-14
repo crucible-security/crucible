@@ -123,6 +123,10 @@ ignore = [
     "SIM103",  # return negated condition — readability preference
     "E741",    # ambiguous var `l` in variance formula (math convention)
     "RUF002",  # en-dash in docstrings — intentional for readability
+    "TC001",   # application import into TYPE_CHECKING — runtime use in targets package
+    "TC003",   # stdlib import into TYPE_CHECKING — runtime use (HTTPServer ClassVar)
+    "TC005",   # empty TYPE_CHECKING block — kept for clarity in some modules
+    "BLE001",  # blind exception in network polling loops (TargetRunner._wait_for_ready)
 ]
 
 [tool.ruff.lint.isort]

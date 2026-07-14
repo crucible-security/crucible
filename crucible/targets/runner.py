@@ -14,10 +14,10 @@ so it can be imported in CI without any extra packages.
 
 from __future__ import annotations
 
+import contextlib
 import time
 import urllib.request
 from http.server import HTTPServer
-from types import TracebackType
 from typing import ClassVar
 
 from crucible.targets.registry import TARGET_REGISTRY, get_target
@@ -67,14 +67,14 @@ class TargetRunner:
         self,
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
+        exc_tb: type[BaseException] | None,
     ) -> None:
         self.stop()
 
     def stop(self) -> None:
         if self._server is not None:
             self._server.shutdown()
-            with contextlib_suppress(ValueError):
+            with contextlib.suppress(ValueError):
                 TargetRunner._open_servers.remove(self._server)
             self._server = None
 
@@ -96,13 +96,3 @@ class TargetRunner:
             f"Reference target '{self._name}' did not become ready "
             f"within {self._startup_timeout}s at {self._url}"
         )
-
-
-def contextlib_suppress(*exceptions):  # noqa: ANN001
-    """Minimal inline replacement for contextlib.suppress (stdlib)."""
-    class _CM:
-        def __enter__(self):
-            return None
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            return exc_type is not None and issubclass(exc_type, exceptions)
-    return _CM()

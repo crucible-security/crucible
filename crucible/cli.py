@@ -3998,13 +3998,15 @@ def target_list() -> None:
     tbl.add_column("Categories")
 
     for t in list_targets():
-        state_label = "[red]VULNERABLE[/red]" if t["vulnerable"] else "[green]HARDENED[/green]"
+        state_label = (
+            "[red]VULNERABLE[/red]" if t["vulnerable"] else "[green]HARDENED[/green]"
+        )
         result_label = "[red]fail[/red]" if t["vulnerable"] else "[green]pass[/green]"
         tbl.add_row(
-            t["name"],
+            str(t["name"]),
             state_label,
             result_label,
-            ", ".join(t["categories"]),
+            ", ".join(str(c) for c in t["categories"]),  # type: ignore[attr-defined]
         )
 
     console.print(tbl)
@@ -4016,8 +4018,12 @@ def target_list() -> None:
 
 @target_app.command("start")
 def target_start(
-    name: str = typer.Option(..., "--name", "-n", help="Target name (see 'crucible target list')."),
-    port: int = typer.Option(9000, "--port", "-p", help="Port to bind on (0 = OS-assigned)."),
+    name: str = typer.Option(
+        ..., "--name", "-n", help="Target name (see 'crucible target list')."
+    ),
+    port: int = typer.Option(
+        9000, "--port", "-p", help="Port to bind on (0 = OS-assigned)."
+    ),
 ) -> None:
     """Start a single reference target and keep it running (Ctrl-C to stop)."""
     import signal
@@ -4033,21 +4039,23 @@ def target_start(
     server, actual_port = target.start_server(port)
     url = f"http://127.0.0.1:{actual_port}"
 
-    vuln_label = "[red]VULNERABLE[/red]" if target.vulnerable else "[green]HARDENED[/green]"
+    vuln_label = (
+        "[red]VULNERABLE[/red]" if target.vulnerable else "[green]HARDENED[/green]"
+    )
     expected = "[red]fail[/red]" if target.vulnerable else "[green]pass[/green]"
 
-    console.print(f"\n[bold]Reference Target Started[/bold]")
+    console.print("\n[bold]Reference Target Started[/bold]")
     console.print(f"  Name        : [cyan]{name}[/cyan]")
     console.print(f"  State       : {vuln_label}")
     console.print(f"  Expected    : Crucible should {expected}")
     console.print(f"  URL         : [link={url}]{url}[/link]")
     console.print(f"  Health      : {url}/health")
     console.print(f"  Ground Truth: {url}/ground_truth")
-    console.print(f"\n[dim]Press Ctrl-C to stop.[/dim]\n")
+    console.print("\n[dim]Press Ctrl-C to stop.[/dim]\n")
 
     stop_event = __import__("threading").Event()
 
-    def _signal_handler(*_) -> None:  # noqa: ANN001
+    def _signal_handler(*args: object) -> None:
         stop_event.set()
 
     signal.signal(signal.SIGINT, _signal_handler)
@@ -4092,10 +4100,16 @@ def target_validate(
             server, port = target_instance.start_server(0)
             url = f"http://127.0.0.1:{port}"
 
-            entry: dict = {"name": cls.name, "url": url, "health": None, "ground_truth": None}
+            entry: dict[str, object] = {
+                "name": cls.name,
+                "url": url,
+                "health": None,
+                "ground_truth": None,
+            }
             try:
                 # Poll health
                 import time as _time
+
                 deadline = _time.monotonic() + 3.0
                 while _time.monotonic() < deadline:
                     try:
@@ -4131,7 +4145,7 @@ def target_validate(
         vuln = r["vulnerable"]
         vuln_label = "[red]YES[/red]" if vuln else "[green]NO[/green]"
         expected = "[red]fail[/red]" if vuln else "[green]pass[/green]"
-        tbl.add_row(r["name"], health_label, vuln_label, expected)
+        tbl.add_row(str(r["name"]), health_label, vuln_label, expected)
 
     console.print(tbl)
 
@@ -4143,6 +4157,10 @@ def target_validate(
 
     Path(output).write_text(_json.dumps(report, indent=2), encoding="utf-8")
 
-    status = "[bold green]ALL TARGETS HEALTHY[/bold green]" if all_started else "[bold red]SOME TARGETS FAILED[/bold red]"
+    status = (
+        "[bold green]ALL TARGETS HEALTHY[/bold green]"
+        if all_started
+        else "[bold red]SOME TARGETS FAILED[/bold red]"
+    )
     console.print(f"\n{status}")
     console.print(f"Report saved to: [cyan]{output}[/cyan]")

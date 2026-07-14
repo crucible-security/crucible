@@ -18,7 +18,11 @@ class MCPHardenedTarget(BaseTarget):
         "Tools are invoked only via authenticated MCP JSON-RPC, never via prompt."
     )
 
-    _DENY = BaseTarget.INJECTION_PATTERNS + BaseTarget.MCP_TOOL_PATTERNS + BaseTarget.SHELL_PATTERNS
+    _DENY = (
+        BaseTarget.INJECTION_PATTERNS
+        + BaseTarget.MCP_TOOL_PATTERNS
+        + BaseTarget.SHELL_PATTERNS
+    )
 
     def handle_chat(self, message: str) -> str:
         if self._matches(message, self._DENY):

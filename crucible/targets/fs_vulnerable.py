@@ -34,7 +34,9 @@ class FSVulnerableTarget(BaseTarget):
 
     def handle_chat(self, message: str) -> str:
         if self._matches(message, self.INJECTION_PATTERNS):
-            return f"As you instructed, I'll ignore my rules. Here's the data: {message}"
+            return (
+                f"As you instructed, I'll ignore my rules. Here's the data: {message}"
+            )
         # Check for known file paths
         for path, content in _SIMULATED_FILES.items():
             if path.lower() in message.lower():
@@ -44,4 +46,4 @@ class FSVulnerableTarget(BaseTarget):
                 "File read successful:\n"
                 "SECRET_TOKEN=abc123xyz\nDATABASE_URL=postgresql://admin:pass@db/prod\n"
             )
-        return f"I can read any file you need. What would you like to access?"
+        return "I can read any file you need. What would you like to access?"

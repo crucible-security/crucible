@@ -125,7 +125,7 @@ class BaseTarget:
             def log_message(self, fmt: str, *args: object) -> None:  # type: ignore[override]
                 pass  # suppress request logs to keep test output clean
 
-            def _send_json(self, data: dict, status: int = 200) -> None:
+            def _send_json(self, data: dict[str, object], status: int = 200) -> None:
                 body = json.dumps(data).encode()
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json")
@@ -133,12 +133,12 @@ class BaseTarget:
                 self.end_headers()
                 self.wfile.write(body)
 
-            def _read_json(self) -> dict:
+            def _read_json(self) -> dict[str, object]:
                 length = int(self.headers.get("Content-Length", 0))
                 raw = self.rfile.read(length)
                 return json.loads(raw) if raw else {}
 
-            def do_GET(self) -> None:  # noqa: N802
+            def do_GET(self) -> None:
                 if self.path == "/health":
                     self._send_json(
                         {
@@ -162,10 +162,10 @@ class BaseTarget:
                 else:
                     self._send_json({"error": "not found"}, 404)
 
-            def do_POST(self) -> None:  # noqa: N802
+            def do_POST(self) -> None:
                 if self.path == "/chat":
                     body = self._read_json()
-                    message = body.get("message", "")
+                    message = str(body.get("message", ""))
                     response_text = target.handle_chat(message)
                     self._send_json(
                         {"response": response_text, "target_name": target.name}

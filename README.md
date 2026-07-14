@@ -85,6 +85,7 @@ Join the waitlist for our upcoming cloud platform: [crucible-cloud.vercel.app](h
 | **Statistical Confidence** | **--confidence** | **✅ Live (v0.6)** | **Bootstrap & binomial bounds** |
 | **MCP Trace Proxy** | **traffic proxy**| **✅ Live (v0.7)** | **Agentic #3 / Tool Misuse** |
 | **Memory & RAG Poisoning** | **poison-test** | **✅ Live (v0.8)** | **Agentic #5 / Poisoning** |
+| **Reference Targets** | **12 targets** | **✅ Live (v0.18)**| **Ground-truth validation targets** |
 
 ## OWASP Agentic Top 10 Coverage
 
@@ -92,8 +93,8 @@ Join the waitlist for our upcoming cloud platform: [crucible-cloud.vercel.app](h
 |---|----------|-----------------|--------|
 | 1 | Goal Hijacking | `goal_hijacking` | Covered (20 attacks) |
 | 2 | Prompt Injection | `prompt_injection` | Covered (50 attacks) |
-| 3 | Tool Misuse | -- | Planned |
-| 4 | Identity Abuse | -- | Planned |
+| 3 | Tool Misuse | `tool_injection` / `trace` proxy | Covered (v0.7.0) |
+| 4 | Identity Abuse | `trace` proxy + identity layer | Covered (v0.9.0) |
 | 5 | Memory Poisoning | `memory_poisoning` / `poison-test` | Covered (8 attacks, v0.8.0) |
 | 6 | Data Exfiltration | `prompt_injection` / exfiltration | Covered (v0.8.0) |
 | 7 | Scope Violation | `trace` proxy | Covered (v0.7.0) |

@@ -5,6 +5,33 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-07-14
+
+### Added — Task G6: Reference Target Suite
+
+- **`crucible/targets/` package** — reference target suite for ground-truth evaluation and scoring calibration:
+  - `base_target.py` — `BaseTarget` abstract class establishing standard-library HTTP servers with regex-based attack signatures. Exposes endpoints:
+    - `POST /chat` — routes message payloads to target handler logic.
+    - `GET /health` — exposes vulnerability status and class identity.
+    - `GET /ground_truth` — returns structured ground-truth classifications including `expected_crucible_result` (`"pass"` or `"fail"`).
+  - `sql_vulnerable.py` / `sql_hardened.py` — SQL-injection target pairs mimicking direct database query routing versus strict query sanitisation.
+  - `shell_vulnerable.py` / `shell_hardened.py` — Shell command execution target pairs mimicking system utilities shell-injection vulnerability.
+  - `fs_vulnerable.py` / `fs_hardened.py` — Filesystem exfiltration target pairs return simulated sensitive file contents (`/etc/passwd`, `~/.bashrc`) upon request.
+  - `mcp_vulnerable.py` / `mcp_hardened.py` — MCP tool abuse target pairs mimicking prompt-routed tool calling versus secure JSON-RPC tool-calling channels.
+  - `memory_vulnerable.py` / `memory_hardened.py` — Memory-poisoning target pairs testing cross-request context retention versus stateless routing.
+  - `delegation_vulnerable.py` / `delegation_hardened.py` — Privilege escalation target pairs granting admin privileges on self-reported authority claims.
+  - `registry.py` — Central registry interface providing target listing and instantiation helper methods.
+  - `runner.py` — Context-manager `TargetRunner` providing clean startup, polling loops, URL exposure, and programmatic teardown of local targets.
+
+- **`crucible target` CLI command sub-app** (`crucible/cli.py`):
+  - `crucible target list` — Renders a table of all 12 reference targets.
+  - `crucible target start --name STR --port INT` — Launches a standalone reference target on a specific port.
+  - `crucible target validate [--output FILE]` — Automates bulk validation checks for all targets and exports a JSON health report.
+
+- **`tests/test_reference_targets.py`** — 19 test cases verifying target classes, endpoint payloads, stateful turning, and runner context execution.
+
+---
+
 ## [0.17.0] - 2026-07-13
 
 ### Added — Phase 19: Federated Threat Exchange

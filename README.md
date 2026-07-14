@@ -241,6 +241,15 @@ crucible poison-test list
 
 # Check the status of a specific poisoning session
 crucible poison-test status <session-id>
+
+# List all 12 reference targets (6 vulnerable, 6 hardened)
+crucible target list
+
+# Start a specific reference target (e.g. sql_vulnerable) on port 9000
+crucible target start --name sql_vulnerable --port 9000
+
+# Spin up all 12 targets, run health & ground-truth validation, write JSON report
+crucible target validate --output ground_truth_report.json
 ```
 
 ## CI/CD Integration
@@ -329,6 +338,10 @@ crucible/
     policy.py                  # YAML rule-based evaluation engine
     audit_log.py               # Append-only thread-safe JSONL logger
     proxy.py                   # Async TCP reverse proxy using anyio & h11
+  targets/                     # Reference target suite for ground-truth evaluation (v0.18.0)
+    base_target.py             # Abstract base HTTP target using Python standard library
+    registry.py                # Central target registry mapping names to classes
+    runner.py                  # Context-manager for starting and stopping targets cleanly
 ```
 
 ## Community

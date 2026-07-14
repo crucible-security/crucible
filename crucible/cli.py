@@ -3960,3 +3960,189 @@ def exchange_status(
     except Exception as exc:
         console.print(f"[bold red]✗ Exchange node unreachable[/bold red]: {exc}")
         raise typer.Exit(code=1)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# crucible target  —  Reference target suite for ground-truth evaluation
+# ─────────────────────────────────────────────────────────────────────────────
+
+target_app = typer.Typer(
+    name="target",
+    help=(
+        "Reference target suite for ground-truth evaluation.\n\n"
+        "Start intentionally-vulnerable or hardened mini-agents to measure "
+        "Crucible's detection accuracy (TP / FP / FN)."
+    ),
+    add_completion=False,
+    no_args_is_help=True,
+)
+
+app.add_typer(target_app, name="target")
+
+
+@target_app.command("list")
+def target_list() -> None:
+    """List all 12 reference targets with their vulnerability state."""
+    from rich.table import Table
+
+    from crucible.targets.registry import list_targets
+
+    tbl = Table(
+        title="Crucible Reference Targets",
+        header_style="bold magenta",
+        show_lines=True,
+    )
+    tbl.add_column("Name", style="cyan", min_width=28)
+    tbl.add_column("State", justify="center")
+    tbl.add_column("Expected Result", justify="center")
+    tbl.add_column("Categories")
+
+    for t in list_targets():
+        state_label = "[red]VULNERABLE[/red]" if t["vulnerable"] else "[green]HARDENED[/green]"
+        result_label = "[red]fail[/red]" if t["vulnerable"] else "[green]pass[/green]"
+        tbl.add_row(
+            t["name"],
+            state_label,
+            result_label,
+            ", ".join(t["categories"]),
+        )
+
+    console.print(tbl)
+    console.print(
+        f"\n[dim]Total: {len(list_targets())} targets "
+        f"(6 vulnerable + 6 hardened)[/dim]"
+    )
+
+
+@target_app.command("start")
+def target_start(
+    name: str = typer.Option(..., "--name", "-n", help="Target name (see 'crucible target list')."),
+    port: int = typer.Option(9000, "--port", "-p", help="Port to bind on (0 = OS-assigned)."),
+) -> None:
+    """Start a single reference target and keep it running (Ctrl-C to stop)."""
+    import signal
+
+    from crucible.targets.registry import TARGET_REGISTRY, get_target
+
+    if name not in TARGET_REGISTRY:
+        console.print(f"[red]Unknown target: {name!r}[/red]")
+        console.print(f"Known targets: {', '.join(sorted(TARGET_REGISTRY))}")
+        raise typer.Exit(code=1)
+
+    target = get_target(name)
+    server, actual_port = target.start_server(port)
+    url = f"http://127.0.0.1:{actual_port}"
+
+    vuln_label = "[red]VULNERABLE[/red]" if target.vulnerable else "[green]HARDENED[/green]"
+    expected = "[red]fail[/red]" if target.vulnerable else "[green]pass[/green]"
+
+    console.print(f"\n[bold]Reference Target Started[/bold]")
+    console.print(f"  Name        : [cyan]{name}[/cyan]")
+    console.print(f"  State       : {vuln_label}")
+    console.print(f"  Expected    : Crucible should {expected}")
+    console.print(f"  URL         : [link={url}]{url}[/link]")
+    console.print(f"  Health      : {url}/health")
+    console.print(f"  Ground Truth: {url}/ground_truth")
+    console.print(f"\n[dim]Press Ctrl-C to stop.[/dim]\n")
+
+    stop_event = __import__("threading").Event()
+
+    def _signal_handler(*_) -> None:  # noqa: ANN001
+        stop_event.set()
+
+    signal.signal(signal.SIGINT, _signal_handler)
+    signal.signal(signal.SIGTERM, _signal_handler)
+
+    stop_event.wait()
+    server.shutdown()
+    console.print("\n[dim]Target stopped.[/dim]")
+
+
+@target_app.command("validate")
+def target_validate(
+    output: str = typer.Option(
+        "ground_truth_report.json",
+        "--output",
+        "-o",
+        help="Path for the JSON validation report.",
+    ),
+) -> None:
+    """Start all 12 targets, hit /health and /ground_truth, write validation report."""
+    import json as _json
+    import urllib.request
+
+    from rich.progress import Progress, SpinnerColumn, TextColumn
+    from rich.table import Table
+
+    from crucible.targets.registry import ALL_TARGET_CLASSES, get_target
+
+    results = []
+    all_started = True
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Validating targets…", total=len(ALL_TARGET_CLASSES))
+
+        for cls in ALL_TARGET_CLASSES:
+            progress.update(task, description=f"Starting {cls.name}…")
+            target_instance = get_target(cls.name)
+            server, port = target_instance.start_server(0)
+            url = f"http://127.0.0.1:{port}"
+
+            entry: dict = {"name": cls.name, "url": url, "health": None, "ground_truth": None}
+            try:
+                # Poll health
+                import time as _time
+                deadline = _time.monotonic() + 3.0
+                while _time.monotonic() < deadline:
+                    try:
+                        with urllib.request.urlopen(f"{url}/health", timeout=0.5) as r:
+                            entry["health"] = _json.loads(r.read())
+                            break
+                    except Exception:
+                        _time.sleep(0.05)
+
+                with urllib.request.urlopen(f"{url}/ground_truth", timeout=2) as r:
+                    entry["ground_truth"] = _json.loads(r.read())
+
+            except Exception as exc:
+                entry["error"] = str(exc)
+                all_started = False
+            finally:
+                server.shutdown()
+
+            entry["vulnerable"] = cls.vulnerable
+            results.append(entry)
+            progress.advance(task)
+
+    # Print table
+    tbl = Table(title="Ground-Truth Validation Report", header_style="bold magenta")
+    tbl.add_column("Target", style="cyan")
+    tbl.add_column("Health", justify="center")
+    tbl.add_column("Vulnerable", justify="center")
+    tbl.add_column("Expected Result", justify="center")
+
+    for r in results:
+        health_ok = r.get("health", {}) is not None
+        health_label = "[green]OK[/green]" if health_ok else "[red]FAIL[/red]"
+        vuln = r["vulnerable"]
+        vuln_label = "[red]YES[/red]" if vuln else "[green]NO[/green]"
+        expected = "[red]fail[/red]" if vuln else "[green]pass[/green]"
+        tbl.add_row(r["name"], health_label, vuln_label, expected)
+
+    console.print(tbl)
+
+    report = {
+        "total_targets": len(results),
+        "all_started": all_started,
+        "targets": results,
+    }
+
+    Path(output).write_text(_json.dumps(report, indent=2), encoding="utf-8")
+
+    status = "[bold green]ALL TARGETS HEALTHY[/bold green]" if all_started else "[bold red]SOME TARGETS FAILED[/bold red]"
+    console.print(f"\n{status}")
+    console.print(f"Report saved to: [cyan]{output}[/cyan]")

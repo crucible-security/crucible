@@ -1,8 +1,5 @@
 name: "Crucible Security Agent Scan"
-description: >
-  Run a Crucible Security scan against an AI agent endpoint and surface
-  findings directly in your GitHub workflow. Fails the workflow if the
-  security grade falls below the configured minimum.
+description: "Security scan for AI agents. Audits prompt injection, jailbreaks, and tool misuse in GitHub workflows."
 
 author: "Crucible Security"
 

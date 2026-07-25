@@ -1,5 +1,0 @@
-default_action: allow
-rules:
-  - name: bad-rule
-    parameter_pattern: "rm\\s+[rf"
-    action: deny

@@ -445,3 +445,41 @@ generate_openwebui_report.py
 
 # ── Crucible: dashboard / unfinished internal tooling ────────────────────────
 /dashboard/
+
+# ── Crucible: scratch, issue drafts & root scan artifacts ────────────────────
+/scratch/
+.github/issues/
+*_report.html
+*_report.json
+*_report.md
+!docs/*_report.md
+audit_*
+diff_*
+ollama_*
+final_*
+test_stix.json
+behavioral-audit.json
+confidence_scan.json
+cross_category_test.json
+dynamic_verify.*
+honest_accuracy.json
+iac_verify.json
+mcp-vuln-test.json
+phase1_verify.json
+plant_record.json
+real-report.*
+scan_*.json
+spot_check.py
+temp_profile.json
+verification_result.json
+check_ci.py
+check_dynamic_verify.py
+fetch_logs.py
+cengage_auth_test.ps1
+b64_fn_test.json
+bad_policy.yaml
+evil_mcp.json
+ground_truth_report.json
+compliance_*.md
+!docs/compliance_*.md
+

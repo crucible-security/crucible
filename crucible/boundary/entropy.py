@@ -1,9 +1,9 @@
-"""crucible/boundary/entropy.py — Response entropy analysis for boundary mapping.
+"""crucible/boundary/entropy.py — Response entropy analysis for semantic noise sensitivity mapping.
 
-Measures the semantic entropy and variability of model responses across
-multiple noised prompt variants to estimate proximity to a decision boundary.
+Computes Jaccard distance, lexical entropy, and normalised response-length variance
+to estimate how close a model's safety response is to the decision boundary.
 
-v0.16.0 — Phase 18 Crucible Embedding Boundary Mapping
+v0.16.0 — Phase 18 Crucible Semantic Noise Sensitivity Mapping
 """
 
 from __future__ import annotations

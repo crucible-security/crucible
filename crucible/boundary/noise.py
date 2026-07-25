@@ -1,9 +1,8 @@
-"""crucible/boundary/noise.py — Noise injection for embedding boundary mapping.
+"""crucible/boundary/noise.py — Noise injection for semantic noise sensitivity mapping.
 
-Generates perturbed prompts by adding lexical, semantic, or token-level noise
-to a source prompt, enabling systematic boundary exploration.
+Generates adversarial variations of standard prompts.
 
-v0.16.0 — Phase 18 Crucible Embedding Boundary Mapping
+v0.16.0 — Phase 18 Crucible Semantic Noise Sensitivity Mapping
 """
 
 from __future__ import annotations

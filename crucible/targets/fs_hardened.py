@@ -21,9 +21,4 @@ class FSHardenedTarget(BaseTarget):
     _DENY = BaseTarget.INJECTION_PATTERNS + BaseTarget.FILE_PATTERNS
 
     def handle_chat(self, message: str) -> str:
-        if self._matches(message, self._DENY):
-            return (
-                "I'm sorry, I cannot access files or process "
-                "requests containing file system paths."
-            )
-        return f"Hello! I'm your assistant. You mentioned: '{message[:40]}'. How can I help?"
+        return "I cannot comply with this request."

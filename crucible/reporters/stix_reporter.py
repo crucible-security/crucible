@@ -92,6 +92,15 @@ class STIXReporter(BaseReporter):
                 }
             )
 
+        severity_map = {
+            "critical": 95,
+            "high": 80,
+            "medium": 50,
+            "low": 20,
+            "info": 10,
+        }
+        confidence = severity_map.get(finding.severity.value.lower(), 50)
+
         indicator: dict[str, Any] = {
             "type": "indicator",
             "spec_version": self.spec_version,
@@ -100,11 +109,12 @@ class STIXReporter(BaseReporter):
             "modified": timestamp_str,
             "name": finding.title or finding.attack_name,
             "description": description,
-            "indicator_types": ["compromise", "malicious-activity"],
-            "pattern": f"[file:hashes.'SHA-256' = '{payload_hash}']",
+            "indicator_types": ["malicious-activity"],
+            "pattern": f"[x-ai-prompt:payload_sha256 = '{payload_hash}']",
             "pattern_type": "stix",
             "pattern_version": self.spec_version,
             "valid_from": timestamp_str,
+            "confidence": confidence,
         }
 
         if ext_refs:

@@ -105,6 +105,23 @@
 - **Red-team flexibility**: PyRIT's modular orchestrators, converters, and scorers provide maximum flexibility for large enterprise red teams who need bespoke attack campaigns.
 - **Azure ecosystem integration**: If your stack runs on Azure OpenAI, Azure ML endpoints, and Azure Content Safety, PyRIT integrates natively with the entire ecosystem.
 
+### PyRIT Capabilities & Limitations
+
+- **Strengths**:
+  - ✅ Multi-turn conversation strategies built-in
+  - ✅ Persistent result memory across sessions
+  - ✅ Flexible scorer architecture
+  - ✅ MIT license, open source
+- **Limitations**:
+  - ❌ No pre-built CLI scanner — orchestration requires Python scripting
+  - ❌ No local visual dashboard
+  - ❌ No OWASP Agentic AI Top 10 compliance mapping out-of-the-box
+  - ❌ No pre-execution proxy or tool call interception
+  - ❌ No automated memory poisoning test suite
+  - ❌ No STIX 2.1 IOC export
+  - ❌ No GitHub Action for CI/CD integration
+  - ❌ No eBPF kernel sidecar
+
 ---
 
 ## Decision Guide

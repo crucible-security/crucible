@@ -1,7 +1,14 @@
-"""crucible/boundary/__init__.py — Embedding Boundary Mapping package (v0.16.0)
+"""
+Semantic Noise Sensitivity Mapping
 
-Provides tools for discovering the semantic decision boundary of an AI model
-by injecting noise into embedding space and measuring response entropy.
+Maps how much text-level semantic noise (character swaps, word drops,
+synonym substitutions) causes a model to change behavior from refusal
+to compliance or vice versa.
+
+NOTE: This tests TEXT-LEVEL perturbations, not embedding-vector
+perturbations. True embedding-layer perturbation (injecting Gaussian
+noise into embedding vectors) requires HuggingFace transformers direct
+model access and is not implemented in this version.
 """
 
 from __future__ import annotations

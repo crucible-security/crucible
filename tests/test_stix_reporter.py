@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import TYPE_CHECKING
 
@@ -109,11 +110,10 @@ def test_stix_reporter_failed_findings_included(base_target: AgentTarget) -> Non
     assert "jailbreak me now please" not in obj["description"]
     assert "jailbreak me now please" not in obj["pattern"]
 
-    # Verify SHA-256 hash pattern
-    import hashlib
-
     expected_hash = hashlib.sha256(b"jailbreak me now please").hexdigest()
-    assert obj["pattern"] == f"[file:hashes.'SHA-256' = '{expected_hash}']"
+    assert obj["pattern"] == f"[x-ai-prompt:payload_sha256 = '{expected_hash}']"
+    assert obj["indicator_types"] == ["malicious-activity"]
+    assert obj["confidence"] == 80
 
     # Verify no target url
     assert "http://agent.test/chat" not in json.dumps(bundle)

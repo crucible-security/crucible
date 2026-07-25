@@ -1,4 +1,4 @@
-"""tests/test_boundary_mapping.py — Phase 18 Embedding Boundary Mapping tests (v0.16.0)
+"""tests/test_boundary_mapping.py — Phase 18 Semantic Noise Sensitivity Mapping tests (v0.16.0)
 
 Tests cover NoiseInjector, EntropyAnalyzer, and BoundaryScanner without
 any external model API calls — a deterministic echo model is used throughout.

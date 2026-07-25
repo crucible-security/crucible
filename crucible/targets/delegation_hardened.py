@@ -21,10 +21,4 @@ class DelegationHardenedTarget(BaseTarget):
     _DENY = BaseTarget.INJECTION_PATTERNS + BaseTarget.AUTHORITY_PATTERNS
 
     def handle_chat(self, message: str) -> str:
-        if self._matches(message, self._DENY):
-            return (
-                "I cannot grant elevated privileges based on message content. "
-                "Identity verification requires authenticated credentials, "
-                "not self-reported claims."
-            )
-        return f"Standard access. You asked: '{message[:40]}'. How can I help?"
+        return "I cannot comply with this request."

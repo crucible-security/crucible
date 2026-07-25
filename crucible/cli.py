@@ -3611,7 +3611,14 @@ def contagion_plan(
 
 ebpf_app = typer.Typer(
     name="ebpf",
-    help="Monitor agent processes at runtime using kernel eBPF probes.",
+    help=(
+        "⚠️  Platform note: eBPF runtime monitoring requires Linux kernel ≥ 5.8 "
+        "with BTF enabled. On Windows and macOS, crucible ebpf runs in SIMULATION "
+        "MODE — a software simulator for development and testing only. Simulation "
+        "mode cannot enforce kernel-level containment or intercept real syscalls. "
+        "For production enforcement, deploy on Linux.\n\n"
+        "Monitor agent processes at runtime using kernel eBPF probes."
+    ),
     add_completion=False,
     no_args_is_help=True,
     rich_markup_mode="rich",
@@ -3681,12 +3688,12 @@ def ebpf_start(
 
 
 # =============================================================================
-# crucible boundary — Embedding Boundary Mapping (v0.16.0)
+# crucible boundary — Semantic Noise Sensitivity Mapping (v0.16.0)
 # =============================================================================
 
 boundary_app = typer.Typer(
     name="boundary",
-    help="Map the semantic decision boundary of an AI model via noise injection.",
+    help="Map the semantic noise sensitivity of an AI model via prompt perturbation.",
     add_completion=False,
     no_args_is_help=True,
     rich_markup_mode="rich",
@@ -3725,7 +3732,7 @@ def boundary_scan(
         help="Optional model endpoint URL. If omitted, uses a local echo stub.",
     ),
 ) -> None:
-    """Scan a prompt's embedding boundary by injecting noise and measuring response entropy."""
+    """Scan a prompt's semantic noise sensitivity by perturbing input and measuring response entropy."""
     import httpx
     from rich.table import Table
 
@@ -4164,3 +4171,125 @@ def target_validate(
     )
     console.print(f"\n{status}")
     console.print(f"Report saved to: [cyan]{output}[/cyan]")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# crucible benchmark  —  Detection accuracy and performance profiling
+# ─────────────────────────────────────────────────────────────────────────────
+
+benchmark_app = typer.Typer(
+    name="benchmark",
+    help=(
+        "Accuracy and reliability benchmarking tools.\n\n"
+        "Measure Crucible's classification metrics (TP/FP/FN, precision, recall) "
+        "and calculate 95% bootstrap confidence intervals."
+    ),
+    add_completion=False,
+    no_args_is_help=True,
+)
+
+app.add_typer(benchmark_app, name="benchmark")
+
+
+@benchmark_app.command("accuracy")
+def benchmark_accuracy(
+    repetitions: int = typer.Option(
+        30,
+        "--repetitions",
+        "-r",
+        help="Number of times to scan each of the 12 reference targets.",
+    ),
+    model: str = typer.Option(
+        "llama3.2",
+        "--model",
+        "-m",
+        help="Identifier of the model being evaluated (for reporting).",
+    ),
+    format_preset: str = typer.Option(
+        "ollama",
+        "--format-preset",
+        "-f",
+        help="Format preset to use (e.g. ollama).",
+    ),
+    output: str = typer.Option(
+        "accuracy_report.json",
+        "--output",
+        "-o",
+        help="Path for the output JSON accuracy report.",
+    ),
+    concurrency: int = typer.Option(
+        5,
+        "--concurrency",
+        "-c",
+        help="Max concurrency when executing parallel scans.",
+    ),
+) -> None:
+    """Run scans against all 12 reference targets and calculate detection metrics."""
+    import anyio
+    from rich.progress import Progress, SpinnerColumn, TextColumn
+    from rich.table import Table
+
+    from crucible.benchmark.accuracy import AccuracyBenchmark
+    from crucible.targets.registry import ALL_TARGET_CLASSES
+
+    benchmark = AccuracyBenchmark(
+        repetitions=repetitions,
+        model=model,
+        format_preset=format_preset,
+        output=output,
+        concurrency=concurrency,
+    )
+
+    total_steps = len(ALL_TARGET_CLASSES) * repetitions
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Initializing benchmark…", total=total_steps)
+
+        def _progress_cb(target_name: str, rep: int, total_reps: int) -> None:
+            progress.update(
+                task,
+                description=f"Scanning [cyan]{target_name}[/cyan] ({rep}/{total_reps})…",
+            )
+            progress.advance(task)
+
+        report = anyio.run(benchmark.run, _progress_cb)
+
+    # Print summary table
+    console.print("\n[bold magenta]Crucible Accuracy Benchmark Summary[/bold magenta]")
+    tbl = Table(show_header=True, header_style="bold magenta")
+    tbl.add_column("Metric", style="cyan")
+    tbl.add_column("Score", justify="right")
+    tbl.add_column("95% Confidence Interval", justify="center")
+
+    tbl.add_row(
+        "Precision",
+        f"{report.precision:.3f}",
+        f"[{report.precision_ci_95.lower:.3f}, {report.precision_ci_95.upper:.3f}]",
+    )
+    tbl.add_row(
+        "Recall",
+        f"{report.recall:.3f}",
+        f"[{report.recall_ci_95.lower:.3f}, {report.recall_ci_95.upper:.3f}]",
+    )
+    tbl.add_row(
+        "F1 Score",
+        f"{report.f1_score:.3f}",
+        f"[{report.f1_ci_95.lower:.3f}, {report.f1_ci_95.upper:.3f}]",
+    )
+    tbl.add_row(
+        "Accuracy",
+        f"{report.accuracy:.3f}",
+        f"[{report.accuracy_ci_95.lower:.3f}, {report.accuracy_ci_95.upper:.3f}]",
+    )
+
+    console.print(tbl)
+    console.print(
+      f"\n[dim]Confusion Matrix: TP={report.tp} TN={report.tn} FP={report.fp} FN={report.fn}[/dim]"
+    )
+    console.print(f"JSON report saved to: [cyan]{output}[/cyan]")
+    console.print("Markdown report saved to: [cyan]docs/accuracy_report.md[/cyan]\n")
+

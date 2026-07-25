@@ -1,15 +1,21 @@
 """
-Contextual Gradient-Aware Fuzzer (CGAF) — crucible/core/fuzzer.py
+Contextual Gradient-Aware Fuzzer (CGAF)
 
-Adaptively selects attack strategies using a UCB1 multi-armed bandit,
-prioritising modules with historically high bypass rates.  When the target
-endpoint returns log-probabilities the fuzzer extracts token-entropy as a
-richer fitness signal; otherwise it falls back to binary success/failure.
+IMPLEMENTATION NOTE — FITNESS SIGNAL:
+This fuzzer uses SEMANTIC REFUSAL DETECTION as its fitness signal,
+not token log-probabilities. The fitness function detects whether
+the model's response begins with refusal patterns ("I cannot", etc.)
+or compliance patterns ("Sure", "Here is", etc.).
 
-Scope constraint: logprob mode requires an OpenAI-compatible endpoint that
-accepts ``logprobs: true`` in the request body and returns ``logprobs`` in
-the response choices.  All non-logprob endpoints are fully supported in
-binary mode.
+This is different from true logprob-guided fuzzing (as in AFL/libFuzzer)
+which requires direct access to token probability distributions.
+True logprob-guided fuzzing requires:
+  - Ollama: /api/generate with logprobs option (experimental)
+  - OpenAI: /v1/chat/completions with logprobs=true
+  - HuggingFace: direct model.forward() access
+
+Current implementation: Semantics-Guided Adaptive Fuzzing
+Future work: Logprob-guided fuzzing when stable API confirmed
 """
 
 from __future__ import annotations

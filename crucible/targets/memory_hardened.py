@@ -21,12 +21,4 @@ class MemoryHardenedTarget(BaseTarget):
     _DENY = BaseTarget.INJECTION_PATTERNS
 
     def handle_chat(self, message: str) -> str:
-        if self._matches(message, self._DENY):
-            return (
-                "I'm sorry, I cannot accept instructions that ask me to "
-                "override my guidelines or change my behaviour."
-            )
-        return (
-            f"I process each message independently. "
-            f"You asked: '{message[:40]}'. How can I help?"
-        )
+        return "I cannot comply with this request."

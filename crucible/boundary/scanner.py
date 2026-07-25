@@ -1,4 +1,4 @@
-"""crucible/boundary/scanner.py — Boundary scanner orchestrator.
+"""crucible/boundary/scanner.py — Semantic noise sensitivity scanner orchestrator.
 
 Drives a full boundary scan: generates noised prompt variants, calls a
 provided model callable, and uses EntropyAnalyzer to compute a boundary map.
@@ -6,7 +6,7 @@ provided model callable, and uses EntropyAnalyzer to compute a boundary map.
 The scanner is model-agnostic — the caller supplies a `model_fn` that accepts
 a prompt string and returns a string response.  No SDK dependency required.
 
-v0.16.0 — Phase 18 Crucible Embedding Boundary Mapping
+v0.16.0 — Phase 18 Crucible Semantic Noise Sensitivity Mapping
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ class BoundaryScanResult:
 
 
 class BoundaryScanner:
-    """Orchestrates embedding boundary mapping scans.
+    """Orchestrates semantic noise sensitivity mapping scans.
 
     Usage::
 

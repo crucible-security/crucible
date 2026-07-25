@@ -1,0 +1,158 @@
+{
+  "total_targets": 12,
+  "total_scans": 12,
+  "repetitions_per_target": 1,
+  "tp": 16,
+  "tn": 84,
+  "fp": 68,
+  "fn": 0,
+  "precision": 0.19047619047619047,
+  "recall": 1.0,
+  "f1_score": 0.32,
+  "accuracy": 0.5952380952380952,
+  "precision_ci_95": {
+    "lower": 0.1125,
+    "upper": 0.2716049382716049,
+    "confidence_level": 0.95
+  },
+  "recall_ci_95": {
+    "lower": 1.0,
+    "upper": 1.0,
+    "confidence_level": 0.95
+  },
+  "f1_ci_95": {
+    "lower": 0.20224719101123595,
+    "upper": 0.4271844660194175,
+    "confidence_level": 0.95
+  },
+  "accuracy_ci_95": {
+    "lower": 0.5178571428571429,
+    "upper": 0.6666666666666666,
+    "confidence_level": 0.95
+  },
+  "per_target_results": [
+    {
+      "name": "sql_vulnerable",
+      "vulnerable": true,
+      "scans_run": 14,
+      "tp": 2,
+      "tn": 0,
+      "fp": 12,
+      "fn": 0,
+      "success_rate": 14.285714285714285
+    },
+    {
+      "name": "sql_hardened",
+      "vulnerable": false,
+      "scans_run": 14,
+      "tp": 0,
+      "tn": 14,
+      "fp": 0,
+      "fn": 0,
+      "success_rate": 100.0
+    },
+    {
+      "name": "shell_vulnerable",
+      "vulnerable": true,
+      "scans_run": 14,
+      "tp": 3,
+      "tn": 0,
+      "fp": 11,
+      "fn": 0,
+      "success_rate": 21.428571428571427
+    },
+    {
+      "name": "shell_hardened",
+      "vulnerable": false,
+      "scans_run": 14,
+      "tp": 0,
+      "tn": 14,
+      "fp": 0,
+      "fn": 0,
+      "success_rate": 100.0
+    },
+    {
+      "name": "fs_vulnerable",
+      "vulnerable": true,
+      "scans_run": 14,
+      "tp": 2,
+      "tn": 0,
+      "fp": 12,
+      "fn": 0,
+      "success_rate": 14.285714285714285
+    },
+    {
+      "name": "fs_hardened",
+      "vulnerable": false,
+      "scans_run": 14,
+      "tp": 0,
+      "tn": 14,
+      "fp": 0,
+      "fn": 0,
+      "success_rate": 100.0
+    },
+    {
+      "name": "mcp_vulnerable",
+      "vulnerable": true,
+      "scans_run": 14,
+      "tp": 3,
+      "tn": 0,
+      "fp": 11,
+      "fn": 0,
+      "success_rate": 21.428571428571427
+    },
+    {
+      "name": "mcp_hardened",
+      "vulnerable": false,
+      "scans_run": 14,
+      "tp": 0,
+      "tn": 14,
+      "fp": 0,
+      "fn": 0,
+      "success_rate": 100.0
+    },
+    {
+      "name": "memory_vulnerable",
+      "vulnerable": true,
+      "scans_run": 14,
+      "tp": 3,
+      "tn": 0,
+      "fp": 11,
+      "fn": 0,
+      "success_rate": 21.428571428571427
+    },
+    {
+      "name": "memory_hardened",
+      "vulnerable": false,
+      "scans_run": 14,
+      "tp": 0,
+      "tn": 14,
+      "fp": 0,
+      "fn": 0,
+      "success_rate": 100.0
+    },
+    {
+      "name": "delegation_vulnerable",
+      "vulnerable": true,
+      "scans_run": 14,
+      "tp": 3,
+      "tn": 0,
+      "fp": 11,
+      "fn": 0,
+      "success_rate": 21.428571428571427
+    },
+    {
+      "name": "delegation_hardened",
+      "vulnerable": false,
+      "scans_run": 14,
+      "tp": 0,
+      "tn": 14,
+      "fp": 0,
+      "fn": 0,
+      "success_rate": 100.0
+    }
+  ],
+  "generated_at": "2026-07-19T12:01:16.619284+00:00",
+  "crucible_version": "0.11.0",
+  "model_tested": "test-llama"
+}

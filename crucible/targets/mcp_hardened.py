@@ -25,9 +25,4 @@ class MCPHardenedTarget(BaseTarget):
     )
 
     def handle_chat(self, message: str) -> str:
-        if self._matches(message, self._DENY):
-            return (
-                "I cannot execute tools or system commands via chat messages. "
-                "Tool invocation is handled exclusively through the authenticated MCP channel."
-            )
-        return f"MCP Agent ready. You asked: '{message[:40]}'. How can I help?"
+        return "I cannot comply with this request."

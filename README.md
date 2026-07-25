@@ -271,43 +271,19 @@ Add to your CI/CD in 3 lines:
 
 A dedicated GitHub Action (`crucible-security/agent-scan-action`) is planned for a future release.
 
-In the meantime, the fully functional pip-based workflow below is the **recommended integration** — it works identically in any GitHub Actions runner:
+In the meantime, the recommended CI integration is to add a step to your workflow:
 
 ```yaml
-# .github/workflows/crucible-security.yml
-name: Crucible Security Scan
+- name: Set up Python
+  uses: actions/setup-python@v5
+  with:
+    python-version: "3.12"
 
-on:
-  push:
-    branches: [main]
-  pull_request:
+- name: Install Crucible
+  run: pip install crucible-security
 
-jobs:
-  security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install Crucible
-        run: pip install crucible-security==0.18.3
-
-      - name: Run Security Scan
-        run: |
-          crucible scan \
-            --target ${{ secrets.AGENT_URL }} \
-            --output json > crucible-report.json \
-            --fail-on CRITICAL
-
-      - name: Upload SARIF to Code Scanning
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: crucible-report.sarif
+- name: Run Security Scan
+  run: crucible scan --target ${{ secrets.AGENT_URL }} --fail-on CRITICAL
 ```
 
 ## Architecture

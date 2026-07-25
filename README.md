@@ -70,11 +70,11 @@ Join the waitlist for our upcoming cloud platform: [crucible-cloud.vercel.app](h
 | Prompt Injection | 50 | ✅ Live | LLM01, LLM07 |
 | Goal Hijacking | 20 | ✅ Live | Agentic #1 |
 | Jailbreaks | 20 | ✅ Live | LLM01, LLM06 |
-| Enterprise Graph | 10 | ✅ Live | Agentic #2, #4 |
-| Memory Poisoning | 8 | ✅ Live | Agentic #5 |
-| Infrastructure Escalation | 5 | ✅ Live | LLM06, SSRF |
-| Advanced Orchestration | 4 | ✅ Live | Agentic #3 |
-| MCP Security | 5 | ✅ Live | Agentic #3 |
+| Enterprise Graph | 5 | ✅ Live | Agentic #2, #4 |
+| Memory Poisoning | 5 | ✅ Live | Agentic #5 |
+| Infrastructure Escalation | 3 | ✅ Live | LLM06, SSRF |
+| Advanced Orchestration | 3 | ✅ Live | Agentic #3 |
+| MCP Security | 2 | ✅ Live | Agentic #3 |
 | **MCP Server Scan** | **10** | **✅ Live (v0.4)** | **MCP-001 – MCP-005** |
 | Behavioral Drift | multi-turn | ✅ Live (v0.3) | Agentic #1, #2 |
 | Multi-turn Attacks | strategies | ✅ Live (v0.3) | LLM01, Agentic #1 |
@@ -277,7 +277,7 @@ We also provide the official **Crucible Security Agent Scan** GitHub Action. It 
 
 ```yaml
 - name: Crucible Security Scan
-  uses: crucible-security/agent-scan-action@v0.11.0
+  uses: crucible-security/agent-scan-action@v0.18.0
   with:
     target: ${{ secrets.AGENT_URL }}
     format_preset: openai
@@ -438,14 +438,14 @@ future release when stable logprob APIs are confirmed.
 
 ### Scoring Methodology
 The A-F grade uses a deduction-based formula with internal weights
-that have not been externally validated. Use --confidence --samples 5
-for statistically robust results. See crucible benchmark accuracy
+that have not been externally validated. Use `--confidence --confidence-runs 5`
+for statistically robust results. See `crucible benchmark accuracy`
 for detection accuracy data.
 
 ### Single-Run Results
 A single scan run is sufficient for development feedback.
 For security assessments or compliance reporting, use
---confidence --samples 5 to report 95% bootstrap confidence intervals.
+`--confidence --confidence-runs 5` to report 95% bootstrap confidence intervals.
 
 ### Refusal Detection Method
 Crucible's response evaluation currently uses keyword/substring

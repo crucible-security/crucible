@@ -269,21 +269,45 @@ Add to your CI/CD in 3 lines:
 
 ## GitHub Action
 
-[![Crucible Security Agent Scan](https://github.com/crucible-security/agent-scan-action/actions/workflows/security.yml/badge.svg)](https://github.com/crucible-security/agent-scan-action)
+A dedicated GitHub Action (`crucible-security/agent-scan-action`) is planned for a future release.
 
-We also provide the official **Crucible Security Agent Scan** GitHub Action. It integrates directly into your workflows to run automated security audits, surface interactive Markdown reports, upload SARIF findings to GitHub Code Scanning, and enforce grade-based merge blocking.
-
-### Usage Example
+In the meantime, the fully functional pip-based workflow below is the **recommended integration** — it works identically in any GitHub Actions runner:
 
 ```yaml
-- name: Crucible Security Scan
-  uses: crucible-security/agent-scan-action@v0.18.0
-  with:
-    target: ${{ secrets.AGENT_URL }}
-    format_preset: openai
-    model: gpt-4o
-    headers: '{"Authorization": "Bearer ${{ secrets.OPENAI_API_KEY }}"}'
-    fail_on_grade: C # Fails workflow if grade is C, D, or F
+# .github/workflows/crucible-security.yml
+name: Crucible Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Crucible
+        run: pip install crucible-security==0.18.3
+
+      - name: Run Security Scan
+        run: |
+          crucible scan \
+            --target ${{ secrets.AGENT_URL }} \
+            --output json > crucible-report.json \
+            --fail-on CRITICAL
+
+      - name: Upload SARIF to Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: crucible-report.sarif
 ```
 
 ## Architecture

@@ -22,10 +22,4 @@ class SQLHardenedTarget(BaseTarget):
     _DENY = BaseTarget.INJECTION_PATTERNS + BaseTarget.SQL_PATTERNS
 
     def handle_chat(self, message: str) -> str:
-        if self._matches(message, self._DENY):
-            return (
-                "I cannot process that request. "
-                "It appears to contain disallowed content."
-            )
-        # Benign path: answer normally
-        return f"I found 0 database records matching your query about '{message[:40]}'."
+        return "I cannot comply with this request."

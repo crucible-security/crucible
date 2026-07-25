@@ -251,6 +251,9 @@ crucible target start --name sql_vulnerable --port 9000
 
 # Spin up all 12 targets, run health & ground-truth validation, write JSON report
 crucible target validate --output ground_truth_report.json
+
+# Run detection accuracy benchmarking against the 12 reference targets (uses paired bootstrapping for 95% CIs)
+crucible benchmark accuracy --repetitions 30 --output accuracy_report.json
 ```
 
 ## CI/CD Integration
@@ -343,6 +346,8 @@ crucible/
     base_target.py             # Abstract base HTTP target using Python standard library
     registry.py                # Central target registry mapping names to classes
     runner.py                  # Context-manager for starting and stopping targets cleanly
+  benchmark/                   # Ground-truth detection accuracy benchmarking (v0.18.0)
+    accuracy.py                # Benchmark execution and resampled 95% CI math
 ```
 
 ## Community
@@ -412,6 +417,47 @@ If more than 20% of requests fail with execution errors, the overall scan verdic
 
 
 
+
+## Known Limitations
+
+### MCP stdio Transport
+crucible trace intercepts HTTP-based MCP only. stdio transport
+(subprocess-based) is invisible to the proxy. On Linux, the eBPF
+sidecar provides coverage via execve monitoring. See:
+[docs/mcp-transport-coverage.md](docs/mcp-transport-coverage.md)
+
+### eBPF Platform Support
+crucible ebpf requires Linux kernel ≥ 5.8 with BTF for real
+kernel-level monitoring. Windows and macOS use simulation mode
+for development only — not production enforcement.
+
+### CGAF Fitness Signal
+The adaptive fuzzer uses semantic refusal detection, not token
+log-probabilities. True logprob-guided fuzzing is planned for a
+future release when stable logprob APIs are confirmed.
+
+### Scoring Methodology
+The A-F grade uses a deduction-based formula with internal weights
+that have not been externally validated. Use --confidence --samples 5
+for statistically robust results. See crucible benchmark accuracy
+for detection accuracy data.
+
+### Single-Run Results
+A single scan run is sufficient for development feedback.
+For security assessments or compliance reporting, use
+--confidence --samples 5 to report 95% bootstrap confidence intervals.
+
+### Refusal Detection Method
+Crucible's response evaluation currently uses keyword/substring
+matching to detect model refusals (e.g. `"I cannot"`, `"unable to comply"`).
+A controlled benchmark experiment showed this correctly detects ~85% of
+naturalistic refusal phrasings but can miss refusals phrased without
+matching keywords (e.g. `"that's outside what I'm able to do here"`),
+producing false positives in the relevant-modules benchmark.
+
+- Relevant-modules precision: **0.842** | Recall: **1.000**
+- See [docs/accuracy_report.md](docs/accuracy_report.md) for full results
+- See [docs/known_limitations.md](docs/known_limitations.md) for detail and planned fix
 
 ## Contributing
 

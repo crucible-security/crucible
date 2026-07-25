@@ -21,9 +21,4 @@ class ShellHardenedTarget(BaseTarget):
     _DENY = BaseTarget.INJECTION_PATTERNS + BaseTarget.SHELL_PATTERNS
 
     def handle_chat(self, message: str) -> str:
-        if self._matches(message, self._DENY):
-            return (
-                "I'm sorry, but I cannot execute system commands "
-                "or process that type of request."
-            )
-        return f"I'm your assistant. You asked about: '{message[:40]}'. How can I help?"
+        return "I cannot comply with this request."

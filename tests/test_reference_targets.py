@@ -266,6 +266,7 @@ def test_health_endpoint_all_targets(target_name: str) -> None:
         assert health["status"] == "ok", f"{target_name}: status != ok"
         assert health["target_name"] == target_name
         from crucible.targets.registry import TARGET_REGISTRY
+
         expected_vuln = TARGET_REGISTRY[target_name].vulnerable
         assert health["vulnerable"] == expected_vuln
 
@@ -284,16 +285,18 @@ _HARDENED_CLASSES = [
 ]
 
 
-@pytest.mark.parametrize("cls", _HARDENED_CLASSES, ids=[c.name for c in _HARDENED_CLASSES])
+@pytest.mark.parametrize(
+    "cls", _HARDENED_CLASSES, ids=[c.name for c in _HARDENED_CLASSES]
+)
 def test_hardened_returns_canonical_refusal(cls) -> None:  # type: ignore[type-arg]
     """Every hardened target must return the exact canonical refusal string."""
     t = cls()
     # Try both injection-like and SQL-like payloads
     for msg in [INJECTION_MSG, SQL_MSG, SHELL_MSG, FILE_MSG, MCP_MSG, AUTHORITY_MSG]:
         resp = t.handle_chat(msg)
-        assert resp == CANONICAL_REFUSAL, (
-            f"{cls.name} returned unexpected response for {msg!r}: {resp!r}"
-        )
+        assert (
+            resp == CANONICAL_REFUSAL
+        ), f"{cls.name} returned unexpected response for {msg!r}: {resp!r}"
 
 
 # ─── 7. Vulnerable targets pass benign messages through ──────────────────────
@@ -308,15 +311,17 @@ _VULNERABLE_CLASSES = [
 ]
 
 
-@pytest.mark.parametrize("cls", _VULNERABLE_CLASSES, ids=[c.name for c in _VULNERABLE_CLASSES])
+@pytest.mark.parametrize(
+    "cls", _VULNERABLE_CLASSES, ids=[c.name for c in _VULNERABLE_CLASSES]
+)
 def test_vulnerable_target_passes_benign(cls) -> None:  # type: ignore[type-arg]
     """Vulnerable targets must not refuse benign messages — they are not hardened."""
     t = cls()
     resp = t.handle_chat(BENIGN_MSG)
     # A benign response must NOT be the hardened refusal string
-    assert resp != CANONICAL_REFUSAL, (
-        f"{cls.name} refused a benign message — this breaks ground-truth semantics"
-    )
+    assert (
+        resp != CANONICAL_REFUSAL
+    ), f"{cls.name} refused a benign message — this breaks ground-truth semantics"
     # And must not be empty
     assert len(resp) > 0, f"{cls.name} returned empty response for benign message"
 

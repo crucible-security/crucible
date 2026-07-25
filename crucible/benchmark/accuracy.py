@@ -68,10 +68,18 @@ class AccuracyReport(BaseModel):
     recall_relevant: float = Field(..., description="Recall score (relevant)")
     f1_score_relevant: float = Field(..., description="F1 score (relevant)")
     accuracy_relevant: float = Field(..., description="Accuracy score (relevant)")
-    precision_relevant_ci_95: ConfidenceInterval = Field(..., description="95% CI for relevant Precision")
-    recall_relevant_ci_95: ConfidenceInterval = Field(..., description="95% CI for relevant Recall")
-    f1_relevant_ci_95: ConfidenceInterval = Field(..., description="95% CI for relevant F1 score")
-    accuracy_relevant_ci_95: ConfidenceInterval = Field(..., description="95% CI for relevant Accuracy")
+    precision_relevant_ci_95: ConfidenceInterval = Field(
+        ..., description="95% CI for relevant Precision"
+    )
+    recall_relevant_ci_95: ConfidenceInterval = Field(
+        ..., description="95% CI for relevant Recall"
+    )
+    f1_relevant_ci_95: ConfidenceInterval = Field(
+        ..., description="95% CI for relevant F1 score"
+    )
+    accuracy_relevant_ci_95: ConfidenceInterval = Field(
+        ..., description="95% CI for relevant Accuracy"
+    )
     per_target_results: list[TargetAccuracyResult] = Field(default_factory=list)
     generated_at: str = Field(..., description="Generation ISO timestamp")
     crucible_version: str = Field(..., description="Crucible version used")
@@ -186,7 +194,9 @@ class AccuracyBenchmark:
         # Run repetitions target-by-target to keep servers isolated
         for cls in ALL_TARGET_CLASSES:
             tr = TargetAccuracyResult(
-                name=cls.name, vulnerable=cls.vulnerable, scans_run=self.repetitions * len(all_modules)
+                name=cls.name,
+                vulnerable=cls.vulnerable,
+                scans_run=self.repetitions * len(all_modules),
             )
 
             # Map target categories to module names
@@ -237,9 +247,11 @@ class AccuracyBenchmark:
                             if not f.passed:
                                 m_failed = True
                                 break
-                        
+
                         m_name = m.module_name.lower().replace(" ", "_")
-                        is_vuln_for_module = cls.vulnerable and (m_name in module_names_to_run)
+                        is_vuln_for_module = cls.vulnerable and (
+                            m_name in module_names_to_run
+                        )
 
                         # Classification (All-modules)
                         if is_vuln_for_module and m_failed:
@@ -267,18 +279,22 @@ class AccuracyBenchmark:
                                 tr.fn_relevant += 1
 
                             runs_relevant.append((is_vuln_relevant, m_failed))
-                    
+
                     scans_executed += 1
             finally:
                 server.shutdown()
 
             correct = tr.tp + tr.tn
             tr.success_rate = (correct / (self.repetitions * len(all_modules))) * 100.0
-            
+
             correct_relevant = tr.tp_relevant + tr.tn_relevant
             total_relevant_scans = self.repetitions * len(module_names_to_run)
-            tr.success_rate_relevant = (correct_relevant / total_relevant_scans) * 100.0 if total_relevant_scans > 0 else 0.0
-            
+            tr.success_rate_relevant = (
+                (correct_relevant / total_relevant_scans) * 100.0
+                if total_relevant_scans > 0
+                else 0.0
+            )
+
             target_results.append(tr)
 
         # Aggregate metrics (All modules)
@@ -309,7 +325,11 @@ class AccuracyBenchmark:
             if (precision_r + recall_r) > 0
             else 0.0
         )
-        accuracy_r = (tp_r + tn_r) / (tp_r + tn_r + fp_r + fn_r) if (tp_r + tn_r + fp_r + fn_r) > 0 else 0.0
+        accuracy_r = (
+            (tp_r + tn_r) / (tp_r + tn_r + fp_r + fn_r)
+            if (tp_r + tn_r + fp_r + fn_r) > 0
+            else 0.0
+        )
 
         # Confidence intervals via 1,000 bootstrap iterations
         cis = compute_paired_bootstrap_cis(runs, n_bootstrap=1000)
@@ -351,7 +371,9 @@ class AccuracyBenchmark:
             recall_relevant_ci_95=ConfidenceInterval(
                 lower=cis_r["recall"][0], upper=cis_r["recall"][1]
             ),
-            f1_relevant_ci_95=ConfidenceInterval(lower=cis_r["f1"][0], upper=cis_r["f1"][1]),
+            f1_relevant_ci_95=ConfidenceInterval(
+                lower=cis_r["f1"][0], upper=cis_r["f1"][1]
+            ),
             accuracy_relevant_ci_95=ConfidenceInterval(
                 lower=cis_r["accuracy"][0], upper=cis_r["accuracy"][1]
             ),

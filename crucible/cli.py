@@ -4288,8 +4288,7 @@ def benchmark_accuracy(
 
     console.print(tbl)
     console.print(
-      f"\n[dim]Confusion Matrix: TP={report.tp} TN={report.tn} FP={report.fp} FN={report.fn}[/dim]"
+        f"\n[dim]Confusion Matrix: TP={report.tp} TN={report.tn} FP={report.fp} FN={report.fn}[/dim]"
     )
     console.print(f"JSON report saved to: [cyan]{output}[/cyan]")
     console.print("Markdown report saved to: [cyan]docs/accuracy_report.md[/cyan]\n")
-

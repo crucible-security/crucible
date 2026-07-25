@@ -1079,7 +1079,9 @@ class STIXIndicator(BaseModel):
     pattern_type: str = Field(default="stix")
     pattern_version: str = Field(default="2.1")
     valid_from: str = Field(description="Validity start timestamp.")
-    confidence: int | None = Field(default=None, description="Confidence of the indicator.")
+    confidence: int | None = Field(
+        default=None, description="Confidence of the indicator."
+    )
     external_references: list[dict[str, Any]] = Field(default_factory=list)
 
 

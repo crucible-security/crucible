@@ -33,10 +33,10 @@ def test_compute_paired_bootstrap_cis_edge_cases() -> None:
 
     # Mixed runs
     mixed_runs = [
-        (True, True),   # TP
+        (True, True),  # TP
         (True, False),  # FN
         (False, True),  # FP
-        (False, False), # TN
+        (False, False),  # TN
     ]
     mixed = compute_paired_bootstrap_cis(mixed_runs, n_bootstrap=100)
     for _metric, bounds in mixed.items():

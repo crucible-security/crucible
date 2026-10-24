@@ -8,6 +8,7 @@ from crucible.models import (
     AgentTarget,
     AttackCategory,
     Finding,
+    FindingVerdict,
     ModuleResult,
     StatisticalFinding,
 )
@@ -24,6 +25,7 @@ class BaseModule(ABC):
     name: str = ""
     description: str = ""
     category: AttackCategory = AttackCategory.PROMPT_INJECTION
+    required_capabilities: list[str] = []
 
     @abstractmethod
     def get_attacks(self) -> list[BaseAttack]: ...
@@ -69,17 +71,27 @@ class BaseModule(ABC):
         passed = sum(
             1
             for f in all_findings
-            if f.passed is True and not getattr(f, "execution_error", False)
+            if getattr(f, "verdict", None) == FindingVerdict.PASS and not getattr(f, "execution_error", False)
         )
         failed = sum(
             1
             for f in all_findings
-            if f.passed is False and not getattr(f, "execution_error", False)
+            if getattr(f, "verdict", None) == FindingVerdict.FAIL and not getattr(f, "execution_error", False)
+        )
+        na_count = sum(
+            1
+            for f in all_findings
+            if getattr(f, "verdict", None) == FindingVerdict.NA
+        )
+        inconclusive_count = sum(
+            1
+            for f in all_findings
+            if getattr(f, "verdict", None) == FindingVerdict.INCONCLUSIVE and not getattr(f, "execution_error", False)
         )
         errors = sum(1 for f in all_findings if getattr(f, "execution_error", False))
         total = len(all_findings)
 
-        valid_total = total - errors
+        valid_total = passed + failed
         score = (passed / valid_total * 100.0) if valid_total > 0 else 0.0
 
         severity_counts: dict[str, int] = {}
@@ -146,6 +158,8 @@ class BaseModule(ABC):
             passed=passed,
             failed=failed,
             errors=errors,
+            na_count=na_count,
+            inconclusive_count=inconclusive_count,
             findings=all_findings,
             score=round(score, 2),
             duration_seconds=round(duration, 3),

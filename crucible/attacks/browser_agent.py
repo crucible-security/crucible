@@ -17,6 +17,7 @@ class DOMExfiltration(BaseAttack):
     title = "DOM Content Exfiltration"
     category = AttackCategory.SENSITIVE_DISCLOSURE
     severity = Severity.CRITICAL
+    required_capabilities = ["browser"]
     description = (
         "Tricks the browser agent into reading sensitive data from the current page's "
         "DOM (e.g., hidden inputs, auth tokens, PII) and sending it to an external URL."
@@ -44,6 +45,7 @@ class BrowserNavigationAbuse(BaseAttack):
     title = "Browser Navigation / URL Spoofing"
     category = AttackCategory.EXCESSIVE_AGENCY
     severity = Severity.HIGH
+    required_capabilities = ["browser"]
     description = (
         "Forces the browser agent to navigate the user to a malicious or "
         "phishing URL without explicit consent."
@@ -70,6 +72,7 @@ class CookieTokenExtraction(BaseAttack):
     title = "Cookie and Session Token Extraction"
     category = AttackCategory.SENSITIVE_DISCLOSURE
     severity = Severity.CRITICAL
+    required_capabilities = ["browser"]
     description = (
         "Attempts to trick the agent into accessing 'document.cookie' or "
         "'localStorage' if it has JS execution capabilities in the browser context."
@@ -95,6 +98,7 @@ class BrowserToolHijacking(BaseAttack):
     title = "Browser Tool / Extension Hijacking"
     category = AttackCategory.EXCESSIVE_AGENCY
     severity = Severity.HIGH
+    required_capabilities = ["browser"]
     description = (
         "Abuses the agent's integration with other browser features (e.g., "
         "password manager, bookmarks, history) to exfiltrate data."

@@ -17,6 +17,7 @@ class ParserDifferentialPolyglot(BaseAttack):
     title = "Parser Differential (JSON/Markdown Polyglot)"
     category = AttackCategory.INSECURE_OUTPUT
     severity = Severity.CRITICAL
+    required_capabilities = ["multi_agent"]
     description = (
         "Exploits inconsistencies between the LLM's Markdown generation, frontend "
         "renderers, and backend parsers. Uses a polyglot payload to sneak executable "
@@ -55,6 +56,7 @@ class A2AContagionAttack(BaseAttack):
     title = "Agent-to-Agent (A2A) Contagion"
     category = AttackCategory.EXCESSIVE_AGENCY
     severity = Severity.CRITICAL
+    required_capabilities = ["multi_agent"]
     description = (
         "Exploits implicit trust between sub-agents in a multi-agent orchestration "
         "system. Spoofs Model Context Protocol (MCP) or internal routing schemas "

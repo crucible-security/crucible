@@ -7,7 +7,7 @@ from enum import Enum
 from importlib.metadata import PackageNotFoundError, version
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 if TYPE_CHECKING:
     from crucible.trace.models import PolicyAction
@@ -58,6 +58,30 @@ class ScanStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+class FindingVerdict(str, Enum):
+    PASS = "PASS"
+    FAIL = "FAIL"
+    NA = "N/A"
+    INCONCLUSIVE = "INCONCLUSIVE"
+
+
+class AgentCapability(str, Enum):
+    MCP = "mcp"
+    NETWORK = "network"
+    SHELL = "shell"
+    FILE_SYSTEM = "file_system"
+    DATABASE_ACCESS = "database_access"
+    CODE_EXECUTION = "code_execution"
+    BROWSER = "browser"
+    RAG = "rag"
+    MULTI_AGENT = "multi_agent"
+    MEMORY = "memory"
+    SEARCH = "search"
+    EMAIL = "email"
+    EXTERNAL_API = "external_api"
+    UNKNOWN = "unknown"
+
+
 @dataclass
 class ProviderPreset:
     body_template: str
@@ -73,9 +97,45 @@ class ProviderPreset:
 
 PROVIDER_PRESETS: dict[str, ProviderPreset] = {
     "openai": ProviderPreset(
-        '{"messages":[{"role":"user","content":"{payload}"}]}',
+        '{"model":"{model}","messages":[{"role":"user","content":"{payload}"}]}',
         "choices[0].message.content",
         30.0,
+        requires_model=True,
+        description="OpenAI Chat Completions API (POST /v1/chat/completions)",
+        url_suffix="/v1/chat/completions",
+    ),
+    "openrouter": ProviderPreset(
+        '{"model":"{model}","messages":[{"role":"user","content":"{payload}"}]}',
+        "choices[0].message.content",
+        60.0,
+        requires_model=True,
+        description="OpenRouter unified API (POST /api/v1/chat/completions)",
+        url_suffix="/api/v1/chat/completions",
+    ),
+    "anthropic": ProviderPreset(
+        '{"model":"{model}","max_tokens":1024,"messages":[{"role":"user","content":"{payload}"}]}',
+        "content[0].text",
+        60.0,
+        extra_headers={"anthropic-version": "2023-06-01"},
+        requires_model=True,
+        description="Anthropic Messages API (POST /v1/messages)",
+        url_suffix="/v1/messages",
+    ),
+    "groq": ProviderPreset(
+        '{"model":"{model}","messages":[{"role":"user","content":"{payload}"}]}',
+        "choices[0].message.content",
+        30.0,
+        requires_model=True,
+        description="Groq Cloud OpenAI-compatible API (POST /openai/v1/chat/completions)",
+        url_suffix="/openai/v1/chat/completions",
+    ),
+    "mistral": ProviderPreset(
+        '{"model":"{model}","messages":[{"role":"user","content":"{payload}"}]}',
+        "choices[0].message.content",
+        30.0,
+        requires_model=True,
+        description="Mistral AI API (POST /v1/chat/completions)",
+        url_suffix="/v1/chat/completions",
     ),
     "langchain": ProviderPreset(
         '{"input":"{payload}"}',
@@ -128,6 +188,8 @@ BODY_FORMAT_PRESETS: dict[str, str] = {
 # Common response paths for auto-detection (tried in order)
 DEFAULT_RESPONSE_PATHS: list[str] = [
     "choices[0].message.content",
+    "content[0].text",
+    "candidates[0].content.parts[0].text",
     "message.content",
     "result",
     "response",
@@ -203,6 +265,20 @@ class AgentTarget(BaseModel):
         max_length=500,
         description="Optional description of the target agent.",
     )
+    capabilities: list[str] = Field(
+        default_factory=list,
+        description="Declared target execution capabilities: mcp, network, file_system, shell, browser, rag, database_access, code_execution, multi_agent, memory.",
+    )
+
+    def has_capability(self, capability: str | AgentCapability) -> bool:
+        """Check if target declares the requested capability."""
+        cap_val = capability.value if isinstance(capability, AgentCapability) else str(capability).lower()
+        if not self.capabilities:
+            return False
+        caps_lower = [c.lower() for c in self.capabilities]
+        if "all" in caps_lower:
+            return True
+        return cap_val in caps_lower
 
     @field_validator("method", mode="before")
     @classmethod
@@ -294,13 +370,60 @@ class Finding(BaseModel):
         max_length=2000,
         description="Relevant portion of the agent's response.",
     )
+    verdict: FindingVerdict = Field(
+        default=FindingVerdict.INCONCLUSIVE,
+        description="Four-state evaluation verdict: PASS, FAIL, N/A, or INCONCLUSIVE.",
+    )
     passed: bool | None = Field(
         default=None,
-        description="Whether the agent defended against this attack.",
+        description="Backward-compatible boolean: True for PASS, False for FAIL, None for N/A or INCONCLUSIVE.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sync_verdict_and_passed(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "verdict" in data and data["verdict"] is not None:
+                v = data["verdict"]
+                if isinstance(v, str):
+                    v_upper = v.upper()
+                    if v_upper in ("PASS", "PASSED"):
+                        data["verdict"] = FindingVerdict.PASS
+                        if data.get("passed") is None:
+                            data["passed"] = True
+                    elif v_upper in ("FAIL", "FAILED"):
+                        data["verdict"] = FindingVerdict.FAIL
+                        if data.get("passed") is None:
+                            data["passed"] = False
+                    elif v_upper in ("N/A", "NA"):
+                        data["verdict"] = FindingVerdict.NA
+                        data["passed"] = None
+                    elif v_upper == "INCONCLUSIVE":
+                        data["verdict"] = FindingVerdict.INCONCLUSIVE
+                        data["passed"] = None
+                elif v == FindingVerdict.PASS and data.get("passed") is None:
+                    data["passed"] = True
+                elif v == FindingVerdict.FAIL and data.get("passed") is None:
+                    data["passed"] = False
+                elif v in (FindingVerdict.NA, FindingVerdict.INCONCLUSIVE):
+                    data["passed"] = None
+            elif "passed" in data and data["passed"] is not None:
+                if data["passed"] is True:
+                    data["verdict"] = FindingVerdict.PASS
+                elif data["passed"] is False:
+                    data["verdict"] = FindingVerdict.FAIL
+            if data.get("execution_error") is True:
+                data["passed"] = None
+                if "verdict" not in data or data["verdict"] == FindingVerdict.INCONCLUSIVE:
+                    data["verdict"] = FindingVerdict.INCONCLUSIVE
+        return data
     execution_error: bool = Field(
         default=False,
         description="Whether an execution error (timeout/network error) occurred during the attack.",
+    )
+    error_details: str = Field(
+        default="",
+        description="Detailed exception or HTTP error message if an execution error occurred.",
     )
     confidence: float = Field(
         default=1.0,
@@ -447,6 +570,16 @@ class ModuleResult(BaseModel):
         ge=0,
         description="Number of attacks that encountered errors.",
     )
+    na_count: int = Field(
+        default=0,
+        ge=0,
+        description="Number of attacks marked N/A (not applicable to target architecture).",
+    )
+    inconclusive_count: int = Field(
+        default=0,
+        ge=0,
+        description="Number of attacks marked INCONCLUSIVE (ambiguous response).",
+    )
     findings: list[Finding] = Field(
         default_factory=list,
         description="Individual findings from each attack.",
@@ -566,19 +699,101 @@ class ScanResult(BaseModel):
         description="Additional scan-level metadata.",
     )
 
+    @property
+    def total_attacks(self) -> int:
+        """Total individual test attacks executed across all modules."""
+        return sum(m.total_attacks for m in self.modules)
+
+    @property
+    def passed_count(self) -> int:
+        """Number of test attacks successfully defended/refused (excluding execution errors)."""
+        return sum(m.passed for m in self.modules)
+
+    @property
+    def na_count(self) -> int:
+        """Total N/A (inapplicable) tests."""
+        count = 0
+        for m in self.modules:
+            if m.findings:
+                count += sum(1 for f in m.findings if getattr(f, "verdict", None) == FindingVerdict.NA)
+            else:
+                count += getattr(m, "na_count", 0)
+        return count
+
+    @property
+    def inconclusive_count(self) -> int:
+        """Total inconclusive tests."""
+        count = 0
+        for m in self.modules:
+            if m.findings:
+                count += sum(1 for f in m.findings if getattr(f, "verdict", None) == FindingVerdict.INCONCLUSIVE)
+            else:
+                count += getattr(m, "inconclusive_count", 0)
+        return count
+
+    @property
+    def valid_attacks_count(self) -> int:
+        """Total evaluated attacks with decisive PASS or FAIL (excluding N/A, INCONCLUSIVE, and execution errors)."""
+        decisive = 0
+        has_findings = False
+        for m in self.modules:
+            if m.findings:
+                has_findings = True
+                decisive += sum(
+                    1
+                    for f in m.findings
+                    if getattr(f, "verdict", None) in (FindingVerdict.PASS, FindingVerdict.FAIL)
+                    and not f.execution_error
+                )
+            else:
+                decisive += m.passed + m.failed
+        if not has_findings:
+            return max(0, sum(m.passed + m.failed for m in self.modules))
+        return decisive
+
+    @property
+    def pass_rate(self) -> float | None:
+        """Percentage of applicable cleanly evaluated test attacks successfully defended.
+
+        Returns None if no applicable tests exist (valid_attacks_count == 0).
+        """
+        valid = self.valid_attacks_count
+        if valid == 0:
+            return None
+        return (self.passed_count / valid) * 100.0
+
+    @property
+    def is_incomplete(self) -> bool:
+        """True if the scan had > 20% execution errors among attempted tests or was marked INCOMPLETE."""
+        attempted = self.total_attacks - self.na_count
+        return self.grade == Grade.INCOMPLETE or (
+            attempted > 0
+            and (self.failed_execution_count / attempted) > 0.20
+        )
+
     def summary(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "target": self.target.name,
-            "status": self.status.value,
-            "grade": self.grade.value,
+            "capabilities": self.target.capabilities,
+            "status": "INCOMPLETE" if self.is_incomplete else self.status.value,
+            "passed_tests": self.passed_count,
+            "valid_tests": self.valid_attacks_count,
+            "total_tests": self.total_attacks,
+            "na_tests": self.na_count,
+            "inconclusive_tests": self.inconclusive_count,
+            "execution_errors": self.failed_execution_count,
+            "pass_rate": f"{self.pass_rate:.1f}%" if self.pass_rate is not None else None,
+            "failed_findings": self.total_findings,
+            "severity_breakdown": {
+                "critical": self.critical_count,
+                "high": self.high_count,
+                "medium": self.medium_count,
+                "low": self.low_count,
+                "info": self.info_count,
+            },
             "score": self.overall_score,
-            "total_findings": self.total_findings,
-            "critical": self.critical_count,
-            "high": self.high_count,
-            "medium": self.medium_count,
-            "low": self.low_count,
-            "info": self.info_count,
+            "grade": self.grade.value,
             "duration": f"{self.duration_seconds:.1f}s",
         }
 
@@ -630,14 +845,7 @@ class BehavioralProfile(BaseModel):
 # --- Profiler Models ---
 
 
-class AgentCapability(str, Enum):
-    SEARCH = "search"
-    CODE_EXECUTION = "code_execution"
-    DATABASE_ACCESS = "database_access"
-    EMAIL = "email"
-    EXTERNAL_API = "external_api"
-    FILE_SYSTEM = "file_system"
-    UNKNOWN = "unknown"
+
 
 
 class AgentProfile(BaseModel):

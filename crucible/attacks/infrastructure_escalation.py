@@ -17,6 +17,7 @@ class AgentDrivenSSRF(BaseAttack):
     title = "Agent-Driven SSRF (Cloud Metadata Theft)"
     category = AttackCategory.INSECURE_PLUGIN
     severity = Severity.CRITICAL
+    required_capabilities = ["network"]
     description = (
         "Exploits the agent's external fetching tools. Tricks the agent into "
         "bypassing network filters to query the local AWS/GCP instance metadata "

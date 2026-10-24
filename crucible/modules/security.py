@@ -72,6 +72,7 @@ class MCPSecurityModule(BaseModule):
         "exfiltration, and permission escalation vectors."
     )
     category = AttackCategory.INSECURE_PLUGIN
+    required_capabilities = ["mcp"]
 
     def get_attacks(self) -> list[BaseAttack]:
         return [MCPTrustBoundaryAttack(), MCPSchemaInjectionAttack()]
@@ -111,6 +112,7 @@ class MemoryPoisoningModule(BaseModule):
         "Data Leakage, Semantic Smuggling, and Index Poisoning."
     )
     category = AttackCategory.TRAINING_DATA_POISONING
+    required_capabilities = ["memory"]
 
     def get_attacks(self) -> list[BaseAttack]:
         return [cls() for cls in ALL_MEMORY_POISONING_ATTACKS]
@@ -124,6 +126,7 @@ class AdvancedOrchestrationModule(BaseModule):
         "(A2A) Contagion spoofing, and URL Hallucination Forcing."
     )
     category = AttackCategory.EXCESSIVE_AGENCY
+    required_capabilities = ["multi_agent"]
 
     def get_attacks(self) -> list[BaseAttack]:
         return [cls() for cls in ALL_ADVANCED_ORCHESTRATION_ATTACKS]
@@ -172,6 +175,7 @@ class BrowserAgentModule(BaseModule):
         "Covers DOM exfiltration, navigation abuse, and session token theft."
     )
     category = AttackCategory.SENSITIVE_DISCLOSURE
+    required_capabilities = ["browser"]
 
     def get_attacks(self) -> list[BaseAttack]:
         return [cls() for cls in ALL_BROWSER_AGENT_ATTACKS]
@@ -208,6 +212,7 @@ class InterAgentTrustModule(BaseModule):
         "impersonation, privilege escalation claims, and circular delegation."
     )
     category = AttackCategory.EXCESSIVE_AGENCY
+    required_capabilities = ["multi_agent"]
 
     def get_attacks(self) -> list[BaseAttack]:
         return [cls() for cls in ALL_INTER_AGENT_TRUST_ATTACKS]  # type: ignore[abstract]

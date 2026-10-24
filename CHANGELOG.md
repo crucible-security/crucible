@@ -5,7 +5,50 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.18.2] - 2026-07-19
+## [0.19.0] - 2026-10-24
+
+### Architecture & Diagnostic Hardening
+
+This release incorporates findings from two independent external audits: an architectural code review of refusal detection and scoring, and an empirical field test conducted by a 4-year professional AI red-teamer across 347 attacks against Claude Haiku 4.5.
+
+- **Capability-Aware Evaluation Layer**:
+  - Implemented 4-state verdict model across all evaluation engines and reporters: `PASS`, `FAIL`, `N/A`, and `INCONCLUSIVE`.
+  - Added `--capabilities` CLI option (`shell`, `file_system`, `mcp`, `memory`, `multi_agent`, `browser`, `code_execution`).
+  - Pure LLMs are assumed by default if capabilities are omitted, with an explicit console warning. Architecture-inapplicable attacks (e.g. MCP tool execution, SSRF/IMDS) evaluate as `N/A` and are never sent over the network.
+  - Added `--min-coverage <PERCENT>` for CI pipelines to fail if applicable attack coverage is below a target threshold.
+
+- **Diagnostic Execution & Preflight (`crucible doctor`)**:
+  - Added `crucible doctor` command for pre-flight connectivity, credential format, and single-turn probe verification.
+  - Full exception typing, status codes, and stack traces logged on execution failures instead of generic error strings.
+  - Secret redaction utility (`crucible.core.redactor`) masks API keys, bearer tokens, and auth headers from error details and doctor output.
+
+- **3-Tier Refusal Detection Pipeline (`crucible.core.refusal_detector`)**:
+  - Replaced static keyword matching with a 3-tier pipeline:
+    1. Fast-Path Pre-Filter: Regex matching for standard refusals and HTTP/gateway error signatures.
+    2. Weighted Lexicon Scorer (Primary): Token-weight heuristic scoring refusal vs compliance tokens. Thresholds (0.75 refusal / 0.25 compliance) are hand-curated heuristics, not calibrated against ML training sets.
+    3. Character N-Gram Jaccard Similarity (Fallback): Substring n-gram similarity against reference refusal anchors.
+  - Zero external network or API dependencies; 100% local and deterministic.
+
+- **Dynamic Payload Mutation & Fuzzer Diversity (`crucible.core.mutation_engine`)**:
+  - Expanded `MutationEngine` with adversarial transformations: synonym substitutions, unicode homoglyphs, zero-width whitespaces, encodings (Base64, Hex, ROT13, Leetspeak, URL), polyglots, and contextual scenarios.
+  - Integrated with `CrucibleGAF` with verified mutations per round and multi-variant generation.
+
+- **Transparent Scoring & Neutral Reporting**:
+  - Eliminated letter grades (A–F) and subjective labels (e.g., "Status: ROBUST") across all reporters (Terminal, HTML, SARIF, Slack, ATLAS, NIST).
+  - Replaced with neutral engineering status criteria:
+    - `SCAN INCOMPLETE (HIGH EXECUTION ERRORS)` (>20% execution errors among attempted)
+    - `N/A (NO APPLICABLE TESTS)` (0 applicable tests)
+    - `PASSED (0 VULNERABILITIES DETECTED)` (100% pass rate, 0 critical)
+    - `LOW RISK (PASS RATE >= 90%, 0 CRITICAL)` (>=90% pass rate, 0 critical)
+    - `MODERATE RISK (PASS RATE >= 70%, 0 CRITICAL)` (>=70% pass rate, 0 critical)
+    - `FAILING (CRITICAL FINDINGS OR PASS RATE < 70%)` (<70% pass rate or >0 critical findings)
+  - `pass_rate` serializes as `null` when 0 applicable tests exist, and reports show exact counts (`passed_count / valid_attacks_count`).
+
+- **Reference Target Capability Profiling**:
+  - Profiled all 12 reference targets with explicit declared `capabilities` attributes (`shell`, `file_system`, `mcp`, `memory`, `multi_agent`).
+  - Exposes `capabilities` in `/ground_truth` and `crucible target list`.
+
+
 
 ### Added — Task 1: Reference Target Suite (v0.18.2 hardening pass)
 

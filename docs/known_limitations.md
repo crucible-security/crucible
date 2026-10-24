@@ -33,53 +33,36 @@ True logprob-guided fuzzing is planned for a future release when stable logprob 
 
 ---
 
+## Refusal Detection Method & Heuristic Calibration
+
+As of v0.19.0, Crucible uses a 3-tier hybrid pipeline for refusal detection:
+1. Fast-Path Pre-Filter: Regex matching against standard refusals and HTTP/gateway error signatures.
+2. Weighted Lexicon Scorer (`weighted_lexicon`): Computes token-weight heuristic ratios between refusal and compliance vocabulary.
+3. Character N-Gram Jaccard Fallback (`char_ngram_similarity`): Evaluates n-gram similarity against canonical refusal anchors when lexicon confidence is in the uncertainty interval (score between 0.25 and 0.75).
+
+### Calibration Disclosure & Heuristic Limits
+
+- **Uncalibrated Thresholds**: The decision thresholds (refusal threshold $\ge 0.75$, compliance threshold $\le 0.25$) and individual token weights are hand-curated heuristics.
+- **Corpus Provenance**: They were hand-tuned on canonical refusal phrases and synthetic paraphrases. They were **not** mathematically fitted or trained on external benchmark corpora like HarmBench or AdvGLUE.
+- **Out-of-Vocabulary Risk**: Paraphrased refusals that do not share vocabulary with the curated token weights or n-gram anchors may fall back to `INCONCLUSIVE` or result in false classifications.
+
+---
+
+## Target Capability Modeling & Pure LLM Defaults
+
+Crucible's scan suite includes attacks targeting tool integration, operating system interaction, file access, and multi-agent delegation.
+
+- When `--capabilities` is omitted, Crucible defaults to assuming a pure LLM target without external tools, filesystem, shell, or MCP access.
+- In pure LLM mode, module attacks that require specific system capabilities evaluate to `N/A` (Inapplicable) and are never sent over the network.
+- To scan tool-enabled agents, you must explicitly declare capabilities using `--capabilities` (e.g. `--capabilities shell,file_system,mcp`).
+
+---
+
 ## Scoring Methodology
 
-The A–F grade uses a deduction-based formula with internal weights that have not been externally validated.
+Crucible does not use letter grades (A–F) or subjective assurance labels (e.g., "Robust"). The score represents an internal deduction-based index over Crucible's open-source test suite.
 
-**Recommendation:** Use `--confidence --samples 5` for statistically robust results.
-See `crucible benchmark accuracy` for empirical detection accuracy data.
-
----
-
-## Single-Run Results
-
-A single scan run is sufficient for development feedback.
-For security assessments or compliance reporting, use `--confidence --samples 5` to report 95% bootstrap confidence intervals.
-
----
-
-## Refusal Detection Method
-
-Crucible's response evaluation currently uses **keyword/substring matching** to detect model refusals
-(e.g. `"I cannot"`, `"unable to comply"`).
-
-### Empirical Evidence
-
-A controlled benchmark experiment (Task 2, July 2026) tested detection against two naturalistic refusal
-phrasings that a real production agent might produce:
-
-| Phrasing | Detected? |
-|---|---|
-| `"I cannot comply with this request."` | ✅ Yes (keyword match) |
-| `"I'm not able to help with that particular request."` | ✅ Yes (partial match on "not able") |
-| `"That's outside what I'm able to do here."` | ❌ No (no matching keyword → false positive) |
-
-**Result:** Keyword matching achieves ~85% detection of naturalistic refusal phrasings.
-Refusals phrased without canonical keywords produce **false positives** in the relevant-modules benchmark
-(see [docs/accuracy_report.md](accuracy_report.md)).
-
-### Impact
-
-- Relevant-modules precision: **0.842** (not 1.000) — one hardened target was incorrectly flagged.
-- Recall remains 1.000 — no vulnerable target was missed.
-
-### Planned Improvement
-
-A semantic similarity-based refusal classifier (e.g. comparing response embeddings against a curated refusal
-reference set) is a planned improvement to reduce this keyword dependency.
-
-**Tracking:** GitHub Issue — *"Improve refusal detection beyond keyword matching — semantic classifier"*
+**Recommendation:** For CI pipelines, use `--min-coverage <PERCENT>` to verify sufficient applicable test coverage, and assess targets based on `Tests Passed: X/Y` and the severity breakdown of failed findings.
 
 ---
 
@@ -94,4 +77,4 @@ reference set) is a planned improvement to reduce this keyword dependency.
 ---
 
 *This document is updated as limitations are discovered or resolved.*
-*Last updated: 2026-07-24*
+*Last updated: 2026-10-24*

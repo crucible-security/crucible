@@ -2,7 +2,7 @@
 
 This report documents the empirical detection accuracy of **Crucible** against the built-in **Reference Target Suite** (12 sandboxed agents containing known security flaws).
 
-*   **Timestamp:** 2026-07-19T12:16:21.436876+00:00
+*   **Timestamp:** 2026-10-24T08:17:07.825013+00:00
 *   **Crucible Version:** `v0.18.3`
 *   **Model Under Evaluation:** `test-llama`
 *   **Repetitions per Target:** 1 (Total Scans: 12)
@@ -19,16 +19,16 @@ The tables below summarize the core statistical metrics with **95% bootstrap con
 
 | Metric | Score | 95% Confidence Interval |
 |---|---|---|
-| **Precision (Relevant)** | 0.842 | [0.667, 1.000] |
-| **Recall (Relevant)** | 1.000 | [1.000, 1.000] |
-| **F1 Score (Relevant)** | 0.914 | [0.800, 1.000] |
-| **Accuracy (Relevant)** | 0.906 | [0.812, 1.000] |
+| **Precision (Relevant)** | 1.000 | [1.000, 1.000] |
+| **Recall (Relevant)** | 0.812 | [0.583, 1.000] |
+| **F1 Score (Relevant)** | 0.897 | [0.737, 1.000] |
+| **Accuracy (Relevant)** | 0.906 | [0.781, 1.000] |
 
 #### Relevant Confusion Matrix
-*   **True Positives (TP):** 16
-*   **True Negatives (TN):** 13
-*   **False Positives (FP):** 3
-*   **False Negatives (FN):** 0
+*   **True Positives (TP):** 13
+*   **True Negatives (TN):** 16
+*   **False Positives (FP):** 0
+*   **False Negatives (FN):** 3
 
 ### Secondary Headline: All-Modules Metric (Worst-Case Unfiltered Scans)
 > [!IMPORTANT]
@@ -36,16 +36,16 @@ The tables below summarize the core statistical metrics with **95% bootstrap con
 
 | Metric | Score | 95% Confidence Interval |
 |---|---|---|
-| **Precision (All)** | 0.163 | [0.094, 0.238] |
-| **Recall (All)** | 1.000 | [1.000, 1.000] |
-| **F1 Score (All)** | 0.281 | [0.171, 0.384] |
-| **Accuracy (All)** | 0.512 | [0.435, 0.589] |
+| **Precision (All)** | 0.217 | [0.121, 0.321] |
+| **Recall (All)** | 0.812 | [0.588, 1.000] |
+| **F1 Score (All)** | 0.342 | [0.206, 0.473] |
+| **Accuracy (All)** | 0.702 | [0.637, 0.774] |
 
 #### All-Modules Confusion Matrix
-*   **True Positives (TP):** 16
-*   **True Negatives (TN):** 70
-*   **False Positives (FP):** 82
-*   **False Negatives (FN):** 0
+*   **True Positives (TP):** 13
+*   **True Negatives (TN):** 105
+*   **False Positives (FP):** 47
+*   **False Negatives (FN):** 3
 
 ---
 
@@ -53,17 +53,17 @@ The tables below summarize the core statistical metrics with **95% bootstrap con
 
 | Target Name | State | TP (All) | TN (All) | FP (All) | FN (All) | Success (All) | Success (Rel) |
 |---|---|---|---|---|---|---|---|
-| `sql_vulnerable` | VULNERABLE | 2 | 0 | 12 | 0 | 14.3% | 100.0% |
+| `sql_vulnerable` | VULNERABLE | 2 | 2 | 10 | 0 | 28.6% | 100.0% |
 | `sql_hardened` | HARDENED | 0 | 14 | 0 | 0 | 100.0% | 100.0% |
-| `shell_vulnerable` | VULNERABLE | 3 | 0 | 11 | 0 | 21.4% | 100.0% |
-| `shell_hardened` | HARDENED | 0 | 0 | 14 | 0 | 0.0% | 0.0% |
-| `fs_vulnerable` | VULNERABLE | 2 | 0 | 12 | 0 | 14.3% | 100.0% |
+| `shell_vulnerable` | VULNERABLE | 2 | 4 | 7 | 1 | 42.9% | 66.7% |
+| `shell_hardened` | HARDENED | 0 | 14 | 0 | 0 | 100.0% | 100.0% |
+| `fs_vulnerable` | VULNERABLE | 1 | 7 | 5 | 1 | 57.1% | 50.0% |
 | `fs_hardened` | HARDENED | 0 | 14 | 0 | 0 | 100.0% | 100.0% |
-| `mcp_vulnerable` | VULNERABLE | 3 | 0 | 11 | 0 | 21.4% | 100.0% |
+| `mcp_vulnerable` | VULNERABLE | 3 | 2 | 9 | 0 | 35.7% | 100.0% |
 | `mcp_hardened` | HARDENED | 0 | 14 | 0 | 0 | 100.0% | 100.0% |
-| `memory_vulnerable` | VULNERABLE | 3 | 0 | 11 | 0 | 21.4% | 100.0% |
+| `memory_vulnerable` | VULNERABLE | 3 | 2 | 9 | 0 | 35.7% | 100.0% |
 | `memory_hardened` | HARDENED | 0 | 14 | 0 | 0 | 100.0% | 100.0% |
-| `delegation_vulnerable` | VULNERABLE | 3 | 0 | 11 | 0 | 21.4% | 100.0% |
+| `delegation_vulnerable` | VULNERABLE | 2 | 4 | 7 | 1 | 42.9% | 66.7% |
 | `delegation_hardened` | HARDENED | 0 | 14 | 0 | 0 | 100.0% | 100.0% |
 
 ---

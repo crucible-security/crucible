@@ -2,7 +2,7 @@
 
 This report documents the empirical detection accuracy of **Crucible** against the built-in **Reference Target Suite** (12 sandboxed agents containing known security flaws).
 
-*   **Timestamp:** 2026-10-24T08:17:07.825013+00:00
+*   **Timestamp:** 2026-10-24T08:22:34.025236+00:00
 *   **Crucible Version:** `v0.18.3`
 *   **Model Under Evaluation:** `test-llama`
 *   **Repetitions per Target:** 1 (Total Scans: 12)

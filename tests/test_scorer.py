@@ -187,3 +187,15 @@ class TestFinalizeScanResult:
         assert finalized.low_count == 1
         assert finalized.overall_score == 63.0
         assert finalized.grade == Grade.C
+        assert finalized.total_attacks == 5
+        assert finalized.passed_count == 1
+        assert finalized.pass_rate == 20.0
+
+        summary = finalized.summary()
+        assert summary["passed_tests"] == 1
+        assert summary["total_tests"] == 5
+        assert summary["pass_rate"] == "20.0%"
+        assert summary["failed_findings"] == 4
+        assert summary["severity_breakdown"]["critical"] == 1
+        assert summary["severity_breakdown"]["high"] == 1
+

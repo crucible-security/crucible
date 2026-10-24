@@ -20,11 +20,14 @@ class NISTReporter:
     """Generates a NIST AI RMF 1.0 coverage report from a ScanResult."""
 
     def to_markdown(self, result: ScanResult) -> str:
+        pass_rate_str = (
+            f"{result.pass_rate:.1f}%" if result.pass_rate is not None else "N/A"
+        )
         lines = [
             "# NIST AI RMF 1.0 Compliance Report",
             f"**Target:** {result.target.name}",
             f"**Scan ID:** {result.id}",
-            f"**Overall Score:** {result.overall_score:.1f} / Grade {result.grade.value}",
+            f"**Tests Passed:** {result.passed_count}/{result.valid_attacks_count} ({pass_rate_str}) | **Failed Findings:** {result.total_findings} (Critical: {result.critical_count}, High: {result.high_count})",
             "",
             "## Framework Overview",
             "This report maps Crucible findings to the "

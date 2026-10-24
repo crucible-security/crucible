@@ -45,7 +45,7 @@ class ComplianceEngine:
         # Map findings to articles
         for module in self.scan_result.modules:
             for finding in module.findings:
-                if not finding.passed:
+                if finding.passed is False:
                     cat = finding.category
                     if cat in [
                         AttackCategory.PROMPT_INJECTION,

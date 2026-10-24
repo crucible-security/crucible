@@ -42,7 +42,15 @@ class SlackReporter:
                                 },
                                 {
                                     "type": "mrkdwn",
-                                    "text": f"*Grade:*\n{result.grade.value} ({result.overall_score:.0f}/100)",
+                                    "text": f"*Capabilities:*\n{', '.join(result.target.capabilities) if result.target.capabilities else 'None declared (pure LLM)'}",
+                                },
+                                {
+                                    "type": "mrkdwn",
+                                    "text": (
+                                        f"*Pass Rate:*\n{result.passed_count}/{result.valid_attacks_count} ({result.pass_rate:.1f}%)"
+                                        if result.valid_attacks_count > 0
+                                        else "*Pass Rate:*\nN/A (0 applicable)"
+                                    ),
                                 },
                             ],
                         },

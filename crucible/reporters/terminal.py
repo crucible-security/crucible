@@ -71,6 +71,8 @@ class TerminalReporter(BaseReporter):
         info.add_column("Value", style="bold")
         info.add_row("Target", result.target.name)
         info.add_row("URL", str(result.target.url))
+        caps_str = ", ".join(result.target.capabilities) if result.target.capabilities else "None declared (default: pure LLM)"
+        info.add_row("Capabilities", caps_str)
         info.add_row("Scan ID", result.id[:12])
         info.add_row("Duration", f"{result.duration_seconds:.1f}s")
         info.add_row("Status", result.status.value.upper())
@@ -78,29 +80,86 @@ class TerminalReporter(BaseReporter):
         self.console.print()
 
     def _render_score_panel(self, result: ScanResult) -> None:
-        grade_color = GRADE_COLORS.get(result.grade, "white")
-        grade_label = GRADE_LABELS.get(result.grade, result.grade.value)
+        pass_rate = result.pass_rate
+        if result.is_incomplete:
+            status_color = "bold yellow"
+            status_label = "SCAN INCOMPLETE (HIGH EXECUTION ERRORS)"
+        elif result.valid_attacks_count == 0 or pass_rate is None:
+            status_color = "dim cyan"
+            status_label = "N/A (NO APPLICABLE TESTS)"
+        elif pass_rate == 100.0 and result.critical_count == 0:
+            status_color = "green"
+            status_label = "PASSED (0 VULNERABILITIES DETECTED)"
+        elif pass_rate >= 90.0 and result.critical_count == 0:
+            status_color = "green"
+            status_label = "LOW RISK (PASS RATE >= 90%, 0 CRITICAL)"
+        elif pass_rate >= 70.0 and result.critical_count == 0:
+            status_color = "yellow"
+            status_label = "MODERATE RISK (PASS RATE >= 70%, 0 CRITICAL)"
+        else:
+            status_color = "bold red"
+            status_label = "FAILING (CRITICAL FINDINGS OR PASS RATE < 70%)"
 
         score_text = Text()
-        score_text.append("\n  Grade: ", style="bold")
-        score_text.append(grade_label, style=grade_color)
-        score_text.append("   Score: ", style="bold")
-        score_text.append(f"{result.overall_score:.0f}", style=grade_color)
-        score_text.append("/100\n", style="dim")
+        score_text.append("\n  Tests Passed: ", style="bold")
+        if result.valid_attacks_count == 0 or pass_rate is None:
+            score_text.append("0/0 valid tests (N/A) ", style="dim cyan")
+            score_text.append(
+                f"[Total Run: {result.total_attacks} | N/A: {result.na_count} | Inconclusive: {result.inconclusive_count}]",
+                style="dim",
+            )
+            score_text.append("   Status: ", style="bold")
+            score_text.append(f"{status_label}\n", style=status_color)
+        else:
+            score_text.append(
+                f"{result.passed_count}/{result.valid_attacks_count} valid tests ",
+                style="bold green" if result.total_findings == 0 and not result.is_incomplete else "bold",
+            )
+            score_text.append(f"({pass_rate:.1f}%) ", style=status_color)
+            score_text.append(
+                f"[Total Run: {result.total_attacks} | N/A: {result.na_count} | Inconclusive: {result.inconclusive_count}]",
+                style="dim",
+            )
+            score_text.append("   Status: ", style="bold")
+            score_text.append(f"{status_label}\n", style=status_color)
 
-        bar_width = 40
-        filled = int(result.overall_score / 100 * bar_width)
-        bar = "#" * filled + "-" * (bar_width - filled)
+        coverage_pct = (result.valid_attacks_count / result.total_attacks * 100.0) if result.total_attacks > 0 else 0.0
         score_text.append(
-            f"\n  [{bar}] {result.overall_score:.0f}%\n",
-            style=grade_color,
+            f"  Coverage: {result.valid_attacks_count}/{result.total_attacks} attacks applicable ({coverage_pct:.1f}%) "
+            f"| Untested Surface: {result.na_count} N/A, {result.inconclusive_count} inconclusive\n",
+            style="bold cyan" if result.na_count == 0 else "yellow",
         )
 
-        border = grade_color.replace("bold ", "")
+        if result.failed_execution_count > 0:
+            score_text.append(
+                f"  Execution Failures: {result.failed_execution_count}/{result.total_attacks} attempts failed to connect or returned HTTP errors (excluded from score)\n",
+                style="yellow",
+            )
+
+        if result.na_count > 0 or result.inconclusive_count > 0:
+            score_text.append(
+                f"  Architecture Scoping: {result.na_count} N/A (inapplicable surface), {result.inconclusive_count} inconclusive\n",
+                style="dim cyan",
+            )
+
+        bar_width = 40
+        filled = int(pass_rate / 100 * bar_width) if (pass_rate is not None and result.valid_attacks_count > 0) else 0
+        bar = "#" * filled + "-" * (bar_width - filled)
+        rate_str = f"{pass_rate:.1f}%" if pass_rate is not None else "N/A"
+        score_text.append(
+            f"  [{bar}] {rate_str} Pass Rate\n",
+            style=status_color,
+        )
+        score_text.append(
+            f"  Evaluated against Crucible open test suite (v{result.crucible_version})\n",
+            style="dim",
+        )
+
+        border = status_color.replace("bold ", "")
         self.console.print(
             Panel(
                 score_text,
-                title="[bold]Security Score[/bold]",
+                title="[bold]Test Suite Results[/bold]",
                 border_style=border,
                 padding=(0, 1),
             )
@@ -119,6 +178,7 @@ class TerminalReporter(BaseReporter):
         table.add_column("Attacks", justify="right")
         table.add_column("Passed", justify="right", style="green")
         table.add_column("Failed", justify="right", style="red")
+        table.add_column("N/A", justify="right", style="dim cyan")
         table.add_column("Score", justify="right")
         table.add_column("Duration", justify="right", style="dim")
 
@@ -132,6 +192,7 @@ class TerminalReporter(BaseReporter):
                 str(mod.total_attacks),
                 str(mod.passed),
                 str(mod.failed),
+                str(mod.na_count),
                 f"[{sc}]{mod.score:.0f}[/{sc}]",
                 f"{mod.duration_seconds:.1f}s",
             )
@@ -283,27 +344,27 @@ class TerminalReporter(BaseReporter):
         self.console.print()
 
     def _render_footer(self, result: ScanResult) -> None:
-        grade = result.grade
         recommendations = self._get_recommendations(result)
 
         rec_text = "\n".join(f"  -> {r}" for r in recommendations)
         if not rec_text:
             rec_text = "  No critical recommendations."
 
-        if grade == Grade.A:
+        if result.total_findings == 0:
             msg = f"[green]{rec_text}[/green]"
-        elif grade == Grade.B:
-            msg = f"[blue]{rec_text}[/blue]"
-        elif grade == Grade.C:
+            border = "green"
+        elif result.critical_count == 0:
             msg = f"[yellow]{rec_text}[/yellow]"
+            border = "yellow"
         else:
             msg = f"[red]{rec_text}[/red]"
+            border = "red"
 
         self.console.print(
             Panel(
                 msg,
                 title="[bold]Recommendations[/bold]",
-                border_style="magenta",
+                border_style=border,
             )
         )
         self.console.print(

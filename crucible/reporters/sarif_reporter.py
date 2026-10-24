@@ -36,6 +36,14 @@ class SARIFReporter(BaseReporter):
                             "rules": _dedupe_rules(rules),
                         }
                     },
+                    "properties": {
+                        "target": result.target.name,
+                        "targetUrl": str(result.target.url),
+                        "capabilities": result.target.capabilities,
+                        "passRate": result.pass_rate,
+                        "validAttacksCount": result.valid_attacks_count,
+                        "naCount": result.na_count,
+                    },
                     "results": [
                         _result_for_finding(finding, result)
                         for finding in failed_findings

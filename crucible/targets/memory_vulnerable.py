@@ -18,6 +18,7 @@ class MemoryVulnerableTarget(BaseTarget):
     name = "memory_vulnerable"
     vulnerable = True
     categories = ["memory_poisoning", "prompt_injection", "agentic_hijacking"]
+    capabilities = ["memory"]
     description = (
         "Persists injected instructions across request boundaries. "
         "Simulates an agent whose memory store is not sanitised on read."

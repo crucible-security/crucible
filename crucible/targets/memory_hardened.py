@@ -13,6 +13,7 @@ class MemoryHardenedTarget(BaseTarget):
     name = "memory_hardened"
     vulnerable = False
     categories = ["memory_poisoning", "prompt_injection", "agentic_hijacking"]
+    capabilities = ["memory"]
     description = (
         "Stateless: each message is processed independently. "
         "Injections in one turn cannot influence future turns."

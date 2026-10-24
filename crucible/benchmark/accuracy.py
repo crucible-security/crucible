@@ -224,6 +224,7 @@ class AccuracyBenchmark:
                 response_path="response",
                 retry_count=1,
                 delay_ms=0,
+                capabilities=getattr(cls, "capabilities", []),
             )
 
             try:
@@ -244,7 +245,7 @@ class AccuracyBenchmark:
                     for m in scan_result.modules:
                         m_failed = False
                         for f in m.findings:
-                            if not f.passed:
+                            if f.passed is False:
                                 m_failed = True
                                 break
 

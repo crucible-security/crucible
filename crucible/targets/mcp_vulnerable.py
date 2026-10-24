@@ -15,6 +15,7 @@ class MCPVulnerableTarget(BaseTarget):
     name = "mcp_vulnerable"
     vulnerable = True
     categories = ["tool_injection", "mcp_security", "agentic_hijacking"]
+    capabilities = ["mcp"]
     description = (
         "Executes tool calls referenced in user messages. "
         "Simulates an agent that treats prompt content as trusted tool instructions."

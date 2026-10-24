@@ -54,6 +54,7 @@ def list_targets() -> list[dict[str, object]]:
             "name": cls.name,
             "vulnerable": cls.vulnerable,
             "categories": cls.categories,
+            "capabilities": cls.capabilities,
             "description": cls.description,
             "expected_crucible_result": "fail" if cls.vulnerable else "pass",
         }

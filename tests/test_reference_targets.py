@@ -63,6 +63,7 @@ def test_all_12_targets_importable() -> None:
         assert cls.name, f"{cls} has no name"
         assert isinstance(cls.vulnerable, bool), f"{cls}.vulnerable must be bool"
         assert isinstance(cls.categories, list), f"{cls}.categories must be list"
+        assert isinstance(cls.capabilities, list), f"{cls}.capabilities must be list"
 
 
 def test_list_targets_returns_12_dicts() -> None:
@@ -73,6 +74,7 @@ def test_list_targets_returns_12_dicts() -> None:
         "name",
         "vulnerable",
         "categories",
+        "capabilities",
         "description",
         "expected_crucible_result",
     }
@@ -218,7 +220,9 @@ def test_ground_truth_endpoint_on_all_targets() -> None:
             assert data is not None, f"{cls.name}: /ground_truth did not respond"
             assert "vulnerable" in data
             assert "expected_crucible_result" in data
+            assert "capabilities" in data
             assert data["vulnerable"] == cls.vulnerable
+            assert data["capabilities"] == cls.capabilities
             expected = "fail" if cls.vulnerable else "pass"
             assert data["expected_crucible_result"] == expected
         finally:

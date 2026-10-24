@@ -13,6 +13,7 @@ class DelegationHardenedTarget(BaseTarget):
     name = "delegation_hardened"
     vulnerable = False
     categories = ["identity_privilege", "prompt_injection", "goal_hijacking"]
+    capabilities = ["multi_agent"]
     description = (
         "Ignores all in-message authority claims. "
         "Identity is verified only via authenticated headers, never message content."

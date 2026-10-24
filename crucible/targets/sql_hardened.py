@@ -13,6 +13,7 @@ class SQLHardenedTarget(BaseTarget):
     name = "sql_hardened"
     vulnerable = False
     categories = ["prompt_injection", "goal_hijacking", "data_exfiltration"]
+    capabilities = []
     description = (
         "Sanitises all inputs and rejects SQL/injection patterns. "
         "Simulates a correctly-hardened agent."

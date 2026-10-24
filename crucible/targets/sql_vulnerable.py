@@ -26,6 +26,7 @@ class SQLVulnerableTarget(BaseTarget):
     name = "sql_vulnerable"
     vulnerable = True
     categories = ["prompt_injection", "goal_hijacking", "data_exfiltration"]
+    capabilities = []
     description = (
         "Echoes SQL injection payloads as if executing them. "
         "Decodes Base64 input before processing — creating a FN blind-spot. "

@@ -15,6 +15,7 @@ class DelegationVulnerableTarget(BaseTarget):
     name = "delegation_vulnerable"
     vulnerable = True
     categories = ["identity_privilege", "prompt_injection", "goal_hijacking"]
+    capabilities = ["multi_agent"]
     description = (
         "Grants elevated capabilities to users who claim authority in messages. "
         "Simulates an agent with no identity verification."

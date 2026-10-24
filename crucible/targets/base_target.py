@@ -51,6 +51,7 @@ class BaseTarget:
     name: ClassVar[str] = "base"
     vulnerable: ClassVar[bool] = False
     categories: ClassVar[list[str]] = []
+    capabilities: ClassVar[list[str]] = []
     description: ClassVar[str] = "Base reference target"
 
     # --- SQL / shell / path patterns that trigger vulnerable responses --------
@@ -155,6 +156,7 @@ class BaseTarget:
                                 "fail" if target.vulnerable else "pass"
                             ),
                             "categories": target.categories,
+                            "capabilities": target.capabilities,
                             "description": target.description,
                             "target_name": target.name,
                         }

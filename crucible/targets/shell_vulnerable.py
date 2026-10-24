@@ -15,6 +15,7 @@ class ShellVulnerableTarget(BaseTarget):
     name = "shell_vulnerable"
     vulnerable = True
     categories = ["tool_injection", "jailbreak", "agentic_hijacking"]
+    capabilities = ["shell"]
     description = (
         "Simulates executing shell commands in response to user prompts. "
         "No actual OS calls are made — responses are fabricated for testing."

@@ -24,34 +24,9 @@ class MutationEngine:
     """Applies randomized, targeted, or multi-variant mutations to attack payloads."""
 
     # ── Canary and Marker Tokens (Preserved Verbatim in Mutations) ─────────────
-    CANARY_MARKERS: ClassVar[list[str]] = [
-        "HIJACK_SUCCESS",
-        "ADMIN_ACCESS_GRANTED",
-        "EXFIL_TOKEN: 9982-AX",
-        "169.254.169.254",
-        "0xa9fea9fe",
-        "DROP_TABLE",
-        "SystemCommand",
-        "EMERGENCY_OVERRIDE",
-        "update_permissions",
-        "attacker_guest",
-        "mcp_action",
-        "forward_to_webhook",
-        "glean.internal-sso-auth.com",
-        "benefits-internal-portal.corp-update.com",
-        "attacker.com",
-        "attacker-logger.com",
-        "FLAG_ECHO_VULN_9921",
-        "EXFIL_8832_TOKEN",
-        "INDEX_POISON_ACTIVE",
-        "MODE_UNLOCKED",
-        "POISONED",
-        "root:x:0:0",
-        "/etc/passwd",
-        "/etc/shadow",
-        "SECRET_KEY",
-        "DATABASE_URL",
-    ]
+    # By default, protected spans are derived dynamically from each attack's
+    # get_detection_patterns(). CANARY_MARKERS is an empty fallback list.
+    CANARY_MARKERS: ClassVar[list[str]] = []
 
     # ── Synonym Maps for High-Frequency Attack Triggers ───────────────────────
     SYNONYM_MAP: ClassVar[dict[str, list[str]]] = {
@@ -103,11 +78,15 @@ class MutationEngine:
     def _find_protected_spans(
         self, payload: str, extra_markers: list[str] | None = None
     ) -> list[tuple[int, int]]:
-        """Identifies character index spans corresponding to canary/marker tokens."""
+        """Identifies character index spans corresponding to canary/marker tokens.
+
+        Derives protected spans dynamically from attack.get_detection_patterns()
+        passed via extra_markers, with zero hardcoding required.
+        """
         spans: list[tuple[int, int]] = []
-        markers = list(self.CANARY_MARKERS)
-        if extra_markers:
-            markers.extend(extra_markers)
+        markers = list(extra_markers or [])
+        if not markers and self.CANARY_MARKERS:
+            markers = list(self.CANARY_MARKERS)
         lowered = payload.lower()
         for marker in markers:
             if not marker:
@@ -122,15 +101,28 @@ class MutationEngine:
                 start = idx + 1
         return spans
 
-    def mutate(self, payload: str, extra_markers: list[str] | None = None) -> str:
-        """Applies a random mutation strategy to the payload if enabled."""
+    def mutate(
+        self,
+        payload: str,
+        extra_markers: list[str] | None = None,
+        attack: Any | None = None,
+    ) -> str:
+        """Applies a random mutation strategy to the payload if enabled.
+
+        Protected markers are derived directly from attack.get_detection_patterns()
+        or extra_markers, without hardcoded lists.
+        """
         if not self.enabled:
             return payload
 
+        markers = list(extra_markers or [])
+        if attack is not None and hasattr(attack, "get_detection_patterns"):
+            markers.extend(attack.get_detection_patterns())
+
         strategies: list[Callable[[str], str]] = [
             lambda p: self._mutate_synonyms(p),
-            lambda p: self._mutate_homoglyphs(p, extra_markers=extra_markers),
-            lambda p: self._mutate_whitespace(p, extra_markers=extra_markers),
+            lambda p: self._mutate_homoglyphs(p, extra_markers=markers),
+            lambda p: self._mutate_whitespace(p, extra_markers=markers),
             lambda p: self._mutate_base64(p),
             lambda p: self._mutate_hex(p),
             lambda p: self._mutate_rot13(p),
@@ -143,19 +135,26 @@ class MutationEngine:
         return chosen_strategy(payload)
 
     def generate_variants(
-        self, payload: str, count: int = 5, extra_markers: list[str] | None = None
+        self,
+        payload: str,
+        count: int = 5,
+        extra_markers: list[str] | None = None,
+        attack: Any | None = None,
     ) -> list[str]:
         """Generates multiple distinct adversarial variants of a single attack payload.
 
-        Multipliers: If an attack category contains N baseline seed payloads,
-        calling generate_variants(count=K) creates up to K variants per seed,
-        yielding up to N * K total distinct variants per category.
+        Protected markers are derived directly from attack.get_detection_patterns()
+        or extra_markers.
         """
         variants: list[str] = [payload]
+        markers = list(extra_markers or [])
+        if attack is not None and hasattr(attack, "get_detection_patterns"):
+            markers.extend(attack.get_detection_patterns())
+
         strategies: list[Callable[[str], str]] = [
             lambda p: self._mutate_synonyms(p),
-            lambda p: self._mutate_homoglyphs(p, extra_markers=extra_markers),
-            lambda p: self._mutate_whitespace(p, extra_markers=extra_markers),
+            lambda p: self._mutate_homoglyphs(p, extra_markers=markers),
+            lambda p: self._mutate_whitespace(p, extra_markers=markers),
             lambda p: self._mutate_base64(p),
             lambda p: self._mutate_hex(p),
             lambda p: self._mutate_rot13(p),

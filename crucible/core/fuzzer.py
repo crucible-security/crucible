@@ -243,6 +243,7 @@ class CrucibleGAF:
         payloads: dict[str, list[str]],
         timeout: int = 30,
         logprob_field: str = "logprobs",
+        detection_patterns: dict[str, list[str]] | None = None,
     ) -> tuple[str, float, dict[str, Any]]:
         """Select an arm, fire one attack payload, return (arm, reward, meta).
 
@@ -278,8 +279,9 @@ class CrucibleGAF:
             return arm_name, reward, meta
 
         raw_payload = self._rng.choice(arm_payloads)
+        arm_markers = detection_patterns.get(arm_name, []) if detection_patterns else None
         payload_text = (
-            self.mutation_engine.mutate(raw_payload)
+            self.mutation_engine.mutate(raw_payload, extra_markers=arm_markers)
             if self.mutate_payloads
             else raw_payload
         )
@@ -382,6 +384,7 @@ def run_fuzz_session(
     logprob_mode: bool = False,
     mutate_payloads: bool = False,
     timeout: int = 30,
+    detection_patterns: dict[str, list[str]] | None = None,
 ) -> FuzzSessionResult:
     """Run a complete CGAF fuzz session and return a structured result.
 
@@ -421,6 +424,7 @@ def run_fuzz_session(
             body_template=body_template,
             payloads=payloads,
             timeout=timeout,
+            detection_patterns=detection_patterns,
         )
         round_log.append(
             {

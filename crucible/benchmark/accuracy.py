@@ -243,11 +243,27 @@ class AccuracyBenchmark:
 
                     # Classify each module's results individually
                     for m in scan_result.modules:
-                        m_failed = False
-                        for f in m.findings:
-                            if f.passed is False:
-                                m_failed = True
-                                break
+                        from crucible.models import FindingVerdict
+
+                        # Identify applicable findings (exclude capability-gated N/A findings)
+                        applicable_findings = [
+                            f for f in m.findings if getattr(f, "verdict", None) != FindingVerdict.NA
+                        ]
+                        is_na_module = (len(applicable_findings) == 0)
+
+                        if is_na_module:
+                            # Capability-gated out: excluded from evaluation metrics, NOT counted as TN
+                            continue
+
+                        m_failed = any(
+                            getattr(f, "verdict", None) == FindingVerdict.FAIL or f.passed is False
+                            for f in applicable_findings
+                        )
+                        m_passed = any(
+                            getattr(f, "verdict", None) == FindingVerdict.PASS or f.passed is True
+                            for f in applicable_findings
+                        )
+                        m_inconclusive = not m_failed and not m_passed
 
                         m_name = m.module_name.lower().replace(" ", "_")
                         is_vuln_for_module = cls.vulnerable and (
@@ -255,32 +271,46 @@ class AccuracyBenchmark:
                         )
 
                         # Classification (All-modules)
-                        if is_vuln_for_module and m_failed:
-                            tr.tp += 1
-                        elif not is_vuln_for_module and not m_failed:
-                            tr.tn += 1
-                        elif not is_vuln_for_module and m_failed:
-                            tr.fp += 1
-                        elif is_vuln_for_module and not m_failed:
-                            tr.fn += 1
-
-                        runs.append((is_vuln_for_module, m_failed))
+                        if is_vuln_for_module:
+                            if m_failed:
+                                tr.tp += 1
+                                runs.append((True, True))
+                            else:
+                                # INCONCLUSIVE or false pass on vulnerable target is counted as a miss (FN)
+                                tr.fn += 1
+                                runs.append((True, False))
+                        else:
+                            if m_failed:
+                                tr.fp += 1
+                                runs.append((False, True))
+                            elif m_passed:
+                                tr.tn += 1
+                                runs.append((False, False))
+                            else:
+                                # INCONCLUSIVE on hardened target (no refusal + no exploit) is not a verified TN
+                                pass
 
                         # Relevant modules classification
                         is_relevant = m_name in module_names_to_run
                         if is_relevant:
-                            is_vuln_relevant = cls.vulnerable
-                            if is_vuln_relevant and m_failed:
-                                tr.tp_relevant += 1
-                            elif not is_vuln_relevant and not m_failed:
-                                tr.tn_relevant += 1
-                            elif not is_vuln_relevant and m_failed:
-                                tr.fp_relevant += 1
-                            elif is_vuln_relevant and not m_failed:
-                                tr.fn_relevant += 1
-
-                            runs_relevant.append((is_vuln_relevant, m_failed))
-
+                            if cls.vulnerable:
+                                if m_failed:
+                                    tr.tp_relevant += 1
+                                    runs_relevant.append((True, True))
+                                else:
+                                    # INCONCLUSIVE or false pass on vulnerable target is counted as a miss (FN)
+                                    tr.fn_relevant += 1
+                                    runs_relevant.append((True, False))
+                            else:
+                                if m_failed:
+                                    tr.fp_relevant += 1
+                                    runs_relevant.append((False, True))
+                                elif m_passed:
+                                    tr.tn_relevant += 1
+                                    runs_relevant.append((False, False))
+                                else:
+                                    # INCONCLUSIVE on hardened target is not a verified TN
+                                    pass
                     scans_executed += 1
             finally:
                 server.shutdown()

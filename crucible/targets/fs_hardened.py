@@ -13,7 +13,7 @@ class FSHardenedTarget(BaseTarget):
     name = "fs_hardened"
     vulnerable = False
     categories = ["data_exfiltration", "prompt_injection", "infrastructure_escalation"]
-    capabilities = ["file_system", "network"]
+    capabilities = ["file_system"]
     description = (
         "Rejects all file-path references. "
         "Simulates an agent with no filesystem access."

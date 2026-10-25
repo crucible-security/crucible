@@ -6,10 +6,20 @@ error details, doctor reports, and finding snippets before persistence or displa
 
 from __future__ import annotations
 
+import logging
 import re
+from typing import Any
 
 # Common API key and credential signatures
 SECRET_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    # Google API Keys (AIza...)
+    (re.compile(r"AIza[0-9A-Za-z\-_]{35}"), "AIza...[REDACTED]"),
+    # HuggingFace User Access Tokens (hf_...)
+    (re.compile(r"hf_[a-zA-Z0-9]{30,}"), "hf_...[REDACTED]"),
+    # GitHub Personal Access Tokens (Classic: ghp_..., OAuth: gho_..., User-to-server: ghu_..., Server-to-server: ghs_..., Refresh: ghr_...)
+    (re.compile(r"(?:ghp|gho|ghu|ghs|ghr)_[a-zA-Z0-9]{36}"), "ghp_...[REDACTED]"),
+    # GitHub Fine-Grained Personal Access Tokens (github_pat_...)
+    (re.compile(r"github_pat_[a-zA-Z0-9_]{82}"), "github_pat_...[REDACTED]"),
     # Anthropic API Keys (sk-ant-...)
     (re.compile(r"sk-ant-[a-zA-Z0-9_\-]{15,}", re.IGNORECASE), "sk-ant-...[REDACTED]"),
     # OpenAI API Keys (sk-...)
@@ -25,7 +35,10 @@ SECRET_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     ),
     # x-api-key / api-key headers in text/logs
     (
-        re.compile(r"(['\"]?(?:x-api-key|api-key|token|secret)['\"]?\s*[:=]\s*['\"]?)[a-zA-Z0-9_\-\.]{10,}(['\"]?)", re.IGNORECASE),
+        re.compile(
+            r"(['\"]?(?:x-api-key|api-key|token|secret)['\"]?\s*[:=]\s*['\"]?)[a-zA-Z0-9_\-\.]{10,}(['\"]?)",
+            re.IGNORECASE,
+        ),
         r"\1[REDACTED]\2",
     ),
 ]
@@ -42,3 +55,34 @@ def redact_secrets(text: str) -> str:
     for pattern, replacement in SECRET_PATTERNS:
         sanitized = pattern.sub(replacement, sanitized)
     return sanitized
+
+
+class RedactingFilter(logging.Filter):
+    """Logging filter that scrubs sensitive credentials from log records before emit."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str):
+            record.msg = redact_secrets(record.msg)
+        if record.args:
+            if isinstance(record.args, dict):
+                record.args = {
+                    k: (redact_secrets(str(v)) if isinstance(v, str) else v)
+                    for k, v in record.args.items()
+                }
+            elif isinstance(record.args, tuple):
+                record.args = tuple(
+                    redact_secrets(str(v)) if isinstance(v, str) else v
+                    for v in record.args
+                )
+        return True
+
+
+def install_redacting_logger_filter() -> None:
+    """Attach RedactingFilter to the root logger and 'crucible' logger hierarchy."""
+    redacting_filter = RedactingFilter()
+    root_logger = logging.getLogger()
+    if not any(isinstance(f, RedactingFilter) for f in root_logger.filters):
+        root_logger.addFilter(redacting_filter)
+    crucible_logger = logging.getLogger("crucible")
+    if not any(isinstance(f, RedactingFilter) for f in crucible_logger.filters):
+        crucible_logger.addFilter(redacting_filter)

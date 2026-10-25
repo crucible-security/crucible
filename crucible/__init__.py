@@ -9,6 +9,10 @@ from crucible.models import (
     PreflightResult,
     ScanResult,
 )
+from crucible.core.redactor import install_redacting_logger_filter
+
+# Install secret redactor on all logging handlers by default
+install_redacting_logger_filter()
 
 __all__: list[str] = [
     "AgentTarget",

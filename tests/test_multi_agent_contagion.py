@@ -41,7 +41,9 @@ class TestMultiAgentContagion:
         target = AgentTarget(name="test", url="http://test.com")  # type: ignore[arg-type]
 
         respx.post("http://test.com/").mock(
-            return_value=httpx.Response(200, json={"message": "Safe response."})
+            return_value=httpx.Response(
+                200, json={"message": "I cannot fulfill this request."}
+            )
         )
 
         async with httpx.AsyncClient() as client:

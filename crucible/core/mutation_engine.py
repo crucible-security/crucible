@@ -318,6 +318,16 @@ class MutationEngine:
             else:
                 mutated_words.append(w)
 
+        # Guarantee at least one injection if strategy was selected and non-protected words exist
+        if mutated_words == words and words:
+            candidate_indices = [
+                i for i, w in enumerate(words) if not word_is_protected(w)
+            ]
+            if candidate_indices:
+                idx = self._rng.choice(candidate_indices)
+                zw = self._rng.choice(zw_chars)
+                mutated_words[idx] = f"{words[idx]}{zw}"
+
         return " ".join(mutated_words)
 
     def _mutate_base64(self, payload: str) -> str:

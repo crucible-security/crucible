@@ -435,6 +435,7 @@ submissions_log.md
 
 # ── Crucible: personal one-off run/verify scripts ────────────────────────────
 /run_*.py
+!/run_bm.py
 /verify_*.py
 live_proof.py
 test_gemini_key.py

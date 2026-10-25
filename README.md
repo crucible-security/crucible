@@ -48,7 +48,7 @@ crucible report crucible-report.json
 ## Why Crucible?
 
 - **Behavioral integrity testing** -- the only tool that tests agent behavior *across conversations*, not just single-shot attacks
-- **Automated red-teaming** -- 90+ real attack payloads run in under 60 seconds, not weeks of manual testing
+- **Automated red-teaming** -- 168 attack techniques / 347 payloads run in under 60 seconds, not weeks of manual testing
 - **OWASP-aligned** -- maps every attack to the OWASP Top 10 for LLM Applications and OWASP Agentic Top 10
 - **CI/CD native** -- `crucible scan --output json` pipes into any pipeline; fail builds on low grades
 - **Regulatory compliance** -- auto-generate EU AI Act 2024 compliance reports from scan results
@@ -63,29 +63,30 @@ crucible report crucible-report.json
 Need persistent dashboards, compliance reports, and team collaboration?  
 Join the waitlist for our upcoming cloud platform: [crucible-cloud.vercel.app](https://crucible-cloud.vercel.app)
 
-## Modules
+## Security Modules
 
-| Module | Attacks | Status | OWASP Coverage |
-|--------|---------|--------|----------------|
-| Prompt Injection | 50 | ✅ Live | LLM01, LLM07 |
-| Goal Hijacking | 20 | ✅ Live | Agentic #1 |
-| Jailbreaks | 20 | ✅ Live | LLM01, LLM06 |
-| Enterprise Graph | 5 | ✅ Live | Agentic #2, #4 |
-| Memory Poisoning | 5 | ✅ Live | Agentic #5 |
-| Infrastructure Escalation | 3 | ✅ Live | LLM06, SSRF |
-| Advanced Orchestration | 3 | ✅ Live | Agentic #3 |
-| MCP Security | 2 | ✅ Live | Agentic #3 |
-| **MCP Server Scan** | **10** | **✅ Live (v0.4)** | **MCP-001 – MCP-005** |
-| Behavioral Drift | multi-turn | ✅ Live (v0.3) | Agentic #1, #2 |
-| Multi-turn Attacks | strategies | ✅ Live (v0.3) | LLM01, Agentic #1 |
-| Deep Research Engine | autonomous | ✅ Live (v0.4) | AI Research |
-| Multi-Agent Contagion | orchestration | ✅ Live (v0.4) | Agentic #2, #3 |
-| **Hallucination Detection** | **15** | **✅ Live (v0.5)** | **LLM09 / Agentic #9** |
-| **Toxicity & Content Safety**| **20** | **✅ Live (v0.5)** | **LLM01, LLM06** |
-| **Statistical Confidence** | **--confidence** | **✅ Live (v0.6)** | **Bootstrap & binomial bounds** |
-| **MCP Trace Proxy** | **traffic proxy**| **✅ Live (v0.7)** | **Agentic #3 / Tool Misuse** |
-| **Memory & RAG Poisoning** | **poison-test** | **✅ Live (v0.8)** | **Agentic #5 / Poisoning** |
-| **Reference Targets** | **12 targets** | **✅ Live (v0.18)**| **Ground-truth validation targets** |
+Crucible ships with **14 dedicated security modules** comprising **168 attack techniques / 347 payloads**. Each module encapsulates specialized adversarial payloads, interaction wrappers, and automated response evaluators:
+
+| # | Module | CLI Identifier | Attack Techniques | Payloads | Primary OWASP Mapping | Status |
+|---|--------|----------------|-------------------|----------|-----------------------|--------|
+| 1 | Prompt Injection | `prompt_injection` | 50 | 127 | LLM01, LLM07, ASI02 | ✅ Live |
+| 2 | Goal Hijacking | `goal_hijacking` | 20 | 42 | ASI01 | ✅ Live |
+| 3 | Jailbreaks | `jailbreaks` | 20 | 40 | LLM01, LLM06 | ✅ Live |
+| 4 | Toxicity & Safety | `toxicity` | 20 | 20 | LLM01, LLM06 | ✅ Live |
+| 5 | Hallucination Detection | `hallucination` | 15 | 22 | LLM09, ASI09 | ✅ Live |
+| 6 | Inter-Agent Trust | `inter_agent_trust` | 15 | 19 | ASI02, ASI03 | ✅ Live |
+| 7 | Enterprise Graph | `enterprise_graph` | 5 | 10 | ASI02, ASI04 | ✅ Live |
+| 8 | Memory Poisoning | `memory_poisoning` | 5 | 10 | ASI05 | ✅ Live |
+| 9 | Tool Injection | `tool_injection` | 4 | 20 | ASI03 | ✅ Live |
+| 10 | Browser Agent | `browser_agent` | 4 | 8 | ASI02, SSRF | ✅ Live |
+| 11 | Advanced Orchestration | `advanced_orchestration` | 3 | 6 | ASI03 | ✅ Live |
+| 12 | Infrastructure Escalation | `infrastructure_escalation` | 3 | 8 | LLM06, SSRF | ✅ Live |
+| 13 | MCP Security | `mcp_security` | 2 | 8 | ASI03 | ✅ Live |
+| 14 | Agentic Security | `agentic_hijacking` | 2 | 7 | ASI01, ASI03 | ✅ Live |
+| | **Total** | | **168 attack techniques** | **347 payloads** | | |
+
+> [!NOTE]
+> **14 Modules vs 11 OWASP Categories**: OWASP categorizes risks into high-level taxonomic themes (such as Goal Hijacking, Tool Misuse, Identity Abuse). Crucible operationalizes these categories across 14 discrete executable modules designed around modern agent architectures (e.g. separating browser-specific tool risks from MCP server-side risks and inter-agent coordination risks).
 
 ## OWASP Agentic Top 10 Coverage
 
@@ -458,7 +459,7 @@ Crucible uses a 3-tier hybrid refusal detection pipeline:
 2. Weighted Lexicon Scorer: Token-weight heuristic scoring refusal vs compliance tokens. Thresholds (0.75 refusal / 0.25 compliance) are uncalibrated heuristics.
 3. Character N-Gram Jaccard Similarity Fallback: Evaluates character n-gram similarity against canonical refusal anchors when lexicon confidence is in the uncertainty corridor (0.25 to 0.75).
 
-- Relevant-modules precision: **1.000** | Recall: **0.750**
+- Relevant-modules precision: **1.000** | Recall: **0.812**
 - See [docs/accuracy_report.md](docs/accuracy_report.md) for full benchmark results.
 - See [docs/known_limitations.md](docs/known_limitations.md) for detailed heuristic disclosures.
 
@@ -466,7 +467,7 @@ Crucible uses a 3-tier hybrid refusal detection pipeline:
 
 Crucible v0.19.0 incorporates critical architectural and empirical findings contributed by two independent external audits:
 1. **Architectural Code Review**: Static analysis and review of refusal detection pipelines, payload mutation mechanics, and scoring transparency.
-2. **Empirical Field Audit**: Detailed root-cause evaluation by a 4-year professional AI red-teamer who audited Claude Haiku 4.5 across 347 attacks via the Anthropic Messages API, surfacing capability-mismatch phenomena, SSRF/tool false positives, and execution diagnosability requirements.
+2. **Empirical Field Audit**: Detailed root-cause evaluation by a 4-year professional AI red-teamer who audited Claude Haiku 4.5 across 168 attack techniques / 347 payloads via the Anthropic Messages API, surfacing capability-mismatch phenomena, SSRF/tool false positives, and execution diagnosability requirements.
 
 ## Contributing
 

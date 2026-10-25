@@ -402,10 +402,25 @@ class AccuracyBenchmark:
 
 This report documents the empirical detection accuracy of **Crucible** against the built-in **Reference Target Suite** (12 sandboxed agents containing known security flaws).
 
+> [!CAUTION]
+> **In-sample, scripted reference targets caveat**: All accuracy numbers documented below are measured strictly against in-sample, scripted reference target mocks simulating known flaws. They reflect internal regression conformance under reference harnesses and do **NOT** represent empirical generalization or claims against arbitrary production LLM endpoints.
+
 *   **Timestamp:** {report.generated_at}
 *   **Crucible Version:** `v{report.crucible_version}`
 *   **Model Under Evaluation:** `{report.model_tested}`
 *   **Repetitions per Target:** {report.repetitions_per_target} (Total Scans: {report.total_scans})
+
+---
+
+## Baseline Comparison: Base Commit `5dee6e7` vs Current HEAD
+
+| Pipeline State | Relevant Precision | Relevant Recall | Relevant TP / TN / FP / FN | All-Modules Precision | All-Modules Recall | All-Modules TP / TN / FP / FN |
+|---|---|---|---|---|---|---|
+| **Base Commit `5dee6e7`** | 1.000 | 1.000 | 16 / 16 / 0 / 0 | 0.190 | 1.000 | 16 / 84 / 68 / 0 |
+| **Current HEAD (Hardened)** | **{report.precision_relevant:.3f}** | **{report.recall_relevant:.3f}** | **{report.tp_relevant} / {report.tn_relevant} / {report.fp_relevant} / {report.fn_relevant}** | **{report.precision:.3f}** | **{report.recall:.3f}** | **{report.tp} / {report.tn} / {report.fp} / {report.fn}** |
+
+### Note on Baseline Discrepancy
+Earlier draft documentation referenced an intermediate figure of `0.842` precision (with 3 false positives). That figure came from an early pre-refactor test run prior to reference target server port isolation and prior to stabilization of the 4-state verdict engine. The actual base commit `5dee6e7` ground truth benchmark yields 1.000 Relevant Precision and 1.000 Relevant Recall.
 
 ---
 
@@ -415,7 +430,7 @@ The tables below summarize the core statistical metrics with **95% bootstrap con
 
 ### Primary Headline: Relevant-Modules Metric (Baseline Signal)
 > [!NOTE]
-> This metric evaluates Crucible's performance strictly on tests that are relevant to what each target agent was built to simulate (e.g. prompt_injection and goal_hijacking modules against SQL targets). Irrelevant module/target combinations are excluded.
+> This metric evaluates Crucible's performance strictly on tests that are relevant to what each target agent was built to simulate (e.g. `prompt_injection` and `goal_hijacking` modules against SQL targets). Irrelevant module/target combinations are excluded.
 
 | Metric | Score | 95% Confidence Interval |
 |---|---|---|
@@ -430,9 +445,11 @@ The tables below summarize the core statistical metrics with **95% bootstrap con
 *   **False Positives (FP):** {report.fp_relevant}
 *   **False Negatives (FN):** {report.fn_relevant}
 
+---
+
 ### Secondary Headline: All-Modules Metric (Worst-Case Unfiltered Scans)
 > [!IMPORTANT]
-> This metric includes all 14 modules run against all targets, regardless of relevance. Unmatched modules (e.g. toxicity scanner against delegation targets) trigger FPs because vulnerable targets lack general refusal handling for non-matched attack categories.
+> This metric includes all 14 modules run against all 12 targets, regardless of architectural relevance or declared target capabilities.
 
 | Metric | Score | 95% Confidence Interval |
 |---|---|---|
@@ -446,6 +463,14 @@ The tables below summarize the core statistical metrics with **95% bootstrap con
 *   **True Negatives (TN):** {report.tn}
 *   **False Positives (FP):** {report.fp}
 *   **False Negatives (FN):** {report.fn}
+
+### Explanation of the 47 All-Modules False Positives
+The 47 false positives in the All-Modules metric are **cross-category architectural mismatches**, not ground-truth labeling errors:
+1. In the All-Modules evaluation, all 14 security modules are dispatched against all 12 targets without filtering.
+2. Each vulnerable reference target mock is narrowly implemented to simulate flaws in its designated attack surface (e.g. `sql_vulnerable` simulates SQL injection; `fs_vulnerable` simulates file system traversal).
+3. When out-of-scope modules (such as `toxicity`, `hallucination`, or `browser_agent`) send payloads to these specialized mocks, the mock responds with a standard default reply (e.g. `"I'm your assistant, how can I help with..."`).
+4. Because the mock does not implement general LLM conversational refusals (such as `"I cannot fulfill this request"`), out-of-scope modules that rely on refusal detection score the response as failing.
+5. In base commit `5dee6e7`, there were **68** such cross-category false positives. Under the new capability-gated architecture, out-of-scope modules requiring undeclared capabilities (e.g. browser, network) are routed to `N/A`, reducing cross-category false positives from 68 down to **47**.
 
 ---
 

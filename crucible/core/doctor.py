@@ -236,7 +236,7 @@ async def run_doctor(
     # 4. Live Probe Request
     target_obj = AgentTarget(
         name=f"doctor-{provider}",
-        url=resolved_url,
+        url=resolved_url,  # type: ignore[arg-type]
         body_template=resolved_body_template,
         response_path=resolved_response_path,
         headers=req_headers,

@@ -17,7 +17,7 @@ import json
 import random
 import re
 import urllib.parse
-from typing import ClassVar
+from typing import Callable, ClassVar
 
 
 class MutationEngine:
@@ -127,7 +127,7 @@ class MutationEngine:
         if not self.enabled:
             return payload
 
-        strategies = [
+        strategies: list[Callable[[str], str]] = [
             lambda p: self._mutate_synonyms(p),
             lambda p: self._mutate_homoglyphs(p, extra_markers=extra_markers),
             lambda p: self._mutate_whitespace(p, extra_markers=extra_markers),
@@ -152,7 +152,7 @@ class MutationEngine:
         yielding up to N * K total distinct variants per category.
         """
         variants: list[str] = [payload]
-        strategies = [
+        strategies: list[Callable[[str], str]] = [
             lambda p: self._mutate_synonyms(p),
             lambda p: self._mutate_homoglyphs(p, extra_markers=extra_markers),
             lambda p: self._mutate_whitespace(p, extra_markers=extra_markers),

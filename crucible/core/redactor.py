@@ -41,6 +41,36 @@ SECRET_PATTERNS: list[tuple[re.Pattern[str], str]] = [
         ),
         r"\1[REDACTED]\2",
     ),
+    # AWS Access Key IDs (AKIA...)
+    (re.compile(r"AKIA[0-9A-Z]{16}"), "AKIA...[REDACTED_AWS_KEY]"),
+    # AWS Secret Access Keys (contextual: 40-char base64 after key indicator)
+    (
+        re.compile(
+            r"(['\"]?(?:AWS_SECRET_ACCESS_KEY|aws_secret_access_key|SecretAccessKey)['\"]?)\s*[=:]\s*['\"]?([A-Za-z0-9/+=]{40})['\"]?",
+            re.IGNORECASE,
+        ),
+        r"\1=...[REDACTED_AWS_SECRET]",
+    ),
+    # Slack Bot/App tokens (xoxb-, xoxa-, xoxp-, xoxs-, xoxr-)
+    (re.compile(r"xox[bapsr]-[0-9a-zA-Z\-]+"), "xox...[REDACTED_SLACK_TOKEN]"),
+    # JWT tokens (3-part base64url separated by dots)
+    (
+        re.compile(r"eyJ[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+"),
+        "eyJ...[REDACTED_JWT]",
+    ),
+    # Cookie / Set-Cookie headers (redact the value portion)
+    (
+        re.compile(r"((?:Set-)?Cookie:\s*)[^\r\n]+", re.IGNORECASE),
+        r"\1[REDACTED]",
+    ),
+    # URL query-string credential parameters
+    (
+        re.compile(
+            r"((?:api_key|token|secret|password|access_token|client_secret)=)[^&\s#\"']+",
+            re.IGNORECASE,
+        ),
+        r"\1[REDACTED]",
+    ),
 ]
 
 

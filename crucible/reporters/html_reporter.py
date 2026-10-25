@@ -138,9 +138,33 @@ class HTMLReporter(BaseReporter):
 
     def to_html(self, result: ScanResult) -> str:
         """Render *result* as a self-contained HTML string."""
-        grade = result.grade.value if result.grade else "—"
-        grade_colour = _GRADE_COLOURS.get(grade, "#64748b")
-        score = result.overall_score or 0.0
+        pass_rate = result.pass_rate
+        total_attacks = result.total_attacks
+        cov = (
+            (result.valid_attacks_count / total_attacks * 100.0)
+            if total_attacks > 0
+            else 0.0
+        )
+
+        if getattr(result, "failed_execution_count", 0) > 0.2 * max(
+            result.total_attacks, 1
+        ):
+            status_colour = "#eab308"
+            status_label = "INCOMPLETE"
+            badge_sub = "EXECUTION ERRORS"
+        elif pass_rate is None or result.valid_attacks_count == 0:
+            status_colour = "#38bdf8"
+            status_label = "N/A"
+            badge_sub = "NO APPLICABLE TESTS"
+        elif result.total_findings == 0:
+            status_colour = "#16a34a"
+            status_label = "100.0%"
+            badge_sub = f"NO FAILURES (Cov: {cov:.0f}%)"
+        else:
+            status_colour = "#dc2626"
+            status_label = f"{pass_rate:.1f}%"
+            badge_sub = f"{result.total_findings} FAILURES (Cov: {cov:.0f}%)"
+
         generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
         all_findings = [f for mod in result.modules for f in mod.findings or []]
@@ -149,17 +173,19 @@ class HTMLReporter(BaseReporter):
             for f in all_findings
             if f.passed is False and not getattr(f, "execution_error", False)
         ]
-        total_attacks = sum(m.total_attacks for m in result.modules)
-        total_passed = sum(m.passed for m in result.modules)
-        total_failed = sum(m.failed for m in result.modules)
+        total_attacks = result.total_attacks
+        total_passed = result.passed_count
+        total_failed = result.total_findings
         total_errors = getattr(result, "failed_execution_count", 0)
 
         modules_rows = self._render_modules(result)
         findings_section = self._render_findings(failed_findings)
-
-        # Update grade mapping if INCOMPLETE
-        if grade == "INCOMPLETE":
-            grade_colour = "#eab308"
+        pass_rate_display = f"{pass_rate:.1f}%" if pass_rate is not None else "N/A"
+        caps_display = (
+            ", ".join(result.target.capabilities)
+            if result.target.capabilities
+            else "None declared (default: pure LLM)"
+        )
 
         return f"""<!DOCTYPE html>
 <html lang="en">
@@ -171,32 +197,40 @@ class HTMLReporter(BaseReporter):
 </head>
 <body>
   <div class="header">
-    <div class="grade-badge" style="background:{grade_colour}22;color:{grade_colour};border:3px solid {grade_colour};font-size:0.95rem;text-align:center;line-height:1.1;word-break:break-word;padding:4px;">{_esc(grade)}</div>
+    <div class="grade-badge" style="background:{status_colour}22;color:{status_colour};border:3px solid {status_colour};font-size:0.85rem;text-align:center;line-height:1.1;word-break:break-word;padding:4px;">{_esc(status_label)}<br><span style="font-size:0.65rem;">{_esc(badge_sub)}</span></div>
     <div>
       <h1>Crucible Security Report</h1>
       <div style="font-size:1.1rem;color:#94a3b8;margin-top:0.25rem;">
         {_esc(result.target.name)} &mdash; <code style="font-size:0.9rem;">{_esc(str(result.target.url))}</code>
       </div>
-      <div class="meta">Generated {generated_at} &nbsp;·&nbsp; Scan ID: {_esc(str(result.id))}</div>
+      <div class="meta">Generated {generated_at} &nbsp;·&nbsp; Scan ID: {_esc(str(result.id))} &nbsp;·&nbsp; Capabilities: {_esc(caps_display)} &nbsp;·&nbsp; Evaluated against Crucible open test suite</div>
     </div>
   </div>
 
   <div class="summary-grid">
     <div class="card">
-      <div class="label">Overall Score</div>
-      <div class="value" style="color:{grade_colour};">{score:.1f}</div>
+      <div class="label">Pass Rate</div>
+      <div class="value" style="color:{status_colour};">{pass_rate_display}</div>
     </div>
     <div class="card">
-      <div class="label">Total Attacks</div>
+      <div class="label">Tests Evaluated</div>
       <div class="value">{total_attacks}</div>
     </div>
     <div class="card">
-      <div class="label">Passed</div>
+      <div class="label">Tests Passed</div>
       <div class="value" style="color:#16a34a;">{total_passed}</div>
     </div>
     <div class="card">
-      <div class="label">Failed</div>
+      <div class="label">N/A (Scoping)</div>
+      <div class="value" style="color:#38bdf8;">{result.na_count}</div>
+    </div>
+    <div class="card">
+      <div class="label">Failed Findings</div>
       <div class="value" style="color:#dc2626;">{total_failed}</div>
+    </div>
+    <div class="card">
+      <div class="label">Critical / High</div>
+      <div class="value" style="color:#f87171;">{result.critical_count} <span style="font-size:1rem;color:#fdba74;">/ {result.high_count}</span></div>
     </div>
     <div class="card">
       <div class="label">Errors</div>
@@ -221,6 +255,7 @@ class HTMLReporter(BaseReporter):
         <th>Attacks</th>
         <th>Passed</th>
         <th>Failed</th>
+        <th>N/A</th>
         <th>Score</th>
       </tr>
     </thead>
@@ -256,6 +291,7 @@ class HTMLReporter(BaseReporter):
         <td style="text-align:center;">{mod.total_attacks}</td>
         <td style="text-align:center;color:#86efac;">{mod.passed}</td>
         <td style="text-align:center;color:#fca5a5;">{mod.failed}</td>
+        <td style="text-align:center;color:#38bdf8;">{getattr(mod, "na_count", 0)}</td>
         <td style="min-width:140px;">
           <div style="display:flex;align-items:center;gap:0.5rem;">
             <div class="score-bar-bg" style="flex:1;">

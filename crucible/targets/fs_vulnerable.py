@@ -27,6 +27,7 @@ class FSVulnerableTarget(BaseTarget):
     name = "fs_vulnerable"
     vulnerable = True
     categories = ["data_exfiltration", "prompt_injection", "infrastructure_escalation"]
+    capabilities = ["file_system"]
     description = (
         "Returns simulated sensitive file contents when file paths are referenced. "
         "Simulates an agent with unrestricted filesystem tool access."

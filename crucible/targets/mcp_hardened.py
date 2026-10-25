@@ -13,6 +13,7 @@ class MCPHardenedTarget(BaseTarget):
     name = "mcp_hardened"
     vulnerable = False
     categories = ["tool_injection", "mcp_security", "agentic_hijacking"]
+    capabilities = ["mcp"]
     description = (
         "Refuses all tool execution requests arriving via chat messages. "
         "Tools are invoked only via authenticated MCP JSON-RPC, never via prompt."

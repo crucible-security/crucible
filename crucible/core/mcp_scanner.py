@@ -58,13 +58,45 @@ class McpScanResult:
     findings: list[McpFinding] = field(default_factory=list)
 
     @property
+    def critical_count(self) -> int:
+        return sum(
+            1
+            for f in self.findings
+            if f.passed is False and str(f.severity).upper() == "CRITICAL"
+        )
+
+    @property
+    def high_count(self) -> int:
+        return sum(
+            1
+            for f in self.findings
+            if f.passed is False and str(f.severity).upper() == "HIGH"
+        )
+
+    @property
+    def medium_count(self) -> int:
+        return sum(
+            1
+            for f in self.findings
+            if f.passed is False and str(f.severity).upper() == "MEDIUM"
+        )
+
+    @property
+    def low_count(self) -> int:
+        return sum(
+            1
+            for f in self.findings
+            if f.passed is False and str(f.severity).upper() == "LOW"
+        )
+
+    @property
     def score(self) -> float:
         """Simple deduction-based score (same logic as core scorer)."""
         deductions = {"CRITICAL": 20, "HIGH": 10, "MEDIUM": 5, "LOW": 2}
         s = 100.0
         for f in self.findings:
-            if not f.passed:
-                s -= deductions.get(f.severity, 0)
+            if f.passed is False:
+                s -= deductions.get(str(f.severity).upper(), 0)
         return max(0.0, s)
 
     @property

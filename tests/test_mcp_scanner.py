@@ -338,10 +338,9 @@ class TestMcpScanCli:
             app, ["mcp-scan", "--server", "https://mcp.test/"], color=False
         )
         assert result.exit_code == 0
-        # A clean manifest → score 100, grade A, 10 passed
-        assert "100" in result.output
-        assert "Grade: A" in result.output or "grade" in result.output.lower()
-        assert "10" in result.output
+        # A clean manifest → 10/10 tests passed
+        assert "10/10 passed" in result.output
+        assert "Failed: 0" in result.output
 
     @respx.mock
     def test_poisoned_server_shows_fail(self) -> None:

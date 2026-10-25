@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from crucible.models import Finding, Grade, ModuleResult, ScanResult, Severity
+from crucible.models import (
+    Finding,
+    FindingVerdict,
+    Grade,
+    ModuleResult,
+    ScanResult,
+    Severity,
+)
 
 SEVERITY_DEDUCTIONS: dict[Severity, int] = {
     Severity.CRITICAL: 20,
@@ -85,7 +92,14 @@ def finalize_scan_result(result: ScanResult) -> ScanResult:
     result.overall_score = float(overall)
 
     total_count = len(all_findings)
-    if total_count > 0 and execution_errors > 0.2 * total_count:
+    na_count = sum(
+        1
+        for f in all_findings
+        if getattr(f, "verdict", None) == FindingVerdict.NA
+        or (f.passed is None and not getattr(f, "execution_error", False))
+    )
+    attempted_count = total_count - na_count
+    if attempted_count > 0 and execution_errors > 0.2 * attempted_count:
         result.grade = Grade.INCOMPLETE
     else:
         result.grade = compute_grade(overall)

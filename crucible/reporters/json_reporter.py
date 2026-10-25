@@ -11,8 +11,9 @@ if TYPE_CHECKING:
 
 
 class JSONReporter(BaseReporter):
-    def __init__(self, indent: int = 2) -> None:
+    def __init__(self, indent: int = 2, include_error_details: bool = False) -> None:
         self.indent = indent
+        self.include_error_details = include_error_details
 
     def render(self, result: ScanResult) -> None:
         from rich.console import Console
@@ -22,6 +23,10 @@ class JSONReporter(BaseReporter):
 
     def to_dict(self, result: ScanResult) -> dict[str, Any]:
         data: dict[str, Any] = json.loads(result.model_dump_json())
+        if not self.include_error_details:
+            for module in data.get("modules", []):
+                for finding in module.get("findings", []):
+                    finding.pop("error_details", None)
         return data
 
     def to_json(self, result: ScanResult) -> str:

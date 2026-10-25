@@ -13,6 +13,7 @@ class ShellHardenedTarget(BaseTarget):
     name = "shell_hardened"
     vulnerable = False
     categories = ["tool_injection", "jailbreak", "agentic_hijacking"]
+    capabilities = ["shell"]
     description = (
         "Rejects all shell command patterns. "
         "Simulates an agent with no system access."

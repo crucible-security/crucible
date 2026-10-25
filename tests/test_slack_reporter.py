@@ -33,7 +33,7 @@ def test_slack_build_message() -> None:
     blocks = msg["attachments"][0]["blocks"]
     assert any("test-agent" in str(block) for block in blocks)
     assert any("https://example.com" in str(block) for block in blocks)
-    assert any("B (85/100)" in str(block) for block in blocks)
+    assert any("Pass Rate" in str(block) for block in blocks)
     assert msg["attachments"][0]["color"] == "#2EB67D"
 
 

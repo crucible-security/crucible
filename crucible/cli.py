@@ -12,11 +12,13 @@ import anyio
 import httpx
 import typer
 from rich.console import Console
+from rich.table import Table
 
 from crucible import __version__
 from crucible.core.behavioral_engine import BehavioralEngine
 from crucible.core.cache import ScanCache
 from crucible.core.compliance_engine import ComplianceEngine
+from crucible.core.doctor import run_doctor
 from crucible.core.multi_turn_engine import MultiTurnEngine
 from crucible.core.profiler import AgentProfiler
 from crucible.core.runner import run_scan
@@ -136,6 +138,100 @@ def init(
     console.print("[dim]Edit the file and run: crucible scan[/dim]")
 
 
+@app.command()
+def doctor(
+    target: str = typer.Option(
+        ...,
+        "--target",
+        "-t",
+        help="Agent endpoint URL (e.g. https://api.anthropic.com or http://localhost:11434).",
+    ),
+    provider: str = typer.Option(
+        "custom",
+        "--provider",
+        "-p",
+        help="Provider preset: openai|anthropic|openrouter|groq|mistral|ollama|lmstudio|custom.",
+    ),
+    key: str | None = typer.Option(
+        None,
+        "--key",
+        "-k",
+        help="API key (reads from provider env vars if omitted).",
+    ),
+    model: str | None = typer.Option(
+        None,
+        "--model",
+        "-m",
+        help="Model identifier (e.g. claude-3-5-sonnet-20241022, gpt-4o).",
+    ),
+    header: list[str] | None = typer.Option(
+        None,
+        "--header",
+        "-H",
+        help="Custom headers (e.g. -H 'Authorization: Bearer <key>').",
+    ),
+    timeout: float = typer.Option(
+        15.0,
+        "--timeout",
+        help="Preflight probe timeout in seconds.",
+    ),
+) -> None:
+    """Pre-flight diagnostics: validate endpoint connectivity, API key format, and 1-token probe request."""
+    parsed_headers = _parse_headers(header)
+    console.print()
+    console.print(
+        "[bold magenta]CRUCIBLE DOCTOR[/bold magenta] -- Pre-flight Diagnostics"
+    )
+    console.print(
+        f"[dim]Target: {target} | Provider: {provider} | Model: {model or 'default'}[/dim]\n"
+    )
+
+    report = anyio.run(
+        run_doctor,
+        target,
+        provider,
+        key,
+        model,
+        parsed_headers,
+        None,
+        None,
+        timeout,
+    )
+
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Status", width=8, justify="center")
+    table.add_column("Check", style="cyan", width=28)
+    table.add_column("Details", style="white")
+
+    for check in report.checks:
+        if check.status == "PASS":
+            status_badge = "[bold green]PASS[/bold green]"
+        elif check.status == "WARN":
+            status_badge = "[bold yellow]WARN[/bold yellow]"
+        else:
+            status_badge = "[bold red]FAIL[/bold red]"
+
+        detail_text = check.message
+        if check.details:
+            detail_text += f"\n[dim]{check.details}[/dim]"
+
+        table.add_row(status_badge, check.name, detail_text)
+
+    console.print(table)
+    console.print()
+
+    if report.passed:
+        console.print(
+            "[bold green]✔ All pre-flight checks passed! Target is ready for Crucible red-teaming.[/bold green]\n"
+        )
+    else:
+        console.print(
+            "[bold red]✖ Pre-flight diagnostic failures detected.[/bold red] "
+            "Resolve the issues above before starting a scan.\n"
+        )
+        raise typer.Exit(code=1)
+
+
 def load_scope_file(path: Path) -> list[str]:
     """Parse a basic YAML file looking for allowed_hosts list."""
     content = path.read_text(encoding="utf-8")
@@ -210,7 +306,7 @@ def scan(
     format_preset: str = typer.Option(
         "",
         "--format-preset",
-        help="Body format preset: openai | langchain | glean | raw | generic | ollama | lmstudio | huggingface-tgi.",
+        help="Body format preset: openai | openrouter | anthropic | groq | mistral | langchain | glean | raw | generic | ollama | lmstudio | huggingface-tgi.",
     ),
     model: str = typer.Option(
         "llama3",
@@ -374,8 +470,38 @@ def scan(
         "--dynamic-seed",
         help="Random seed for deterministic dynamic generation.",
     ),
+    capabilities: str | None = typer.Option(
+        None,
+        "--capabilities",
+        "-C",
+        help="Target execution capabilities: mcp,network,browser,shell,file_system,rag,multi_agent (or 'none' / 'all').",
+    ),
+    min_coverage: float | None = typer.Option(
+        None,
+        "--min-coverage",
+        help="Fail scan (exit non-zero) if applicable test coverage percentage is below this threshold (0-100).",
+    ),
 ) -> None:
     parsed_headers = _parse_headers(header)
+
+    if capabilities is None and format not in ["json", "html"] and not quiet:
+        console.print(
+            "[bold yellow]WARNING: No agent capabilities declared (--capabilities / -C not set).\n"
+            "  Defaulting to pure text LLM (assumes no tools, no browser, no shell, no network access).\n"
+            "  Capability-dependent attacks will evaluate as N/A and will not be dispatched.\n"
+            "  To test specific execution surfaces, set e.g.: --capabilities mcp,network,browser[/bold yellow]\n"
+        )
+
+    parsed_capabilities: list[str] = []
+    if capabilities:
+        if capabilities.lower() == "none":
+            parsed_capabilities = ["none"]
+        elif capabilities.lower() == "all":
+            parsed_capabilities = ["all"]
+        else:
+            parsed_capabilities = [
+                c.strip().lower() for c in capabilities.split(",") if c.strip()
+            ]
 
     if scope_file:
         if not scope_file.exists():
@@ -421,7 +547,19 @@ def scan(
         preset = PROVIDER_PRESETS[format_preset]
         # Only apply preset if user didn't explicitly set --body
         if body_template == _DEFAULT_BODY_TEMPLATE:
-            resolved_body = preset.body_template.replace("{model}", model)
+            model_to_use = model
+            if model == "llama3":
+                if format_preset == "anthropic":
+                    model_to_use = "claude-3-5-sonnet-20241022"
+                elif format_preset == "openai":
+                    model_to_use = "gpt-4o-mini"
+                elif format_preset == "openrouter":
+                    model_to_use = "anthropic/claude-3.5-sonnet"
+                elif format_preset == "groq":
+                    model_to_use = "llama-3.3-70b-versatile"
+                elif format_preset == "mistral":
+                    model_to_use = "mistral-small-latest"
+            resolved_body = preset.body_template.replace("{model}", model_to_use)
         # Apply default response path if not explicitly set
         if not response_path:
             resolved_response_path = preset.response_path
@@ -457,6 +595,7 @@ def scan(
         retry_count=retry,
         delay_ms=resolved_delay_ms,
         proxy=proxy,
+        capabilities=parsed_capabilities,
     )
 
     if format not in ["json", "html"] and not quiet:
@@ -632,6 +771,19 @@ def scan(
             if format not in ["json", "html"] and not quiet:
                 console.print(
                     f"[bold red]Scan failed due to findings matching or exceeding {severity_threshold.value.upper()} severity.[/bold red]"
+                )
+            raise typer.Exit(code=1)
+
+    if min_coverage is not None:
+        coverage_pct = (
+            (result.valid_attacks_count / result.total_attacks * 100.0)
+            if result.total_attacks > 0
+            else 0.0
+        )
+        if coverage_pct < min_coverage:
+            if format not in ["json", "html"] and not quiet:
+                console.print(
+                    f"[bold red]Scan failed: Test coverage {coverage_pct:.1f}% is below minimum required threshold {min_coverage:.1f}% (--min-coverage).[/bold red]"
                 )
             raise typer.Exit(code=1)
 
@@ -1481,25 +1633,18 @@ def mcp_scan(
     console.print(table)
 
     # Score / grade summary
-    grade_color = {
-        "A": "bold green",
-        "B": "green",
-        "C": "yellow",
-        "D": "red",
-        "F": "bold red",
-    }.get(result.grade, "white")
-
+    pass_rate = (
+        (result.passed / result.total_tests * 100.0) if result.total_tests > 0 else 0.0
+    )
     console.print()
     console.print(
-        f"Score: [bold]{result.score:.0f}/100[/bold]  "
-        f"Grade: [{grade_color}]{result.grade}[/{grade_color}]  "
-        f"Passed: [green]{result.passed}[/green]  "
+        f"Tests: [bold]{result.passed}/{result.total_tests} passed[/bold] ({pass_rate:.1f}%)  "
         f"Failed: [red]{result.failed}[/red]  "
-        f"Total: {result.total_tests}"
+        f"(Critical: {result.critical_count}, High: {result.high_count}, Medium: {result.medium_count}, Low: {result.low_count})"
     )
 
     # Remediation hints for failures
-    failures = [f for f in result.findings if not f.passed]
+    failures = [f for f in result.findings if f.passed is False]
     if failures:
         console.print()
         console.print("[bold]Remediation Guidance:[/bold]")

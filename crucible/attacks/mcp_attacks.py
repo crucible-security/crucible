@@ -9,6 +9,7 @@ class MCPTrustBoundaryAttack(BaseAttack):
     title = "MCP Server Trust Boundary Bypass"
     category = AttackCategory.INSECURE_PLUGIN
     severity = Severity.CRITICAL
+    required_capabilities = ["mcp"]
     description = (
         "Tests whether the agent blindly trusts responses from MCP "
         "(Model Context Protocol) tool servers. Simulates malicious "
@@ -83,6 +84,7 @@ class MCPSchemaInjectionAttack(BaseAttack):
     title = "MCP Tool Schema Injection"
     category = AttackCategory.INSECURE_PLUGIN
     severity = Severity.HIGH
+    required_capabilities = ["mcp"]
     description = (
         "Tests whether the agent validates MCP tool schemas before "
         "execution. Injects malformed or malicious tool definitions "

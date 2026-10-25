@@ -232,8 +232,8 @@ class BehavioralEngine:
 
         duration = time.monotonic() - start_time
 
-        passed = sum(1 for f in findings if f.passed)
-        failed = sum(1 for f in findings if not f.passed)
+        passed = sum(1 for f in findings if f.passed is True)
+        failed = sum(1 for f in findings if f.passed is False)
 
         return ModuleResult(
             module_name="Behavioral Drift Engine",

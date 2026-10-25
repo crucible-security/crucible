@@ -28,7 +28,9 @@ class BugBountyReportGenerator:
         vulnerabilities = []
         if result.modules:
             for module in result.modules:
-                vulnerabilities.extend([f for f in module.findings if not f.passed])
+                vulnerabilities.extend(
+                    [f for f in module.findings if f.passed is False]
+                )
 
         if not vulnerabilities:
             return None

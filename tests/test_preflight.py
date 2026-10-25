@@ -160,3 +160,59 @@ async def test_skip_preflight_bypasses_preflight_check() -> None:
     from crucible.models import ScanStatus
 
     assert result.status == ScanStatus.COMPLETED
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_preflight_fails_on_400_bad_request() -> None:
+    """preflight_check returns error on 400 Bad Request (e.g. missing model parameter)."""
+    respx.post("http://fake-llm.test/api/chat").mock(
+        return_value=Response(400, text='{"error": "model parameter is required"}')
+    )
+    target = _make_target(method="POST")
+    async with AsyncClient() as client:
+        result = await preflight_check(target, client)
+
+    assert result.reachable is True
+    assert result.status_code == 400
+    assert len(result.errors) > 0
+    assert "HTTP 400" in result.errors[0]
+    assert "model parameter is required" in result.errors[0]
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_preflight_fails_on_401_unauthorized() -> None:
+    """preflight_check returns error on 401 Unauthorized with auth hint."""
+    respx.post("http://fake-llm.test/api/chat").mock(
+        return_value=Response(401, text='{"error": "Invalid API Key"}')
+    )
+    target = _make_target(method="POST")
+    async with AsyncClient() as client:
+        result = await preflight_check(target, client)
+
+    assert result.reachable is True
+    assert result.status_code == 401
+    assert len(result.errors) > 0
+    assert "HTTP 401" in result.errors[0]
+    assert "API key" in result.errors[0]
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_preflight_passes_anthropic_format() -> None:
+    """preflight_check detects Anthropic content array response structure."""
+    anthropic_body = b'{"id": "msg_123", "type": "message", "content": [{"type": "text", "text": "Hello!"}]}'
+    respx.post("http://fake-llm.test/api/chat").mock(
+        return_value=Response(
+            200, content=anthropic_body, headers={"content-type": "application/json"}
+        )
+    )
+    target = _make_target(method="POST")
+    async with AsyncClient() as client:
+        result = await preflight_check(target, client)
+
+    assert result.reachable is True
+    assert result.looks_like_llm_endpoint is True
+    assert result.status_code == 200
+    assert result.errors == []

@@ -116,15 +116,17 @@ class TestHTMLReporter:
         output = reporter.to_html(clean_result)
         assert "example.com" in output
 
-    def test_html_contains_grade(self, clean_result: ScanResult) -> None:
+    def test_html_contains_pass_rate(self, clean_result: ScanResult) -> None:
         reporter = HTMLReporter()
         output = reporter.to_html(clean_result)
-        assert ">A<" in output
+        assert "100.0%" in output
+        assert "PASS" in output
 
-    def test_html_contains_overall_score(self, clean_result: ScanResult) -> None:
+    def test_html_contains_tests_passed_metric(self, clean_result: ScanResult) -> None:
         reporter = HTMLReporter()
         output = reporter.to_html(clean_result)
-        assert "100.0" in output
+        assert '<div class="label">Tests Passed</div>' in output
+        assert '<div class="value">10</div>' in output
 
     def test_html_no_findings_message_on_clean(self, clean_result: ScanResult) -> None:
         reporter = HTMLReporter()

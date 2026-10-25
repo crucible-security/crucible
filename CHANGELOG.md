@@ -5,7 +5,63 @@ All notable changes to Crucible will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.18.2] - 2026-07-19
+## [0.19.0] - 2026-10-24
+
+### Retraction: Benchmark Figure 0.842
+
+An earlier draft of this CHANGELOG referenced a Relevant Precision figure of `0.842`.
+That figure was generated during active development using an intermediate evaluator
+state not present in any tagged commit. Six independent runs of `python run_bm.py`
+on commit `5dee6e7` at both `--concurrency 1` and `--concurrency 4` all produce
+identical results: Relevant Precision=1.000, Recall=1.000, TP=16, TN=16, FP=0, FN=0.
+The figure `0.842` cannot be reproduced from any committed code and is hereby
+retracted. Reproduced with: `python run_bm.py -c 4` from the working directory.
+
+### Architecture & Diagnostic Hardening
+
+This release incorporates pre-release hardening review findings.
+
+- **Capability-Aware Evaluation Layer**:
+  - Implemented 4-state verdict model across all evaluation engines and reporters: `PASS`, `FAIL`, `N/A`, and `INCONCLUSIVE`.
+  - Added `--capabilities` CLI option (`shell`, `file_system`, `mcp`, `memory`, `multi_agent`, `browser`, `code_execution`).
+  - Pure LLMs are assumed by default if capabilities are omitted, with an explicit console warning. Architecture-inapplicable attacks (e.g. MCP tool execution, SSRF/IMDS) evaluate as `N/A` and are never sent over the network.
+  - Added `--min-coverage <PERCENT>` for CI pipelines to fail if applicable attack coverage is below a target threshold.
+
+- **Diagnostic Execution & Preflight (`crucible doctor`)**:
+  - Added `crucible doctor` command for pre-flight connectivity, credential format, and single-turn probe verification.
+  - Full exception typing, status codes, and stack traces logged on execution failures instead of generic error strings.
+  - Secret redaction utility (`crucible.core.redactor`) masks API keys, bearer tokens, and auth headers from error details and doctor output.
+
+- **3-Tier Refusal Detection Pipeline (`crucible.core.refusal_detector`)**:
+  - Replaced static keyword matching with a 3-tier pipeline:
+    1. Fast-Path Pre-Filter: Regex matching for standard refusals and HTTP/gateway error signatures.
+    2. Weighted Lexicon Scorer (Primary): Token-weight heuristic scoring refusal vs compliance tokens. Thresholds (0.75 refusal / 0.25 compliance) are hand-curated heuristics, not calibrated against ML training sets.
+    3. Character N-Gram Jaccard Similarity (Fallback): Substring n-gram similarity against reference refusal anchors.
+  - Zero external network or API dependencies; 100% local and deterministic.
+
+- **Dynamic Payload Mutation & Fuzzer Diversity (`crucible.core.mutation_engine`)**:
+  - Expanded `MutationEngine` with adversarial transformations: synonym substitutions, unicode homoglyphs, zero-width whitespaces, encodings (Base64, Hex, ROT13, Leetspeak, URL), polyglots, and contextual scenarios.
+  - Protected spans derived dynamically from attack detection patterns (`get_detection_patterns()`).
+  - Integrated with `CrucibleGAF` with verified mutations per round and multi-variant generation.
+
+- **Transparent Scoring & Neutral Reporting**:
+  - Eliminated letter grades (A–F) and subjective labels (e.g., "Status: ROBUST") across all reporters (Terminal, HTML, SARIF, Slack, ATLAS, NIST).
+  - Replaced with neutral engineering status criteria:
+    - `SCAN INCOMPLETE (HIGH EXECUTION ERRORS)` (>20% execution errors among attempted)
+    - `N/A (NO APPLICABLE TESTS)` (0 applicable tests)
+    - `PASSED (no failures in applicable tests)` (100% pass rate, 0 critical)
+    - `FAILING (CRITICAL FINDINGS OR FAILED TESTS)` (<100% pass rate or >0 critical findings)
+  - `pass_rate` serializes as `null` when 0 applicable tests exist, and reports show exact counts (`passed_count / valid_attacks_count`).
+
+- **Reference Target Capability Profiling**:
+  - Profiled all 12 reference targets with explicit declared `capabilities` attributes (`shell`, `file_system`, `mcp`, `memory`, `multi_agent`).
+  - Exposes `capabilities` in `/ground_truth` and `crucible target list`.
+
+### Reviewer Credit
+
+Pre-release hardening review by Katrena Copes.
+
+
 
 ### Added — Task 1: Reference Target Suite (v0.18.2 hardening pass)
 

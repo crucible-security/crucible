@@ -96,16 +96,23 @@ async def run_module_with_progress(
             return
 
         if getattr(finding, "execution_error", False):
-            result_str = "ERROR (execution error)"
+            result_str = f"ERROR ({finding.response_snippet or 'execution error'})"
             color = "yellow"
+            detail_line = (
+                f'Error Detail: "{finding.error_details}"\n'
+                if getattr(finding, "error_details", "")
+                else ""
+            )
         else:
             result_str = "PASS (refused)" if finding.passed else "FAIL (bypassed)"
             color = "green" if finding.passed else "red"
+            detail_line = ""
 
         msg = (
             f"[bold yellow][ATTACK][/bold yellow] {finding.attack_name} {module.name}\n"
             f'Payload: "{finding.payload}"\n'
             f'Response: "{finding.response_snippet}"\n'
+            f"{detail_line}"
             f"Result: [{color}]{result_str}[/{color}]\n"
         )
         if hasattr(progress, "console"):
@@ -154,16 +161,28 @@ async def preflight_check(
     Checks:
     1. Is the target reachable?
     2. Does it accept the configured HTTP method (405 = NO)?
-    3. Does the response look like an LLM endpoint (JSON with message/content)?
+    3. Does it accept authentication and payload format (400/401/403/404/422/500+)?
+    4. Does the response look like an LLM endpoint (JSON with message/content)?
 
-    Returns a :class:`PreflightResult` describing the outcome.  The caller is
+    Returns a :class:`PreflightResult` describing the outcome. The caller is
     responsible for deciding whether to abort the scan.
     """
     warnings: list[str] = []
     errors: list[str] = []
 
-    # Build a minimal probe body using the target's body_template.
-    probe_body = target.body_template.replace("{payload}", "Hello")
+    # Build a minimal probe body using the target's build_payload_body.
+    try:
+        probe_body = target.build_payload_body("Hello")
+    except Exception as exc:
+        errors.append(f"Failed to build payload body from template: {exc}")
+        return PreflightResult(
+            reachable=False,
+            method_accepted=False,
+            looks_like_llm_endpoint=False,
+            status_code=0,
+            warnings=warnings,
+            errors=errors,
+        )
 
     try:
         response = await client.request(
@@ -171,6 +190,7 @@ async def preflight_check(
             url=str(target.url),
             content=probe_body.encode(),
             headers={"Content-Type": "application/json", **target.headers},
+            timeout=target.timeout,
         )
     except httpx.ConnectError as exc:
         errors.append(f"Connection error: {exc}")
@@ -212,6 +232,28 @@ async def preflight_check(
             errors=errors,
         )
 
+    # 400/401/403/404/422/500+ → configuration, authentication, or provider errors
+    if status_code in (400, 401, 403, 404, 422) or status_code >= 500:
+        raw_msg = response.text[:300]
+        hint = ""
+        if status_code == 400:
+            hint = " Tip: Check that your --body template, --format-preset, or --model contains required parameters."
+        elif status_code in (401, 403):
+            hint = " Tip: Check your API key or auth headers (e.g. --header 'Authorization: Bearer <key>' or 'x-api-key: <key>')."
+        elif status_code == 404:
+            hint = " Tip: Check that the target URL endpoint path is correct."
+        errors.append(
+            f"Target returned HTTP {status_code} {response.reason_phrase}: {raw_msg}.{hint}"
+        )
+        return PreflightResult(
+            reachable=True,
+            method_accepted=True,
+            looks_like_llm_endpoint=False,
+            status_code=status_code,
+            warnings=warnings,
+            errors=errors,
+        )
+
     # Detect non-LLM responses: parse JSON and look for typical LLM response keys.
     looks_like_llm = False
     try:
@@ -225,6 +267,7 @@ async def preflight_check(
             "result",
             "text",
             "generated_text",
+            "candidates",
         }
         if isinstance(body, dict) and (
             llm_keys.intersection(body.keys()) or "message" in str(body).lower()

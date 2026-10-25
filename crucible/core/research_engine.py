@@ -750,10 +750,10 @@ class VectorStore:
                 and finding.payload in template.payloads
             ):
                 # If the payload used is in this template's payload list, update it
-                if not finding.passed:  # Bypass occurred
+                if finding.passed is False:  # Bypass occurred
                     template.success_count += 1
                     template.last_success = datetime.now(timezone.utc).isoformat()
-                else:
+                elif finding.passed is True:
                     template.failure_count += 1
         self.save()
 

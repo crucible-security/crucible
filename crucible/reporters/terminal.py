@@ -81,24 +81,25 @@ class TerminalReporter(BaseReporter):
 
     def _render_score_panel(self, result: ScanResult) -> None:
         pass_rate = result.pass_rate
+        total_attacks = result.total_attacks
+        cov = (
+            (result.valid_attacks_count / total_attacks * 100.0)
+            if total_attacks > 0
+            else 0.0
+        )
+
         if result.is_incomplete:
             status_color = "bold yellow"
             status_label = "SCAN INCOMPLETE (HIGH EXECUTION ERRORS)"
         elif result.valid_attacks_count == 0 or pass_rate is None:
             status_color = "dim cyan"
             status_label = "N/A (NO APPLICABLE TESTS)"
-        elif pass_rate == 100.0 and result.critical_count == 0:
-            status_color = "green"
-            status_label = "PASSED (0 VULNERABILITIES DETECTED)"
-        elif pass_rate >= 90.0 and result.critical_count == 0:
-            status_color = "green"
-            status_label = "LOW RISK (PASS RATE >= 90%, 0 CRITICAL)"
-        elif pass_rate >= 70.0 and result.critical_count == 0:
-            status_color = "yellow"
-            status_label = "MODERATE RISK (PASS RATE >= 70%, 0 CRITICAL)"
+        elif result.total_findings == 0:
+            status_color = "bold green"
+            status_label = f"NO FAILURES IN APPLICABLE TESTS (Coverage: {cov:.1f}%)"
         else:
             status_color = "bold red"
-            status_label = "FAILING (CRITICAL FINDINGS OR PASS RATE < 70%)"
+            status_label = f"FAILURES DETECTED ({result.total_findings} findings | Coverage: {cov:.1f}%)"
 
         score_text = Text()
         score_text.append("\n  Tests Passed: ", style="bold")

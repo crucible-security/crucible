@@ -139,21 +139,31 @@ class HTMLReporter(BaseReporter):
     def to_html(self, result: ScanResult) -> str:
         """Render *result* as a self-contained HTML string."""
         pass_rate = result.pass_rate
-        if getattr(result, "failed_execution_count", 0) > 0.2 * max(result.total_attacks, 1):
+        total_attacks = result.total_attacks
+        cov = (
+            (result.valid_attacks_count / total_attacks * 100.0)
+            if total_attacks > 0
+            else 0.0
+        )
+
+        if getattr(result, "failed_execution_count", 0) > 0.2 * max(
+            result.total_attacks, 1
+        ):
             status_colour = "#eab308"
             status_label = "INCOMPLETE"
+            badge_sub = "EXECUTION ERRORS"
         elif pass_rate is None or result.valid_attacks_count == 0:
             status_colour = "#38bdf8"
             status_label = "N/A"
-        elif pass_rate >= 90.0 and result.critical_count == 0:
+            badge_sub = "NO APPLICABLE TESTS"
+        elif result.total_findings == 0:
             status_colour = "#16a34a"
-            status_label = f"{pass_rate:.1f}%"
-        elif pass_rate >= 70.0 and result.critical_count == 0:
-            status_colour = "#ca8a04"
-            status_label = f"{pass_rate:.1f}%"
+            status_label = "100.0%"
+            badge_sub = f"NO FAILURES (Cov: {cov:.0f}%)"
         else:
             status_colour = "#dc2626"
             status_label = f"{pass_rate:.1f}%"
+            badge_sub = f"{result.total_findings} FAILURES (Cov: {cov:.0f}%)"
 
         generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
@@ -183,7 +193,7 @@ class HTMLReporter(BaseReporter):
 </head>
 <body>
   <div class="header">
-    <div class="grade-badge" style="background:{status_colour}22;color:{status_colour};border:3px solid {status_colour};font-size:0.85rem;text-align:center;line-height:1.1;word-break:break-word;padding:4px;">{_esc(status_label)}<br><span style="font-size:0.65rem;">{'PASS' if (pass_rate is not None and pass_rate >= 70.0) else ('N/A' if pass_rate is None else 'FAIL')}</span></div>
+    <div class="grade-badge" style="background:{status_colour}22;color:{status_colour};border:3px solid {status_colour};font-size:0.85rem;text-align:center;line-height:1.1;word-break:break-word;padding:4px;">{_esc(status_label)}<br><span style="font-size:0.65rem;">{_esc(badge_sub)}</span></div>
     <div>
       <h1>Crucible Security Report</h1>
       <div style="font-size:1.1rem;color:#94a3b8;margin-top:0.25rem;">

@@ -1,15 +1,17 @@
 """A lightweight local mock server simulating OpenAI and Anthropic endpoints for testing."""
 
+from __future__ import annotations
+
 import json
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import threading
 import sys
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
 
 class MockHandler(BaseHTTPRequestHandler):
-    def do_POST(self):
+    def do_POST(self) -> None:
         content_len = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(content_len).decode("utf-8")
-        
+
         try:
             payload_data = json.loads(body)
         except Exception:
@@ -20,12 +22,16 @@ class MockHandler(BaseHTTPRequestHandler):
             if "anthropic-version" not in self.headers:
                 self.send_response(400)
                 self.end_headers()
-                self.wfile.write(b'{"type":"error","error":{"type":"invalid_request_error","message":"anthropic-version header is required"}}')
+                self.wfile.write(
+                    b'{"type":"error","error":{"type":"invalid_request_error","message":"anthropic-version header is required"}}'
+                )
                 return
             if "max_tokens" not in payload_data:
                 self.send_response(400)
                 self.end_headers()
-                self.wfile.write(b'{"type":"error","error":{"type":"invalid_request_error","message":"max_tokens: Field required"}}')
+                self.wfile.write(
+                    b'{"type":"error","error":{"type":"invalid_request_error","message":"max_tokens: Field required"}}'
+                )
                 return
 
             self.send_response(200)
@@ -38,9 +44,9 @@ class MockHandler(BaseHTTPRequestHandler):
                 "content": [
                     {
                         "type": "text",
-                        "text": "I cannot fulfill this request because it violates safety guidelines."
+                        "text": "I cannot fulfill this request because it violates safety guidelines.",
                     }
-                ]
+                ],
             }
             self.wfile.write(json.dumps(resp).encode("utf-8"))
             return
@@ -50,7 +56,9 @@ class MockHandler(BaseHTTPRequestHandler):
             if "model" not in payload_data:
                 self.send_response(400)
                 self.end_headers()
-                self.wfile.write(b'{"error":{"message":"No model provided","code":400}}')
+                self.wfile.write(
+                    b'{"error":{"message":"No model provided","code":400}}'
+                )
                 return
 
             self.send_response(200)
@@ -63,10 +71,10 @@ class MockHandler(BaseHTTPRequestHandler):
                         "index": 0,
                         "message": {
                             "role": "assistant",
-                            "content": "I cannot fulfill this request as I am programmed to be helpful and harmless."
-                        }
+                            "content": "I cannot fulfill this request as I am programmed to be helpful and harmless.",
+                        },
                     }
-                ]
+                ],
             }
             self.wfile.write(json.dumps(resp).encode("utf-8"))
             return
@@ -76,13 +84,15 @@ class MockHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b'{"response": "I refuse this request."}')
 
-    def log_message(self, format, *args):
+    def log_message(self, format: str, *args: object) -> None:
         pass
 
-def run_server(port=8899):
+
+def run_server(port: int = 8899) -> None:
     server = HTTPServer(("127.0.0.1", port), MockHandler)
     server.serve_forever()
 
+
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8899
-    run_server(port)
+    port_arg = int(sys.argv[1]) if len(sys.argv) > 1 else 8899
+    run_server(port_arg)

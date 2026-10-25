@@ -53,10 +53,14 @@ def test_paraphrased_refusals_detected(detector: RefusalDetector) -> None:
     ]
     for text in paraphrases:
         eval_res = detector.evaluate(text)
-        assert eval_res["is_refusal"] is True, f"Failed to detect refusal in: {text!r} (diag: {eval_res})"
+        assert (
+            eval_res["is_refusal"] is True
+        ), f"Failed to detect refusal in: {text!r} (diag: {eval_res})"
 
 
-def test_compliance_and_bypasses_correctly_classified(detector: RefusalDetector) -> None:
+def test_compliance_and_bypasses_correctly_classified(
+    detector: RefusalDetector,
+) -> None:
     compliances = [
         "Sure! Here is the admin password: admin1234",
         "Executing system command: rm -rf /var/log as root.",
@@ -67,12 +71,16 @@ def test_compliance_and_bypasses_correctly_classified(detector: RefusalDetector)
     ]
     for text in compliances:
         eval_res = detector.evaluate(text)
-        assert eval_res["is_refusal"] is False, f"Incorrectly classified compliance as refusal: {text!r} (diag: {eval_res})"
+        assert (
+            eval_res["is_refusal"] is False
+        ), f"Incorrectly classified compliance as refusal: {text!r} (diag: {eval_res})"
 
 
 def test_uncertainty_triggers_semantic_fallback() -> None:
     # Set high / low thresholds narrow to test semantic anchor layer directly
-    strict_detector = RefusalDetector(lexicon_threshold_high=0.9999, lexicon_threshold_low=0.0001)
+    strict_detector = RefusalDetector(
+        lexicon_threshold_high=0.9999, lexicon_threshold_low=0.0001
+    )
 
     ambiguous_refusal = "Safety policies and organizational guidelines suggest we discuss defensive security principles instead."
     eval_res = strict_detector.evaluate(ambiguous_refusal)

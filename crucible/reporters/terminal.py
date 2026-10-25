@@ -71,7 +71,11 @@ class TerminalReporter(BaseReporter):
         info.add_column("Value", style="bold")
         info.add_row("Target", result.target.name)
         info.add_row("URL", str(result.target.url))
-        caps_str = ", ".join(result.target.capabilities) if result.target.capabilities else "None declared (default: pure LLM)"
+        caps_str = (
+            ", ".join(result.target.capabilities)
+            if result.target.capabilities
+            else "None declared (default: pure LLM)"
+        )
         info.add_row("Capabilities", caps_str)
         info.add_row("Scan ID", result.id[:12])
         info.add_row("Duration", f"{result.duration_seconds:.1f}s")
@@ -114,7 +118,11 @@ class TerminalReporter(BaseReporter):
         else:
             score_text.append(
                 f"{result.passed_count}/{result.valid_attacks_count} valid tests ",
-                style="bold green" if result.total_findings == 0 and not result.is_incomplete else "bold",
+                style=(
+                    "bold green"
+                    if result.total_findings == 0 and not result.is_incomplete
+                    else "bold"
+                ),
             )
             score_text.append(f"({pass_rate:.1f}%) ", style=status_color)
             score_text.append(
@@ -124,7 +132,11 @@ class TerminalReporter(BaseReporter):
             score_text.append("   Status: ", style="bold")
             score_text.append(f"{status_label}\n", style=status_color)
 
-        coverage_pct = (result.valid_attacks_count / result.total_attacks * 100.0) if result.total_attacks > 0 else 0.0
+        coverage_pct = (
+            (result.valid_attacks_count / result.total_attacks * 100.0)
+            if result.total_attacks > 0
+            else 0.0
+        )
         score_text.append(
             f"  Coverage: {result.valid_attacks_count}/{result.total_attacks} attacks applicable ({coverage_pct:.1f}%) "
             f"| Untested Surface: {result.na_count} N/A, {result.inconclusive_count} inconclusive\n",
@@ -144,7 +156,11 @@ class TerminalReporter(BaseReporter):
             )
 
         bar_width = 40
-        filled = int(pass_rate / 100 * bar_width) if (pass_rate is not None and result.valid_attacks_count > 0) else 0
+        filled = (
+            int(pass_rate / 100 * bar_width)
+            if (pass_rate is not None and result.valid_attacks_count > 0)
+            else 0
+        )
         bar = "#" * filled + "-" * (bar_width - filled)
         rate_str = f"{pass_rate:.1f}%" if pass_rate is not None else "N/A"
         score_text.append(

@@ -18,7 +18,6 @@ from crucible.core.redactor import redact_secrets
 from crucible.core.refusal_detector import default_refusal_detector
 from crucible.core.response_extractor import extract_response
 from crucible.models import (
-    AgentCapability,
     AgentTarget,
     AttackCategory,
     Finding,
@@ -257,9 +256,14 @@ class BaseAttack(ABC):
 
         # Benign exploit code demonstration without execution capability (Finding C)
         if self.required_capabilities and (
-            target is None or not any(target.has_capability(c) for c in self.required_capabilities)
+            target is None
+            or not any(target.has_capability(c) for c in self.required_capabilities)
         ):
-            if "```" in response_text or "explanation" in response_lower or "how " in response_lower:
+            if (
+                "```" in response_text
+                or "explanation" in response_lower
+                or "how " in response_lower
+            ):
                 return FindingVerdict.NA
 
         # STAGE 3: Exploitation check
@@ -526,7 +530,9 @@ class BaseAttack(ABC):
         # Pre-check: if target lacks requirements for this attack,
         # record as N/A without sending unnecessary network traffic.
         if target and self.required_capabilities:
-            missing = [c for c in self.required_capabilities if not target.has_capability(c)]
+            missing = [
+                c for c in self.required_capabilities if not target.has_capability(c)
+            ]
             if missing:
                 atlas_technique, atlas_tactic, _atlas_url = self._resolve_atlas()
                 nist_function, nist_category, _nist_sub = self._resolve_nist()
@@ -618,7 +624,11 @@ class BaseAttack(ABC):
                     response_text = extract_response(raw_text, target.response_path)
                     response_text = response_text[:2000]
                     verdict = self.evaluate_finding(target, payload, response_text)
-                    passed = True if verdict == FindingVerdict.PASS else (False if verdict == FindingVerdict.FAIL else None)
+                    passed = (
+                        True
+                        if verdict == FindingVerdict.PASS
+                        else (False if verdict == FindingVerdict.FAIL else None)
+                    )
                     break  # Success, no retry needed
 
             except _HttpRetryableError as exc:
@@ -637,7 +647,7 @@ class BaseAttack(ABC):
                 passed = None
                 execution_error = True
 
-            except httpx.TimeoutException as exc:
+            except httpx.TimeoutException:
                 if attempt < max_attempts - 1:
                     continue  # Retry on timeout
                 response_text = f"[TIMEOUT] Request timed out after {target.timeout}s"
@@ -665,8 +675,6 @@ class BaseAttack(ABC):
                 )
                 passed = None
                 execution_error = True
-
-
 
         if execution_error:
             verdict = FindingVerdict.INCONCLUSIVE

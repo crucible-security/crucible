@@ -8,7 +8,7 @@ import respx
 from typer.testing import CliRunner
 
 from crucible.cli import app
-from crucible.core.doctor import run_doctor, validate_api_key_format, resolve_api_key
+from crucible.core.doctor import resolve_api_key, run_doctor, validate_api_key_format
 
 runner = CliRunner()
 
@@ -66,7 +66,15 @@ async def test_run_doctor_success():
 @pytest.mark.asyncio
 async def test_run_doctor_auth_failure():
     respx.post("https://api.anthropic.com/v1/messages").mock(
-        return_value=httpx.Response(401, json={"error": {"type": "authentication_error", "message": "invalid x-api-key"}})
+        return_value=httpx.Response(
+            401,
+            json={
+                "error": {
+                    "type": "authentication_error",
+                    "message": "invalid x-api-key",
+                }
+            },
+        )
     )
 
     report = await run_doctor(
@@ -76,7 +84,9 @@ async def test_run_doctor_auth_failure():
     )
 
     assert report.passed is False
-    probe_check = next(c for c in report.checks if c.name == "Live 1-Token Probe Request")
+    probe_check = next(
+        c for c in report.checks if c.name == "Live 1-Token Probe Request"
+    )
     assert probe_check.status == "FAIL"
     assert "401" in probe_check.message
 
@@ -85,7 +95,9 @@ async def test_run_doctor_auth_failure():
 @pytest.mark.asyncio
 async def test_run_doctor_bad_request_missing_model():
     respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
-        return_value=httpx.Response(400, json={"error": {"message": "Invalid request: missing model"}})
+        return_value=httpx.Response(
+            400, json={"error": {"message": "Invalid request: missing model"}}
+        )
     )
 
     report = await run_doctor(
@@ -95,7 +107,9 @@ async def test_run_doctor_bad_request_missing_model():
     )
 
     assert report.passed is False
-    probe_check = next(c for c in report.checks if c.name == "Live 1-Token Probe Request")
+    probe_check = next(
+        c for c in report.checks if c.name == "Live 1-Token Probe Request"
+    )
     assert probe_check.status == "FAIL"
     assert "400" in probe_check.message
 

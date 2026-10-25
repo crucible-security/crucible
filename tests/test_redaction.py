@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import io
-import json
 import logging
 
 from crucible.core.redactor import RedactingFilter, redact_secrets
@@ -50,7 +49,9 @@ def test_redact_huggingface_token():
 
 
 def test_redact_github_tokens():
-    raw_classic = "Git clone failed with token: ghp_1234567890abcdefghijklmnopqrstuvwxyz"
+    raw_classic = (
+        "Git clone failed with token: ghp_1234567890abcdefghijklmnopqrstuvwxyz"
+    )
     sanitized_classic = redact_secrets(raw_classic)
     assert "ghp_1234567890abcdefghijklmnopqrstuvwxyz" not in sanitized_classic
     assert "ghp_...[REDACTED]" in sanitized_classic
@@ -84,7 +85,11 @@ def test_logger_routes_through_redacting_filter():
     test_logger.addHandler(handler)
     test_logger.addFilter(RedactingFilter())
 
-    test_logger.info("Connecting to target with key %s and header %s", "sk-proj-999888777666555444332211", "AIzaSyB1234567890abcdef1234567890ABCDEF")
+    test_logger.info(
+        "Connecting to target with key %s and header %s",
+        "sk-proj-999888777666555444332211",
+        "AIzaSyB1234567890abcdef1234567890ABCDEF",
+    )
     handler.flush()
     logged = stream.getvalue()
 
@@ -108,7 +113,12 @@ def test_json_reporter_excludes_error_details_by_default():
         passed=False,
     )
     target = AgentTarget(name="test", url="https://example.com/chat")
-    module = ModuleResult(module_name="TestMod", category="prompt_injection", total_attacks=1, findings=[finding])
+    module = ModuleResult(
+        module_name="TestMod",
+        category="prompt_injection",
+        total_attacks=1,
+        findings=[finding],
+    )
     scan = ScanResult(target=target, modules=[module])
 
     default_reporter = JSONReporter()
@@ -142,7 +152,12 @@ def test_html_reporter_excludes_error_details_by_default():
         passed=False,
     )
     target = AgentTarget(name="test", url="https://example.com/chat")
-    module = ModuleResult(module_name="TestMod", category="prompt_injection", total_attacks=1, findings=[finding])
+    module = ModuleResult(
+        module_name="TestMod",
+        category="prompt_injection",
+        total_attacks=1,
+        findings=[finding],
+    )
     scan = ScanResult(target=target, modules=[module])
 
     html_reporter = HTMLReporter()
@@ -166,7 +181,12 @@ def test_sarif_excludes_error_details():
         passed=False,
     )
     target = AgentTarget(name="test", url="https://example.com/chat")
-    module = ModuleResult(module_name="TestMod", category="prompt_injection", total_attacks=1, findings=[finding])
+    module = ModuleResult(
+        module_name="TestMod",
+        category="prompt_injection",
+        total_attacks=1,
+        findings=[finding],
+    )
     scan = ScanResult(target=target, modules=[module])
 
     reporter = SARIFReporter()
@@ -190,7 +210,12 @@ def test_slack_excludes_error_details():
         passed=False,
     )
     target = AgentTarget(name="test", url="https://example.com/chat")
-    module = ModuleResult(module_name="TestMod", category="prompt_injection", total_attacks=1, findings=[finding])
+    module = ModuleResult(
+        module_name="TestMod",
+        category="prompt_injection",
+        total_attacks=1,
+        findings=[finding],
+    )
     scan = ScanResult(target=target, modules=[module])
 
     reporter = SlackReporter()
@@ -202,6 +227,7 @@ def test_slack_excludes_error_details():
 
 
 # ── AWS patterns ──────────────────────────────────────────────────────────────
+
 
 class TestAWSRedaction:
     """AWS credential redaction tests using realistic httpx exception text."""
@@ -238,6 +264,7 @@ class TestAWSRedaction:
 
 # ── Slack token patterns ──────────────────────────────────────────────────────
 
+
 class TestSlackRedaction:
     """Slack token redaction tests."""
 
@@ -263,6 +290,7 @@ class TestSlackRedaction:
 
 # ── JWT patterns ──────────────────────────────────────────────────────────────
 
+
 class TestJWTRedaction:
     """JWT token redaction tests using realistic httpx exception text."""
 
@@ -286,6 +314,7 @@ class TestJWTRedaction:
 
 
 # ── Cookie patterns ───────────────────────────────────────────────────────────
+
 
 class TestCookieRedaction:
     """Cookie header redaction tests."""
@@ -314,6 +343,7 @@ class TestCookieRedaction:
 
 
 # ── URL query-param patterns ──────────────────────────────────────────────────
+
 
 class TestURLQueryRedaction:
     """URL query-string credential redaction tests."""

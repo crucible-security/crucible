@@ -59,19 +59,35 @@ class McpScanResult:
 
     @property
     def critical_count(self) -> int:
-        return sum(1 for f in self.findings if f.passed is False and str(f.severity).upper() == "CRITICAL")
+        return sum(
+            1
+            for f in self.findings
+            if f.passed is False and str(f.severity).upper() == "CRITICAL"
+        )
 
     @property
     def high_count(self) -> int:
-        return sum(1 for f in self.findings if f.passed is False and str(f.severity).upper() == "HIGH")
+        return sum(
+            1
+            for f in self.findings
+            if f.passed is False and str(f.severity).upper() == "HIGH"
+        )
 
     @property
     def medium_count(self) -> int:
-        return sum(1 for f in self.findings if f.passed is False and str(f.severity).upper() == "MEDIUM")
+        return sum(
+            1
+            for f in self.findings
+            if f.passed is False and str(f.severity).upper() == "MEDIUM"
+        )
 
     @property
     def low_count(self) -> int:
-        return sum(1 for f in self.findings if f.passed is False and str(f.severity).upper() == "LOW")
+        return sum(
+            1
+            for f in self.findings
+            if f.passed is False and str(f.severity).upper() == "LOW"
+        )
 
     @property
     def score(self) -> float:

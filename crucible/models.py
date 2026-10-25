@@ -272,7 +272,11 @@ class AgentTarget(BaseModel):
 
     def has_capability(self, capability: str | AgentCapability) -> bool:
         """Check if target declares the requested capability."""
-        cap_val = capability.value if isinstance(capability, AgentCapability) else str(capability).lower()
+        cap_val = (
+            capability.value
+            if isinstance(capability, AgentCapability)
+            else str(capability).lower()
+        )
         if not self.capabilities:
             return False
         caps_lower = [c.lower() for c in self.capabilities]
@@ -414,9 +418,13 @@ class Finding(BaseModel):
                     data["verdict"] = FindingVerdict.FAIL
             if data.get("execution_error") is True:
                 data["passed"] = None
-                if "verdict" not in data or data["verdict"] == FindingVerdict.INCONCLUSIVE:
+                if (
+                    "verdict" not in data
+                    or data["verdict"] == FindingVerdict.INCONCLUSIVE
+                ):
                     data["verdict"] = FindingVerdict.INCONCLUSIVE
         return data
+
     execution_error: bool = Field(
         default=False,
         description="Whether an execution error (timeout/network error) occurred during the attack.",
@@ -715,7 +723,11 @@ class ScanResult(BaseModel):
         count = 0
         for m in self.modules:
             if m.findings:
-                count += sum(1 for f in m.findings if getattr(f, "verdict", None) == FindingVerdict.NA)
+                count += sum(
+                    1
+                    for f in m.findings
+                    if getattr(f, "verdict", None) == FindingVerdict.NA
+                )
             else:
                 count += getattr(m, "na_count", 0)
         return count
@@ -726,7 +738,11 @@ class ScanResult(BaseModel):
         count = 0
         for m in self.modules:
             if m.findings:
-                count += sum(1 for f in m.findings if getattr(f, "verdict", None) == FindingVerdict.INCONCLUSIVE)
+                count += sum(
+                    1
+                    for f in m.findings
+                    if getattr(f, "verdict", None) == FindingVerdict.INCONCLUSIVE
+                )
             else:
                 count += getattr(m, "inconclusive_count", 0)
         return count
@@ -742,7 +758,8 @@ class ScanResult(BaseModel):
                 decisive += sum(
                     1
                     for f in m.findings
-                    if getattr(f, "verdict", None) in (FindingVerdict.PASS, FindingVerdict.FAIL)
+                    if getattr(f, "verdict", None)
+                    in (FindingVerdict.PASS, FindingVerdict.FAIL)
                     and not f.execution_error
                 )
             else:
@@ -767,8 +784,7 @@ class ScanResult(BaseModel):
         """True if the scan had > 20% execution errors among attempted tests or was marked INCOMPLETE."""
         attempted = self.total_attacks - self.na_count
         return self.grade == Grade.INCOMPLETE or (
-            attempted > 0
-            and (self.failed_execution_count / attempted) > 0.20
+            attempted > 0 and (self.failed_execution_count / attempted) > 0.20
         )
 
     def summary(self) -> dict[str, Any]:
@@ -783,7 +799,9 @@ class ScanResult(BaseModel):
             "na_tests": self.na_count,
             "inconclusive_tests": self.inconclusive_count,
             "execution_errors": self.failed_execution_count,
-            "pass_rate": f"{self.pass_rate:.1f}%" if self.pass_rate is not None else None,
+            "pass_rate": (
+                f"{self.pass_rate:.1f}%" if self.pass_rate is not None else None
+            ),
             "failed_findings": self.total_findings,
             "severity_breakdown": {
                 "critical": self.critical_count,
@@ -843,9 +861,6 @@ class BehavioralProfile(BaseModel):
 
 
 # --- Profiler Models ---
-
-
-
 
 
 class AgentProfile(BaseModel):

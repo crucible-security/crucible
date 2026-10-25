@@ -18,7 +18,6 @@ from crucible.models import (
     PROVIDER_PRESETS,
     AgentTarget,
     AttackCategory,
-    Finding,
     ScanStatus,
     Severity,
 )
@@ -41,7 +40,15 @@ class DummyAttack(BaseAttack):
 
 class TestProviderPresets:
     def test_all_expected_presets_present(self) -> None:
-        expected = ["openai", "openrouter", "anthropic", "groq", "mistral", "ollama", "langchain"]
+        expected = [
+            "openai",
+            "openrouter",
+            "anthropic",
+            "groq",
+            "mistral",
+            "ollama",
+            "langchain",
+        ]
         for p in expected:
             assert p in PROVIDER_PRESETS, f"Preset '{p}' missing from PROVIDER_PRESETS"
 

@@ -179,8 +179,12 @@ def doctor(
     """Pre-flight diagnostics: validate endpoint connectivity, API key format, and 1-token probe request."""
     parsed_headers = _parse_headers(header)
     console.print()
-    console.print("[bold magenta]CRUCIBLE DOCTOR[/bold magenta] -- Pre-flight Diagnostics")
-    console.print(f"[dim]Target: {target} | Provider: {provider} | Model: {model or 'default'}[/dim]\n")
+    console.print(
+        "[bold magenta]CRUCIBLE DOCTOR[/bold magenta] -- Pre-flight Diagnostics"
+    )
+    console.print(
+        f"[dim]Target: {target} | Provider: {provider} | Model: {model or 'default'}[/dim]\n"
+    )
 
     report = anyio.run(
         run_doctor,
@@ -217,7 +221,9 @@ def doctor(
     console.print()
 
     if report.passed:
-        console.print("[bold green]✔ All pre-flight checks passed! Target is ready for Crucible red-teaming.[/bold green]\n")
+        console.print(
+            "[bold green]✔ All pre-flight checks passed! Target is ready for Crucible red-teaming.[/bold green]\n"
+        )
     else:
         console.print(
             "[bold red]✖ Pre-flight diagnostic failures detected.[/bold red] "
@@ -493,7 +499,9 @@ def scan(
         elif capabilities.lower() == "all":
             parsed_capabilities = ["all"]
         else:
-            parsed_capabilities = [c.strip().lower() for c in capabilities.split(",") if c.strip()]
+            parsed_capabilities = [
+                c.strip().lower() for c in capabilities.split(",") if c.strip()
+            ]
 
     if scope_file:
         if not scope_file.exists():
@@ -767,7 +775,11 @@ def scan(
             raise typer.Exit(code=1)
 
     if min_coverage is not None:
-        coverage_pct = (result.valid_attacks_count / result.total_attacks * 100.0) if result.total_attacks > 0 else 0.0
+        coverage_pct = (
+            (result.valid_attacks_count / result.total_attacks * 100.0)
+            if result.total_attacks > 0
+            else 0.0
+        )
         if coverage_pct < min_coverage:
             if format not in ["json", "html"] and not quiet:
                 console.print(
@@ -1621,7 +1633,9 @@ def mcp_scan(
     console.print(table)
 
     # Score / grade summary
-    pass_rate = (result.passed / result.total_tests * 100.0) if result.total_tests > 0 else 0.0
+    pass_rate = (
+        (result.passed / result.total_tests * 100.0) if result.total_tests > 0 else 0.0
+    )
     console.print()
     console.print(
         f"Tests: [bold]{result.passed}/{result.total_tests} passed[/bold] ({pass_rate:.1f}%)  "

@@ -71,22 +71,23 @@ class BaseModule(ABC):
         passed = sum(
             1
             for f in all_findings
-            if getattr(f, "verdict", None) == FindingVerdict.PASS and not getattr(f, "execution_error", False)
+            if getattr(f, "verdict", None) == FindingVerdict.PASS
+            and not getattr(f, "execution_error", False)
         )
         failed = sum(
             1
             for f in all_findings
-            if getattr(f, "verdict", None) == FindingVerdict.FAIL and not getattr(f, "execution_error", False)
+            if getattr(f, "verdict", None) == FindingVerdict.FAIL
+            and not getattr(f, "execution_error", False)
         )
         na_count = sum(
-            1
-            for f in all_findings
-            if getattr(f, "verdict", None) == FindingVerdict.NA
+            1 for f in all_findings if getattr(f, "verdict", None) == FindingVerdict.NA
         )
         inconclusive_count = sum(
             1
             for f in all_findings
-            if getattr(f, "verdict", None) == FindingVerdict.INCONCLUSIVE and not getattr(f, "execution_error", False)
+            if getattr(f, "verdict", None) == FindingVerdict.INCONCLUSIVE
+            and not getattr(f, "execution_error", False)
         )
         errors = sum(1 for f in all_findings if getattr(f, "execution_error", False))
         total = len(all_findings)

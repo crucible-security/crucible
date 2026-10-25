@@ -8,7 +8,6 @@ execution errors.
 from __future__ import annotations
 
 import os
-import re
 from dataclasses import dataclass, field
 from typing import Literal
 from urllib.parse import urlparse
@@ -54,24 +53,44 @@ def validate_api_key_format(provider: str, key: str) -> tuple[CheckStatus, str]:
     prov = provider.lower()
     if "anthropic" in prov:
         if cleaned.startswith("sk-ant-"):
-            return "PASS", f"Valid Anthropic key format ({cleaned[:7]}...{cleaned[-4:]})"
-        return "WARN", f"Key does not start with standard 'sk-ant-' prefix ({cleaned[:4]}...)"
+            return (
+                "PASS",
+                f"Valid Anthropic key format ({cleaned[:7]}...{cleaned[-4:]})",
+            )
+        return (
+            "WARN",
+            f"Key does not start with standard 'sk-ant-' prefix ({cleaned[:4]}...)",
+        )
     elif "openai" in prov:
         if cleaned.startswith("sk-"):
             return "PASS", f"Valid OpenAI key format ({cleaned[:7]}...{cleaned[-4:]})"
-        return "WARN", f"Key does not start with standard 'sk-' prefix ({cleaned[:4]}...)"
+        return (
+            "WARN",
+            f"Key does not start with standard 'sk-' prefix ({cleaned[:4]}...)",
+        )
     elif "openrouter" in prov:
         if cleaned.startswith("sk-or-"):
-            return "PASS", f"Valid OpenRouter key format ({cleaned[:7]}...{cleaned[-4:]})"
-        return "WARN", f"Key does not start with standard 'sk-or-' prefix ({cleaned[:4]}...)"
+            return (
+                "PASS",
+                f"Valid OpenRouter key format ({cleaned[:7]}...{cleaned[-4:]})",
+            )
+        return (
+            "WARN",
+            f"Key does not start with standard 'sk-or-' prefix ({cleaned[:4]}...)",
+        )
     elif "groq" in prov:
         if cleaned.startswith("gsk_"):
             return "PASS", f"Valid Groq key format ({cleaned[:5]}...{cleaned[-4:]})"
-        return "WARN", f"Key does not start with standard 'gsk_' prefix ({cleaned[:4]}...)"
+        return (
+            "WARN",
+            f"Key does not start with standard 'gsk_' prefix ({cleaned[:4]}...)",
+        )
     return "PASS", f"Key provided ({cleaned[:4]}...{cleaned[-4:]})"
 
 
-def resolve_api_key(provider: str, explicit_key: str | None, headers: dict[str, str]) -> tuple[str | None, str]:
+def resolve_api_key(
+    provider: str, explicit_key: str | None, headers: dict[str, str]
+) -> tuple[str | None, str]:
     """Resolve API key from explicit flag, headers, or environment variables."""
     if explicit_key:
         return explicit_key, "CLI argument (--key)"
@@ -163,7 +182,9 @@ async def run_doctor(
             for k, v in preset.extra_headers.items():
                 if k not in req_headers:
                     req_headers[k] = v
-        if preset.url_suffix and not resolved_url.rstrip("/").endswith(preset.url_suffix.rstrip("/")):
+        if preset.url_suffix and not resolved_url.rstrip("/").endswith(
+            preset.url_suffix.rstrip("/")
+        ):
             resolved_url = resolved_url.rstrip("/") + preset.url_suffix
 
         if preset.requires_model and not resolved_model:
@@ -193,7 +214,9 @@ async def run_doctor(
             )
 
     if resolved_model and "{model}" in resolved_body_template:
-        resolved_body_template = resolved_body_template.replace("{model}", resolved_model)
+        resolved_body_template = resolved_body_template.replace(
+            "{model}", resolved_model
+        )
 
     # 3. API Key & Authentication Check
     resolved_key, key_source = resolve_api_key(provider, key, req_headers)

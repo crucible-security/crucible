@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from crucible.models import Finding, FindingVerdict, Grade, ModuleResult, ScanResult, Severity
+from crucible.models import (
+    Finding,
+    FindingVerdict,
+    Grade,
+    ModuleResult,
+    ScanResult,
+    Severity,
+)
 
 SEVERITY_DEDUCTIONS: dict[Severity, int] = {
     Severity.CRITICAL: 20,

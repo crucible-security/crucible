@@ -181,7 +181,11 @@ class HTMLReporter(BaseReporter):
         modules_rows = self._render_modules(result)
         findings_section = self._render_findings(failed_findings)
         pass_rate_display = f"{pass_rate:.1f}%" if pass_rate is not None else "N/A"
-        caps_display = ", ".join(result.target.capabilities) if result.target.capabilities else "None declared (default: pure LLM)"
+        caps_display = (
+            ", ".join(result.target.capabilities)
+            if result.target.capabilities
+            else "None declared (default: pure LLM)"
+        )
 
         return f"""<!DOCTYPE html>
 <html lang="en">

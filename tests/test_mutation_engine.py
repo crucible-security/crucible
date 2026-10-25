@@ -55,7 +55,13 @@ class TestMutationEngineEnabled:
         # Should contain one of the scenario prefixes
         has_scenario = any(
             keyword in mutated.lower()
-            for keyword in ["actor", "translation", "hypothetical", "training", "universe"]
+            for keyword in [
+                "actor",
+                "translation",
+                "hypothetical",
+                "training",
+                "universe",
+            ]
         )
         assert has_scenario
 
@@ -115,4 +121,3 @@ class TestMutationEngineEnabled:
         assert variants[0] == payload
         # All variants should be unique
         assert len(set(variants)) == 6
-

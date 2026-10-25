@@ -198,4 +198,3 @@ class TestFinalizeScanResult:
         assert summary["failed_findings"] == 4
         assert summary["severity_breakdown"]["critical"] == 1
         assert summary["severity_breakdown"]["high"] == 1
-

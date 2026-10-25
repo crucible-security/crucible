@@ -17,7 +17,8 @@ import json
 import random
 import re
 import urllib.parse
-from typing import Callable, ClassVar
+from collections.abc import Callable
+from typing import Any, ClassVar
 
 
 class MutationEngine:
@@ -30,19 +31,77 @@ class MutationEngine:
 
     # ── Synonym Maps for High-Frequency Attack Triggers ───────────────────────
     SYNONYM_MAP: ClassVar[dict[str, list[str]]] = {
-        "ignore": ["disregard", "bypass", "supersede", "nullify", "set aside", "overrule", "negate"],
-        "override": ["supersede", "overwrite", "replace", "supplant", "bypass", "rewrite"],
+        "ignore": [
+            "disregard",
+            "bypass",
+            "supersede",
+            "nullify",
+            "set aside",
+            "overrule",
+            "negate",
+        ],
+        "override": [
+            "supersede",
+            "overwrite",
+            "replace",
+            "supplant",
+            "bypass",
+            "rewrite",
+        ],
         "forget": ["discard", "clear", "purge", "erase", "dismiss", "reset"],
-        "instructions": ["directives", "guidelines", "rules", "protocols", "system constraints", "parameters"],
-        "system prompt": ["core directive", "baseline configuration", "system setup", "initial framing"],
+        "instructions": [
+            "directives",
+            "guidelines",
+            "rules",
+            "protocols",
+            "system constraints",
+            "parameters",
+        ],
+        "system prompt": [
+            "core directive",
+            "baseline configuration",
+            "system setup",
+            "initial framing",
+        ],
         "execute": ["dispatch", "invoke", "perform", "run", "trigger", "evaluate"],
         "command": ["instruction", "directive", "operation", "task", "subroutine"],
-        "password": ["credentials", "passcode", "access key", "secret token", "auth credentials"],
-        "secret": ["confidential payload", "internal token", "hidden credential", "private key"],
-        "database": ["data store", "schema records", "backend storage", "persistence layer"],
-        "admin": ["superuser", "root operator", "privileged account", "system administrator"],
-        "jailbreak": ["unrestricted mode", "diagnostic mode", "developer override", "raw evaluation state"],
-        "pretend": ["hypothetically simulate", "roleplay as", "act as if", "adopt the persona of"],
+        "password": [
+            "credentials",
+            "passcode",
+            "access key",
+            "secret token",
+            "auth credentials",
+        ],
+        "secret": [
+            "confidential payload",
+            "internal token",
+            "hidden credential",
+            "private key",
+        ],
+        "database": [
+            "data store",
+            "schema records",
+            "backend storage",
+            "persistence layer",
+        ],
+        "admin": [
+            "superuser",
+            "root operator",
+            "privileged account",
+            "system administrator",
+        ],
+        "jailbreak": [
+            "unrestricted mode",
+            "diagnostic mode",
+            "developer override",
+            "raw evaluation state",
+        ],
+        "pretend": [
+            "hypothetically simulate",
+            "roleplay as",
+            "act as if",
+            "adopt the persona of",
+        ],
         "send": ["transmit", "forward", "exfiltrate", "dispatch", "route"],
         "delete": ["purge", "remove", "erase", "wipe", "drop"],
     }
@@ -50,15 +109,15 @@ class MutationEngine:
     # ── Unicode Homoglyph Lookalikes (Visually identical to ASCII) ────────────
     HOMOGLYPHS: ClassVar[dict[str, list[str]]] = {
         "a": ["\u0430", "\u03b1"],  # Cyrillic a, Greek alpha
-        "c": ["\u0441"],            # Cyrillic es
-        "e": ["\u0435"],            # Cyrillic ie
+        "c": ["\u0441"],  # Cyrillic es
+        "e": ["\u0435"],  # Cyrillic ie
         "i": ["\u0456", "\u03b9"],  # Cyrillic i, Greek iota
-        "j": ["\u0458"],            # Cyrillic je
+        "j": ["\u0458"],  # Cyrillic je
         "o": ["\u043e", "\u03bf"],  # Cyrillic o, Greek omicron
         "p": ["\u0440", "\u03c1"],  # Cyrillic er, Greek rho
-        "s": ["\u0455"],            # Cyrillic dze
-        "x": ["\u0445"],            # Cyrillic ha
-        "y": ["\u0443"],            # Cyrillic u
+        "s": ["\u0455"],  # Cyrillic dze
+        "x": ["\u0445"],  # Cyrillic ha
+        "y": ["\u0443"],  # Cyrillic u
     }
 
     # ── Leetspeak / Visual Substitutions ──────────────────────────────────────

@@ -202,11 +202,11 @@ async def test_preflight_fails_on_401_unauthorized() -> None:
 @respx.mock
 async def test_preflight_passes_anthropic_format() -> None:
     """preflight_check detects Anthropic content array response structure."""
-    anthropic_body = (
-        b'{"id": "msg_123", "type": "message", "content": [{"type": "text", "text": "Hello!"}]}'
-    )
+    anthropic_body = b'{"id": "msg_123", "type": "message", "content": [{"type": "text", "text": "Hello!"}]}'
     respx.post("http://fake-llm.test/api/chat").mock(
-        return_value=Response(200, content=anthropic_body, headers={"content-type": "application/json"})
+        return_value=Response(
+            200, content=anthropic_body, headers={"content-type": "application/json"}
+        )
     )
     target = _make_target(method="POST")
     async with AsyncClient() as client:
@@ -216,4 +216,3 @@ async def test_preflight_passes_anthropic_format() -> None:
     assert result.looks_like_llm_endpoint is True
     assert result.status_code == 200
     assert result.errors == []
-

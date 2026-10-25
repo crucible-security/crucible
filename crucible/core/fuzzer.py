@@ -279,7 +279,9 @@ class CrucibleGAF:
             return arm_name, reward, meta
 
         raw_payload = self._rng.choice(arm_payloads)
-        arm_markers = detection_patterns.get(arm_name, []) if detection_patterns else None
+        arm_markers = (
+            detection_patterns.get(arm_name, []) if detection_patterns else None
+        )
         payload_text = (
             self.mutation_engine.mutate(raw_payload, extra_markers=arm_markers)
             if self.mutate_payloads

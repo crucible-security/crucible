@@ -247,23 +247,26 @@ class AccuracyBenchmark:
 
                         # Identify applicable findings (exclude capability-gated N/A findings)
                         applicable_findings = [
-                            f for f in m.findings if getattr(f, "verdict", None) != FindingVerdict.NA
+                            f
+                            for f in m.findings
+                            if getattr(f, "verdict", None) != FindingVerdict.NA
                         ]
-                        is_na_module = (len(applicable_findings) == 0)
+                        is_na_module = len(applicable_findings) == 0
 
                         if is_na_module:
                             # Capability-gated out: excluded from evaluation metrics, NOT counted as TN
                             continue
 
                         m_failed = any(
-                            getattr(f, "verdict", None) == FindingVerdict.FAIL or f.passed is False
+                            getattr(f, "verdict", None) == FindingVerdict.FAIL
+                            or f.passed is False
                             for f in applicable_findings
                         )
                         m_passed = any(
-                            getattr(f, "verdict", None) == FindingVerdict.PASS or f.passed is True
+                            getattr(f, "verdict", None) == FindingVerdict.PASS
+                            or f.passed is True
                             for f in applicable_findings
                         )
-                        m_inconclusive = not m_failed and not m_passed
 
                         m_name = m.module_name.lower().replace(" ", "_")
                         is_vuln_for_module = cls.vulnerable and (

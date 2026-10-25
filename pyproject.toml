@@ -208,7 +208,7 @@ disable_error_code = ["misc", "untyped-decorator"]
 module = "tests.*"
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
-disable_error_code = ["abstract", "arg-type", "misc", "assignment", "type-arg", "unused-ignore"]
+disable_error_code = ["abstract", "arg-type", "misc", "assignment", "type-arg", "unused-ignore", "comparison-overlap"]
 
 [[tool.mypy.overrides]]
 module = "crucible.trace.policy"

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
 
 # Common API key and credential signatures
 SECRET_PATTERNS: list[tuple[re.Pattern[str], str]] = [

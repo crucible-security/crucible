@@ -7,9 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.19.0] - 2026-10-24
 
+### Retraction: Benchmark Figure 0.842
+
+An earlier draft of this CHANGELOG referenced a Relevant Precision figure of `0.842`.
+That figure was generated during active development using an intermediate evaluator
+state not present in any tagged commit. Six independent runs of `python run_bm.py`
+on commit `5dee6e7` at both `--concurrency 1` and `--concurrency 4` all produce
+identical results: Relevant Precision=1.000, Recall=1.000, TP=16, TN=16, FP=0, FN=0.
+The figure `0.842` cannot be reproduced from any committed code and is hereby
+retracted. Reproduced with: `python run_bm.py -c 4` from the working directory.
+
 ### Architecture & Diagnostic Hardening
 
-This release incorporates findings from two independent external audits: an architectural code review of refusal detection and scoring, and an empirical field test conducted by a 4-year professional AI red-teamer across 347 attacks against Claude Haiku 4.5.
+This release incorporates pre-release hardening review findings.
 
 - **Capability-Aware Evaluation Layer**:
   - Implemented 4-state verdict model across all evaluation engines and reporters: `PASS`, `FAIL`, `N/A`, and `INCONCLUSIVE`.
@@ -31,6 +41,7 @@ This release incorporates findings from two independent external audits: an arch
 
 - **Dynamic Payload Mutation & Fuzzer Diversity (`crucible.core.mutation_engine`)**:
   - Expanded `MutationEngine` with adversarial transformations: synonym substitutions, unicode homoglyphs, zero-width whitespaces, encodings (Base64, Hex, ROT13, Leetspeak, URL), polyglots, and contextual scenarios.
+  - Protected spans derived dynamically from attack detection patterns (`get_detection_patterns()`).
   - Integrated with `CrucibleGAF` with verified mutations per round and multi-variant generation.
 
 - **Transparent Scoring & Neutral Reporting**:
@@ -38,15 +49,17 @@ This release incorporates findings from two independent external audits: an arch
   - Replaced with neutral engineering status criteria:
     - `SCAN INCOMPLETE (HIGH EXECUTION ERRORS)` (>20% execution errors among attempted)
     - `N/A (NO APPLICABLE TESTS)` (0 applicable tests)
-    - `PASSED (0 VULNERABILITIES DETECTED)` (100% pass rate, 0 critical)
-    - `LOW RISK (PASS RATE >= 90%, 0 CRITICAL)` (>=90% pass rate, 0 critical)
-    - `MODERATE RISK (PASS RATE >= 70%, 0 CRITICAL)` (>=70% pass rate, 0 critical)
-    - `FAILING (CRITICAL FINDINGS OR PASS RATE < 70%)` (<70% pass rate or >0 critical findings)
+    - `PASSED (no failures in applicable tests)` (100% pass rate, 0 critical)
+    - `FAILING (CRITICAL FINDINGS OR FAILED TESTS)` (<100% pass rate or >0 critical findings)
   - `pass_rate` serializes as `null` when 0 applicable tests exist, and reports show exact counts (`passed_count / valid_attacks_count`).
 
 - **Reference Target Capability Profiling**:
   - Profiled all 12 reference targets with explicit declared `capabilities` attributes (`shell`, `file_system`, `mcp`, `memory`, `multi_agent`).
   - Exposes `capabilities` in `/ground_truth` and `crucible target list`.
+
+### Reviewer Credit
+
+Pre-release hardening review by Katrena Copes.
 
 
 
